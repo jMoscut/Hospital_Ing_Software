@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;40b6eaa859e9c942b82aabe1758afd29088939f97e21046f7f122e06fea3fc1b;C:/Users/sanch/Documents/Hospital_Ing_Software/frontend/biocore-frontend/src/app/modules/user-management/user-management.component.ts"],
+  "sourcesContent": ["\n    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }\n    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1565c0; margin: 0; }\n    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 16px; }\n    .clinic-badge { background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 8px; font-size: 0.8rem; }\n    .mb-16 { margin-bottom: 16px; }\n    .full-width { width: 100%; }\n    .assign-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }\n    .assign-dialog { width: 400px; }\n  "],
+  "mappings": ";AACI,CAAC;AAAc,WAAS;AAAM,mBAAiB;AAAe,eAAa;AAAQ,iBAAe;AAAM;AACxG,CADC,YACY;AAAK,aAAW;AAAQ,eAAa;AAAK,SAAO;AAAS,UAAQ;AAAG;AAClF,CAAC;AAAY,WAAS;AAAM,yBAAuB,OAAO,QAAQ,EAAE,OAAO,KAAK,EAAE;AAAO,OAAK;AAAM,iBAAe;AAAM;AACzH,CAAC;AAAe,cAAY;AAAS,SAAO;AAAS,WAAS,IAAI;AAAK,iBAAe;AAAK,aAAW;AAAQ;AAC9G,CAAC;AAAQ,iBAAe;AAAM;AAC9B,CAAC;AAAa,SAAO;AAAM;AAC3B,CAAC;AAAiB,YAAU;AAAO,SAAO;AAAG,cAAY,KAAK,CAAC,EAAC,CAAC,EAAC,CAAC,EAAC;AAAM,WAAS;AAAM,eAAa;AAAQ,mBAAiB;AAAQ,WAAS;AAAM;AACtJ,CAAC;AAAgB,SAAO;AAAO;",
+  "names": []
+}

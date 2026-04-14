@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;fbd778a7d3f9d0b144e45d04faef44e1042c2ebb70c05a9bc9ab18267f61c6a1;C:/Users/sanch/Documents/Hospital_Ing_Software/frontend/biocore-frontend/src/app/modules/patient/patient-list/patient-list.component.ts"],
+  "sourcesContent": ["\n    .search-field { width: 100%; max-width: 400px; margin-bottom: 16px; }\n    .w-full { width: 100%; }\n    .clickable-row { cursor: pointer; }\n    .clickable-row:hover { background: #f5f5f5; }\n  "],
+  "mappings": ";AACI,CAAC;AAAe,SAAO;AAAM,aAAW;AAAO,iBAAe;AAAM;AACpE,CAAC;AAAS,SAAO;AAAM;AACvB,CAAC;AAAgB,UAAQ;AAAS;AAClC,CADC,aACa;AAAS,cAAY;AAAS;",
+  "names": []
+}

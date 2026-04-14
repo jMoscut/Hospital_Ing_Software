@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["angular:styles/component:css;de613d468b67a14ce505e7ead4fc126e53f40ee9e97063535be91e56b3b07632;C:/Users/sanch/Documents/Hospital_Ing_Software/frontend/biocore-frontend/src/app/modules/patient/patient-register/patient-register.component.ts"],
+  "sourcesContent": ["\n    h3 { font-size: 1.1rem; font-weight: 500; color: #1565c0; margin-bottom: 16px; }\n    .hint-text { color: #757575; font-size: 0.85rem; margin-bottom: 16px; }\n    .full-width { width: 100%; }\n    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }\n    .step-actions { display: flex; gap: 12px; margin-top: 16px; }\n    .patient-found {\n      display: flex; align-items: center; gap: 12px; margin-top: 16px;\n      background: #e8f5e9; padding: 16px; border-radius: 8px; color: #2e7d32;\n    }\n    .patient-found mat-icon { font-size: 32px; width: 32px; height: 32px; }\n  "],
+  "mappings": ";AACI;AAAK,aAAW;AAAQ,eAAa;AAAK,SAAO;AAAS,iBAAe;AAAM;AAC/E,CAAC;AAAY,SAAO;AAAS,aAAW;AAAS,iBAAe;AAAM;AACtE,CAAC;AAAa,SAAO;AAAM;AAC3B,CAAC;AAAY,WAAS;AAAM,yBAAuB,OAAO,QAAQ,EAAE,OAAO,KAAK,EAAE;AAAO,OAAK;AAAM,iBAAe;AAAM;AACzH,CAAC;AAAe,WAAS;AAAM,OAAK;AAAM,cAAY;AAAM;AAC5D,CAAC;AACC,WAAS;AAAM,eAAa;AAAQ,OAAK;AAAM,cAAY;AAC3D,cAAY;AAAS,WAAS;AAAM,iBAAe;AAAK,SAAO;AACjE;AACA,CAJC,cAIc;AAAW,aAAW;AAAM,SAAO;AAAM,UAAQ;AAAM;",
+  "names": []
+}
