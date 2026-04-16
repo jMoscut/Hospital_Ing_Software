@@ -21,6 +21,13 @@ export interface Patient {
   discountPercentage?: number;
   active: boolean;
   createdAt: string;
+  birthDate?: string;
+  /** CU 01: true if the patient has a portal account linked */
+  hasAccount?: boolean;
+  userId?: number;
+  username?: string;
+  /** Transient — only present on creation when a temp password was generated */
+  tempPassword?: string;
 }
 
 export interface PatientCreateRequest {

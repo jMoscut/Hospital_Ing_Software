@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -23,11 +24,20 @@ public class PatientDTO {
     private String emergencyContact;
     private String emergencyPhone;
     private String email;
+    private LocalDate birthDate;
     private Long insuranceId;
     private String insuranceName;
     private Double discountPercentage;
     private boolean active;
     private LocalDateTime createdAt;
+    /** true si el paciente tiene cuenta de portal (rol PATIENT) */
+    private boolean hasAccount;
+    private Long userId;
+    /**
+     * Solo se popula al crear una cuenta nueva con contraseña temporal (CU 01 FA01).
+     * No se persiste — solo para mostrar al personal en el momento del registro.
+     */
+    private String tempPassword;
 
     public static PatientDTO from(Patient p) {
         PatientDTO dto = PatientDTO.builder()
@@ -41,8 +51,11 @@ public class PatientDTO {
                 .emergencyContact(p.getEmergencyContact())
                 .emergencyPhone(p.getEmergencyPhone())
                 .email(p.getEmail())
+                .birthDate(p.getBirthDate())
                 .active(p.isActive())
                 .createdAt(p.getCreatedAt())
+                .hasAccount(p.getUserId() != null)
+                .userId(p.getUserId())
                 .build();
         if (p.getInsurance() != null) {
             dto.setInsuranceId(p.getInsurance().getId());

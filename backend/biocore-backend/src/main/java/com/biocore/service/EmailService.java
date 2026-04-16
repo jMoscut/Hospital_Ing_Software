@@ -19,6 +19,37 @@ public class EmailService {
     private final JavaMailSender mailSender;
 
     /**
+     * CU 01 FA01 / FA02 CU 00: Enviar credenciales temporales al paciente (RN-P003)
+     */
+    public void sendWelcomeCredentials(String toEmail, String firstName, String username, String tempPassword) {
+        if (toEmail == null || toEmail.isBlank()) return;
+        try {
+            String subject = "Bienvenido a BioCore Medical — Sus credenciales de acceso";
+            String body = String.format(
+                "Estimado(a) %s,\n\n" +
+                "Su registro en el portal de BioCore Medical ha sido completado exitosamente.\n\n" +
+                "Sus credenciales de acceso son:\n" +
+                "  Usuario: %s\n" +
+                "  Contraseña temporal: %s\n\n" +
+                "IMPORTANTE: Esta contraseña tiene vigencia de 24 horas. " +
+                "Al iniciar sesión por primera vez, el sistema le pedirá que la cambie.\n\n" +
+                "Puede acceder al portal en: http://localhost:4200/login\n\n" +
+                "Atentamente,\n" +
+                "Hospital BioCore Medical",
+                firstName, username, tempPassword
+            );
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(body);
+            mailSender.send(message);
+            log.info("Credenciales enviadas a {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar credenciales de bienvenida: {}", e.getMessage());
+        }
+    }
+
+    /**
      * CU4 FA01: Notificación de resultados de laboratorio
      * RN-L02: Fecha DD/MM/AAAA y hora en formato 24 horas
      */

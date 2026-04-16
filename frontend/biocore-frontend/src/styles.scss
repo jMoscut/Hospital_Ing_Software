@@ -2,15 +2,16 @@
 
 @include mat.core();
 
-$biocore-primary: mat.define-palette(mat.$blue-palette, 700);
-$biocore-accent: mat.define-palette(mat.$cyan-palette, 500);
-$biocore-warn: mat.define-palette(mat.$red-palette);
+// BioCore Custom Palette — Teal/Green
+$biocore-primary: mat.define-palette(mat.$teal-palette, 700, 500, 900);
+$biocore-accent:  mat.define-palette(mat.$teal-palette, 300, 200, 500);
+$biocore-warn:    mat.define-palette(mat.$red-palette);
 
 $biocore-theme: mat.define-light-theme((
   color: (
     primary: $biocore-primary,
-    accent: $biocore-accent,
-    warn: $biocore-warn,
+    accent:  $biocore-accent,
+    warn:    $biocore-warn,
   ),
   typography: mat.define-typography-config(),
   density: 0,
@@ -18,6 +19,26 @@ $biocore-theme: mat.define-light-theme((
 
 @include mat.all-component-themes($biocore-theme);
 
+// ============================================
+// BioCore Color System
+// ============================================
+:root {
+  --bc-darkest:     #1E201F;   // deep backgrounds, dark text
+  --bc-dark-green:  #193A31;   // sidebar, nav bg
+  --bc-teal:        #1D6C61;   // primary: buttons, links, headers
+  --bc-light-teal:  #3EB9A8;   // accent: hover states, highlights
+  --bc-green:       #5AA371;   // success, active indicators
+
+  --bc-bg:          #f0f7f6;   // page background (subtle teal tint)
+  --bc-card-bg:     #ffffff;
+  --bc-border:      #d4e8e5;
+  --bc-text:        #1E201F;
+  --bc-text-muted:  rgba(30, 32, 31, 0.55);
+}
+
+// ============================================
+// Reset
+// ============================================
 * {
   box-sizing: border-box;
   margin: 0;
@@ -27,10 +48,13 @@ $biocore-theme: mat.define-light-theme((
 html, body {
   height: 100%;
   font-family: Roboto, "Helvetica Neue", sans-serif;
-  background-color: #f5f7fa;
+  background-color: var(--bc-bg);
+  color: var(--bc-text);
 }
 
-/* Layout */
+// ============================================
+// Layout
+// ============================================
 .page-container {
   padding: 24px;
   max-width: 1400px;
@@ -46,25 +70,32 @@ html, body {
 
 .page-header h1 {
   font-size: 1.6rem;
-  font-weight: 500;
-  color: #1565c0;
+  font-weight: 600;
+  color: var(--bc-teal);
 }
 
-/* Cards */
+// ============================================
+// Cards
+// ============================================
 .mat-mdc-card {
   border-radius: 12px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 2px 10px rgba(29, 108, 97, 0.10) !important;
+  border: 1px solid var(--bc-border) !important;
 }
 
-/* Status chips */
-.status-waiting { background: #fff3e0 !important; color: #e65100 !important; }
-.status-being-called { background: #e3f2fd !important; color: #1565c0 !important; }
-.status-in-consultation { background: #e8f5e9 !important; color: #2e7d32 !important; }
-.status-completed { background: #f3e5f5 !important; color: #6a1b9a !important; }
-.status-absent { background: #fce4ec !important; color: #880e4f !important; }
-.status-urgent { background: #ffebee !important; color: #c62828 !important; }
+// ============================================
+// Status chips
+// ============================================
+.status-waiting         { background: #fff3e0 !important; color: #e65100 !important; }
+.status-being-called    { background: #d0f4ef !important; color: var(--bc-teal) !important; }
+.status-in-consultation { background: #d8f0df !important; color: #2e6b3e !important; }
+.status-completed       { background: #c5ece7 !important; color: var(--bc-dark-green) !important; }
+.status-absent          { background: #fce4ec !important; color: #880e4f !important; }
+.status-urgent          { background: #ffebee !important; color: #c62828 !important; }
 
-/* Dashboard cards */
+// ============================================
+// Dashboard / Stat cards
+// ============================================
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -81,41 +112,49 @@ html, body {
   font-size: 2.5rem;
   font-weight: 700;
   line-height: 1;
+  color: var(--bc-teal);
 }
 
 .stat-card .stat-label {
   font-size: 0.85rem;
-  color: rgba(0,0,0,0.6);
+  color: var(--bc-text-muted);
   margin-top: 8px;
 }
 
-/* Queue display */
+// ============================================
+// Queue / Ticket display
+// ============================================
 .queue-ticket {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
   border-radius: 8px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--bc-card-bg);
+  border: 1px solid var(--bc-border);
   margin-bottom: 8px;
-  transition: all 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.queue-ticket:hover { border-color: #1565c0; }
+.queue-ticket:hover {
+  border-color: var(--bc-light-teal);
+  box-shadow: 0 2px 8px rgba(62, 185, 168, 0.15);
+}
 
 .ticket-number {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #1565c0;
+  color: var(--bc-teal);
   min-width: 60px;
 }
 
-.ticket-info { flex: 1; }
-.ticket-patient { font-weight: 500; }
-.ticket-meta { font-size: 0.8rem; color: rgba(0,0,0,0.5); }
+.ticket-info    { flex: 1; }
+.ticket-patient { font-weight: 500; color: var(--bc-text); }
+.ticket-meta    { font-size: 0.8rem; color: var(--bc-text-muted); }
 
-/* Emergency highlight */
+// ============================================
+// Emergency badge
+// ============================================
 .emergency-badge {
   background: #c62828;
   color: white;
@@ -125,41 +164,70 @@ html, body {
   font-weight: 700;
 }
 
-/* Forms */
+// ============================================
+// Forms
+// ============================================
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
 
-.form-full-width {
-  width: 100%;
-}
+.form-full-width { width: 100%; }
 
-/* Table */
+// ============================================
+// Table
+// ============================================
 .mat-mdc-table {
   width: 100%;
-  background: white;
+  background: var(--bc-card-bg);
   border-radius: 8px;
 }
 
-/* Topbar */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
+.mat-mdc-header-row {
+  background: var(--bc-dark-green) !important;
 }
 
-/* Snackbar */
-.success-snack { --mdc-snackbar-container-color: #2e7d32; }
-.error-snack { --mdc-snackbar-container-color: #c62828; }
+.mat-mdc-header-cell {
+  color: white !important;
+  font-weight: 600 !important;
+}
 
-/* Utility */
-.text-center { text-align: center; }
-.mt-16 { margin-top: 16px; }
-.mt-24 { margin-top: 24px; }
-.mb-16 { margin-bottom: 16px; }
-.gap-8 { gap: 8px; }
-.flex { display: flex; }
-.flex-center { display: flex; align-items: center; justify-content: center; }
+// ============================================
+// Topbar override (applies globally)
+// ============================================
+.mat-toolbar.mat-primary {
+  background: var(--bc-dark-green) !important;
+  color: white !important;
+}
+
+// ============================================
+// Buttons — primary tint override
+// ============================================
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-flat-button.mat-primary {
+  background-color: var(--bc-teal) !important;
+}
+
+.mat-mdc-outlined-button.mat-primary {
+  color: var(--bc-teal) !important;
+  border-color: var(--bc-teal) !important;
+}
+
+// ============================================
+// Snackbar
+// ============================================
+.success-snack { --mdc-snackbar-container-color: var(--bc-green); }
+.error-snack   { --mdc-snackbar-container-color: #c62828; }
+
+// ============================================
+// Utility
+// ============================================
+.text-center  { text-align: center; }
+.mt-16        { margin-top: 16px; }
+.mt-24        { margin-top: 24px; }
+.mb-16        { margin-bottom: 16px; }
+.gap-8        { gap: 8px; }
+.flex         { display: flex; }
+.flex-center  { display: flex; align-items: center; justify-content: center; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }

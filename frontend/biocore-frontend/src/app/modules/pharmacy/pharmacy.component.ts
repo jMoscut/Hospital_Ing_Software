@@ -63,9 +63,12 @@ import { Prescription } from '../../core/models/lab.model';
             <mat-card-content>
               <div class="medicine-item" *ngFor="let item of selectedPrescription.items">
                 <div class="medicine-info">
-                  <strong>{{ item.medicine?.name }}</strong>
+                  <div class="medicine-header">
+                    <span class="med-code" *ngIf="item.medicine?.code">{{ item.medicine?.code }}</span>
+                    <strong>{{ item.medicine?.name }}</strong>
+                  </div>
                   <div class="medicine-meta">
-                    Cantidad: {{ item.quantity }} {{ item.medicine?.unit }}
+                    {{ item.medicine?.presentation }} · Cantidad: {{ item.quantity }} {{ item.medicine?.unit }}
                     <span *ngIf="item.dosage"> · {{ item.dosage }}</span>
                   </div>
                   <!-- RN-F01: Verificar stock -->
@@ -121,16 +124,31 @@ import { Prescription } from '../../core/models/lab.model';
         </mat-card-header>
         <mat-card-content>
           <table mat-table [dataSource]="medicines">
+            <ng-container matColumnDef="code">
+              <th mat-header-cell *matHeaderCellDef>Código</th>
+              <td mat-cell *matCellDef="let m">
+                <span class="med-code" *ngIf="m.code">{{ m.code }}</span>
+                <span *ngIf="!m.code" style="color:#bbb">—</span>
+              </td>
+            </ng-container>
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef>Medicamento</th>
-              <td mat-cell *matCellDef="let m">{{ m.name }}</td>
+              <td mat-cell *matCellDef="let m">
+                <strong>{{ m.name }}</strong>
+                <div class="med-presentation" *ngIf="m.presentation">{{ m.presentation }}</div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="category">
+              <th mat-header-cell *matHeaderCellDef>Categoría</th>
+              <td mat-cell *matCellDef="let m">
+                <span class="category-chip" *ngIf="m.category">{{ m.category }}</span>
+              </td>
             </ng-container>
             <ng-container matColumnDef="stock">
               <th mat-header-cell *matHeaderCellDef>Stock</th>
               <td mat-cell *matCellDef="let m">
-                <span [style.color]="m.stock <= 10 ? '#c62828' : '#2e7d32'"
-                      [style.fontWeight]="m.stock <= 10 ? '700' : '400'">
-                  {{ m.stock }} {{ m.unit }}
+                <span [class.stock-low]="m.stock <= 10" [class.stock-ok]="m.stock > 10">
+                  {{ m.stock }} <span style="font-size:0.8rem;color:#888">{{ m.unit }}</span>
                 </span>
               </td>
             </ng-container>
@@ -159,12 +177,18 @@ import { Prescription } from '../../core/models/lab.model';
     .stock-info { font-size: 0.8rem; }
     .stock-warn { color: #c62828; font-weight: 500; margin-left: 4px; }
     .dispatch-actions { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .payment-note { display: flex; align-items: center; gap: 8px; background: #e3f2fd; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; color: #1565c0; }
+    .payment-note { display: flex; align-items: center; gap: 8px; background: #d0f4ef; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; color: #1D6C61; }
     .empty-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; }
-    .big-icon { font-size: 64px; width: 64px; height: 64px; color: #9e9e9e; margin-bottom: 16px; }
+    .big-icon { font-size: 64px; width: 64px; height: 64px; color: #3EB9A8; margin-bottom: 16px; opacity:0.5; }
     .empty-msg { text-align: center; color: #9e9e9e; padding: 24px; }
     .mt-24 { margin-top: 24px; }
     .item-actions { display: flex; align-items: center; }
+    .med-code { font-family: monospace; font-size: 0.75rem; color: #1D6C61; background: #d0f4ef; padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+    .med-presentation { font-size: 0.78rem; color: #777; margin-top: 2px; }
+    .medicine-header { display: flex; align-items: center; margin-bottom: 2px; }
+    .category-chip { background: #e8f5f3; color: #1D6C61; padding: 2px 8px; border-radius: 8px; font-size: 0.78rem; }
+    .stock-low { color: #c62828; font-weight: 700; }
+    .stock-ok  { color: #2e7d32; }
   `]
 })
 export class PharmacyComponent implements OnInit {
@@ -172,7 +196,7 @@ export class PharmacyComponent implements OnInit {
   selectedPrescription: Prescription | null = null;
   medicines: any[] = [];
   cartItems = new Set<number>();
-  inventoryColumns = ['name', 'stock', 'price'];
+  inventoryColumns = ['code', 'name', 'category', 'stock', 'price'];
 
   constructor(
     private prescriptionService: PrescriptionService,
@@ -182,14 +206,16 @@ export class PharmacyComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    this.medicineService.getAll().subscribe(res => {
-      if (res.success) this.medicines = res.data;
+    this.medicineService.getAll().subscribe({
+      next: res => { if (res.success) this.medicines = res.data; },
+      error: () => {}
     });
   }
 
   load(): void {
-    this.prescriptionService.getPendingForPharmacy().subscribe(res => {
-      if (res.success) this.prescriptions = res.data;
+    this.prescriptionService.getPendingForPharmacy().subscribe({
+      next: res => { if (res.success) this.prescriptions = res.data; },
+      error: () => this.notification.error('Error al cargar recetas. Verifique su rol (se requiere FARMACÉUTICO).')
     });
   }
 

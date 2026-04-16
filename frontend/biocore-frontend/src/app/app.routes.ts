@@ -12,6 +12,11 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/portal/login/login.component').then(m => m.LoginComponent)
   },
   {
+    // CU 00: Registro de paciente en línea (público, sin autenticación)
+    path: 'register',
+    loadComponent: () => import('./modules/public-register/public-register.component').then(m => m.PublicRegisterComponent)
+  },
+  {
     path: 'dashboard',
     canActivate: [authGuard],
     loadComponent: () => import('./modules/portal/dashboard/dashboard.component').then(m => m.DashboardComponent)
@@ -62,9 +67,33 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/emergency/emergency.component').then(m => m.EmergencyComponent)
   },
   {
+    // CU 01: Módulo de Personal de Salud (recepción + signos vitales)
+    path: 'health-staff',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/health-staff/health-staff.component').then(m => m.HealthStaffComponent)
+  },
+  {
+    // CU 03: Agendación de citas
+    path: 'appointments',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/appointments/appointments.component').then(m => m.AppointmentsComponent)
+  },
+  {
     path: 'reports',
     canActivate: [authGuard],
     loadComponent: () => import('./modules/reporting/reporting.component').then(m => m.ReportingComponent)
+  },
+  {
+    // CU 00: Portal del paciente — mis turnos, recetas y laboratorio
+    path: 'mis-citas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/mis-citas/mis-citas.component').then(m => m.MisCitasComponent)
+  },
+  {
+    // CU 03 RN-CT04: Pantalla de sala de espera (sin layout, para monitor dedicado)
+    path: 'call-screen',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/call-screen/call-screen.component').then(m => m.CallScreenComponent)
   },
   { path: '**', redirectTo: 'portal' }
 ];

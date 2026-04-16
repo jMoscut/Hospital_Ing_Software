@@ -1,12 +1,15 @@
 package com.biocore.service;
 
 import com.biocore.dto.LabOrderRequest;
+import com.biocore.entity.LabExam;
 import com.biocore.entity.LabOrder;
 import com.biocore.entity.LabResult;
 import com.biocore.entity.Patient;
 import com.biocore.entity.Ticket;
 import com.biocore.entity.User;
 import com.biocore.enums.LabOrderStatus;
+import com.biocore.enums.SampleType;
+import com.biocore.repository.LabExamRepository;
 import com.biocore.repository.LabOrderRepository;
 import com.biocore.repository.LabResultRepository;
 import com.biocore.repository.PatientRepository;
@@ -29,6 +32,7 @@ public class LabService {
 
     private final LabOrderRepository labOrderRepository;
     private final LabResultRepository labResultRepository;
+    private final LabExamRepository labExamRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
@@ -57,6 +61,21 @@ public class LabService {
             ticket = ticketRepository.findById(req.getTicketId()).orElse(null);
         }
 
+        // Resolver examen del catálogo y tipo de muestra
+        LabExam labExam = null;
+        SampleType sampleType = req.getSampleType();
+        if (req.getLabExamId() != null) {
+            labExam = labExamRepository.findById(req.getLabExamId())
+                    .orElseThrow(() -> new RuntimeException("Examen de laboratorio no encontrado: " + req.getLabExamId()));
+            // El tipo de muestra se deriva del examen si no se especificó explícitamente
+            if (sampleType == null) {
+                sampleType = labExam.getSampleType();
+            }
+        }
+        if (sampleType == null) {
+            throw new RuntimeException("Se requiere tipo de muestra o examen del catálogo");
+        }
+
         LocalDate today = LocalDate.now();
         // RN-L01: Vigencia 30 días calendario
         LocalDate expiration = today.plusDays(30);
@@ -65,7 +84,8 @@ public class LabService {
                 .patient(patient)
                 .doctor(doctor)
                 .ticket(ticket)
-                .sampleType(req.getSampleType())
+                .labExam(labExam)
+                .sampleType(sampleType)
                 .orderDate(today)
                 .expirationDate(expiration)
                 .notes(req.getNotes())

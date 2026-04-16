@@ -49,6 +49,11 @@ public class User {
     @Builder.Default
     private boolean active = true;
 
+    /** RN-P003: El sistema obliga a cambiar contraseña temporal en el primer inicio de sesión */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

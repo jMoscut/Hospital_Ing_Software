@@ -70,7 +70,8 @@ public class PrescriptionService {
 
     @Transactional(readOnly = true)
     public List<Prescription> getPending() {
-        return prescriptionRepository.findByStatus(PrescriptionStatus.PENDING);
+        return prescriptionRepository.findByStatusIn(
+                List.of(PrescriptionStatus.PENDING, PrescriptionStatus.PARTIALLY_DISPATCHED));
     }
 
     /** RN-F01, RN-F02: Despachar medicamentos solo tras confirmación de pago */

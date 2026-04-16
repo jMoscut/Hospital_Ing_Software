@@ -14,11 +14,11 @@ import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { startWith, switchMap } from 'rxjs/operators';
 import { TicketService, VitalSignsService } from '../../shared/services/ticket.service';
-import { PrescriptionService, LabService, MedicineService } from '../../shared/services/lab.service';
+import { PrescriptionService, LabService, MedicineService, LabExamService } from '../../shared/services/lab.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket } from '../../core/models/ticket.model';
-import { Medicine } from '../../core/models/lab.model';
+import { Medicine, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
 
 @Component({
   selector: 'app-consultation',
@@ -159,30 +159,59 @@ import { Medicine } from '../../core/models/lab.model';
                     <textarea matInput formControlName="notes" rows="3"></textarea>
                   </mat-form-field>
 
-                  <h5>Medicamentos (Receta)</h5>
+                  <!-- Sección de receta: medicamentos -->
+                  <h5><mat-icon style="vertical-align:middle;font-size:18px">medication</mat-icon> Medicamentos (Receta)</h5>
                   <div class="medicine-row" *ngFor="let item of prescriptionItems; let i = index">
-                    <mat-form-field appearance="outline">
+                    <mat-form-field appearance="outline" style="flex:2">
                       <mat-label>Medicamento</mat-label>
                       <mat-select [(ngModel)]="item.medicineId" [ngModelOptions]="{standalone: true}">
                         <mat-option *ngFor="let m of medicines" [value]="m.id">
-                          {{ m.name }} (Stock: {{ m.stock }})
+                          <span class="med-code" *ngIf="m.code">{{ m.code }}</span>
+                          {{ m.name }}
+                          <span class="med-stock" [class.low]="m.stock <= 10"> · Stock: {{ m.stock }}</span>
                         </mat-option>
                       </mat-select>
                     </mat-form-field>
-                    <mat-form-field appearance="outline" style="width:100px">
-                      <mat-label>Cantidad</mat-label>
-                      <input matInput type="number" [(ngModel)]="item.quantity" [ngModelOptions]="{standalone: true}">
+                    <mat-form-field appearance="outline" style="width:90px">
+                      <mat-label>Cant.</mat-label>
+                      <input matInput type="number" min="1" [(ngModel)]="item.quantity" [ngModelOptions]="{standalone: true}">
                     </mat-form-field>
-                    <mat-form-field appearance="outline">
+                    <mat-form-field appearance="outline" style="flex:1">
                       <mat-label>Dosificación</mat-label>
-                      <input matInput [(ngModel)]="item.dosage" [ngModelOptions]="{standalone: true}">
+                      <input matInput [(ngModel)]="item.dosage" [ngModelOptions]="{standalone: true}" placeholder="ej. 1 tableta cada 8h">
                     </mat-form-field>
-                    <button mat-icon-button color="warn" (click)="removeItem(i)">
+                    <button mat-icon-button color="warn" (click)="removeItem(i)" title="Quitar">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </div>
                   <button mat-stroked-button (click)="addItem()" class="mb-16">
                     <mat-icon>add</mat-icon> Agregar Medicamento
+                  </button>
+
+                  <!-- Sección de órdenes de laboratorio -->
+                  <mat-divider class="mb-16"></mat-divider>
+                  <h5><mat-icon style="vertical-align:middle;font-size:18px">science</mat-icon> Órdenes de Laboratorio</h5>
+                  <div class="lab-row" *ngFor="let lab of labOrderItems; let i = index">
+                    <mat-form-field appearance="outline" style="flex:2">
+                      <mat-label>Examen</mat-label>
+                      <mat-select [(ngModel)]="lab.labExamId" [ngModelOptions]="{standalone: true}">
+                        <mat-optgroup *ngFor="let cat of labCategories" [label]="cat">
+                          <mat-option *ngFor="let e of getExamsByCategory(cat)" [value]="e.id">
+                            <span class="exam-code">{{ e.code }}</span> {{ e.name }}
+                          </mat-option>
+                        </mat-optgroup>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" style="flex:1">
+                      <mat-label>Notas</mat-label>
+                      <input matInput [(ngModel)]="lab.notes" [ngModelOptions]="{standalone: true}" placeholder="Indicaciones">
+                    </mat-form-field>
+                    <button mat-icon-button color="warn" (click)="removeLabItem(i)" title="Quitar">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                  <button mat-stroked-button (click)="addLabItem()" class="mb-16">
+                    <mat-icon>add</mat-icon> Agregar Orden de Laboratorio
                   </button>
                 </form>
 
@@ -219,10 +248,15 @@ import { Medicine } from '../../core/models/lab.model';
     .empty-msg { text-align: center; color: #9e9e9e; padding: 24px 0; }
     .hint { font-size: 0.8rem; color: #9e9e9e; margin: 4px 0; }
     .vitals-section { background: #f8f9ff; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .vitals-section h4 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #1565c0; }
+    .vitals-section h4 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--bc-teal, #1D6C61); }
     .vitals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
     .full-width { width: 100%; }
     .medicine-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .lab-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .med-code { font-family: monospace; font-size: 0.75rem; color: #1D6C61; background: #d0f4ef; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+    .exam-code { font-family: monospace; font-size: 0.75rem; color: #3EB9A8; background: #193A31; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+    .med-stock { font-size: 0.78rem; color: #666; }
+    .med-stock.low { color: #c62828; font-weight: 600; }
     .action-buttons { display: flex; gap: 12px; }
     .empty-consultation { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; text-align: center; }
     .big-icon { font-size: 64px; width: 64px; height: 64px; color: #9e9e9e; margin-bottom: 16px; }
@@ -231,7 +265,7 @@ import { Medicine } from '../../core/models/lab.model';
     .mt-16 { margin-top: 16px; }
     .mb-16 { margin-bottom: 16px; }
     h4 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
-    h5 { font-size: 0.9rem; font-weight: 600; color: #1565c0; margin-bottom: 8px; }
+    h5 { font-size: 0.9rem; font-weight: 600; color: #1D6C61; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   `]
 })
 export class ConsultationComponent implements OnInit, OnDestroy {
@@ -239,7 +273,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   currentTicket: Ticket | null = null;
   lastCalledTicket: Ticket | null = null;
   medicines: Medicine[] = [];
+  labExams: LabExam[] = [];
+  labCategories: string[] = [];
   prescriptionItems: any[] = [];
+  labOrderItems: any[] = [];
   vitalsForm!: FormGroup;
   consultationForm!: FormGroup;
   vitalsSaved = false;
@@ -254,6 +291,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
     private vitalSignsService: VitalSignsService,
     private prescriptionService: PrescriptionService,
     private labService: LabService,
+    private labExamService: LabExamService,
     private medicineService: MedicineService,
     private authService: AuthService,
     private notification: NotificationService
@@ -272,6 +310,12 @@ export class ConsultationComponent implements OnInit, OnDestroy {
 
     this.medicineService.getAll().subscribe(res => {
       if (res.success) this.medicines = res.data;
+    });
+    this.labExamService.getAll().subscribe(res => {
+      if (res.success) {
+        this.labExams = res.data;
+        this.labCategories = [...new Set(res.data.map((e: LabExam) => e.category))].sort();
+      }
     });
 
     // Poll queue every 5s (RN-M03)
@@ -356,8 +400,16 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   addItem(): void { this.prescriptionItems.push({ medicineId: null, quantity: 1, dosage: '', instructions: '' }); }
   removeItem(i: number): void { this.prescriptionItems.splice(i, 1); }
 
+  addLabItem(): void { this.labOrderItems.push({ labExamId: null, notes: '' }); }
+  removeLabItem(i: number): void { this.labOrderItems.splice(i, 1); }
+
+  getExamsByCategory(category: string): LabExam[] {
+    return this.labExams.filter(e => e.category === category);
+  }
+
   completeDiagnosis(): void {
     if (!this.currentTicket) return;
+    const userId = this.authService.getUserId();
 
     const finalize = () => {
       this.ticketService.complete(this.currentTicket!.id).subscribe({
@@ -365,14 +417,34 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           this.notification.success('Consulta completada');
           this.currentTicket = null;
           this.prescriptionItems = [];
+          this.labOrderItems = [];
           this.consultationForm.reset();
           this.loadClinicQueue();
         }
       });
     };
 
+    // Crear órdenes de laboratorio si hay
+    const createLabOrders = (onDone: () => void) => {
+      const validLabItems = this.labOrderItems.filter(l => l.labExamId);
+      if (validLabItems.length === 0) { onDone(); return; }
+      let pending = validLabItems.length;
+      validLabItems.forEach(l => {
+        this.labService.create({
+          patientId: this.currentTicket!.patientId,
+          doctorId: userId,
+          ticketId: this.currentTicket!.id,
+          labExamId: l.labExamId,
+          notes: l.notes
+        }).subscribe({
+          next: () => { if (--pending === 0) { this.notification.success('Órdenes de laboratorio generadas'); onDone(); } },
+          error: () => { if (--pending === 0) onDone(); }
+        });
+      });
+    };
+
+    // Crear receta si hay medicamentos
     if (this.prescriptionItems.length > 0) {
-      const userId = this.authService.getUserId();
       this.prescriptionService.create({
         patientId: this.currentTicket.patientId,
         doctorId: userId,
@@ -380,11 +452,11 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         notes: this.consultationForm.value.notes,
         items: this.prescriptionItems
       }).subscribe({
-        next: () => { this.notification.success('Receta generada'); finalize(); },
-        error: () => finalize()
+        next: () => { this.notification.success('Receta generada'); createLabOrders(finalize); },
+        error: () => createLabOrders(finalize)
       });
     } else {
-      finalize();
+      createLabOrders(finalize);
     }
   }
 

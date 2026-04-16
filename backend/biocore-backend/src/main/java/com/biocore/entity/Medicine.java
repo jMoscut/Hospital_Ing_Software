@@ -17,8 +17,18 @@ public class Medicine {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Código de catálogo (FAR-001 … FAR-045) */
+    @Column(unique = true, length = 10)
+    private String code;
+
     @Column(nullable = false)
     private String name;
+
+    /** Tableta, Cápsula, Jarabe, Inyectable, Crema, Sobre, Inhalador, Vial, Frasco, etc. */
+    private String presentation;
+
+    /** Antibiótico, AINE, Analgésico, Gastrointestinal, etc. */
+    private String category;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -31,7 +41,7 @@ public class Medicine {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    /** Tableta, Cápsula, ml, mg, etc. */
+    /** Tableta, ml, mg, etc. — unidad de dispensación */
     private String unit;
 
     @Column(nullable = false)

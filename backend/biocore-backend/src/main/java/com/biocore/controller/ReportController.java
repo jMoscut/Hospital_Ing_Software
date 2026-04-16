@@ -22,7 +22,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class ReportController {
 
     private final ReportService reportService;
@@ -31,7 +30,7 @@ public class ReportController {
     private final TicketRepository ticketRepository;
     private final PaymentRepository paymentRepository;
 
-    /** CU5: Dashboard en tiempo real (RN-R03) */
+    /** CU5: Dashboard en tiempo real (RN-R03) — accesible para todo el personal autenticado */
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse<DashboardDTO>> getDashboard() {
         return ResponseEntity.ok(ApiResponse.ok(reportService.getDashboard()));
@@ -39,10 +38,10 @@ public class ReportController {
 
     /** CU5 FA01: Buscar expediente de paciente por código único (RN-R01) */
     @GetMapping("/patient/{patientCode}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'HEALTH_STAFF', 'NURSE')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPatientExpedient(@PathVariable String patientCode) {
         return patientRepository.findByPatientCode(patientCode).map(patient -> {
             Map<String, Object> expedient = new HashMap<>();
-            // RN-R02: No se incluyen datos nominativos en estadísticas
             expedient.put("patient", PatientDTO.from(patient));
             expedient.put("tickets", ticketRepository.findByPatientId(patient.getId()));
             expedient.put("payments", paymentRepository.findByPatientIdOrderByCreatedAtDesc(patient.getId()));
@@ -51,11 +50,13 @@ public class ReportController {
     }
 
     @GetMapping("/tickets/clinic/{clinicId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public ResponseEntity<ApiResponse<List<Ticket>>> getByClinic(@PathVariable Long clinicId) {
         return ResponseEntity.ok(ApiResponse.ok(ticketRepository.findByClinicId(clinicId)));
     }
 
     @GetMapping("/payments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CASHIER')")
     public ResponseEntity<ApiResponse<List<Payment>>> getAllPayments() {
         return ResponseEntity.ok(ApiResponse.ok(paymentRepository.findAll()));
     }

@@ -149,18 +149,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // RN-R03: Actualización en tiempo real cada 10 segundos
     this.sub = interval(10000).pipe(startWith(0),
       switchMap(() => this.reportService.getDashboard())
-    ).subscribe(res => {
-      if (res.success) this.dashboard = res.data;
+    ).subscribe({
+      next: res => { if (res.success) this.dashboard = res.data; },
+      error: () => {
+        // Si el endpoint falla, mostrar dashboard vacío en vez de spinner infinito
+        this.dashboard = {
+          totalPatientsToday: 0, patientsWaiting: 0, patientsInConsultation: 0,
+          patientsAttended: 0, patientsCancelled: 0, totalPaidToday: 0
+        } as any;
+      }
     });
 
     this.loadActiveTickets();
   }
 
   loadActiveTickets(): void {
-    this.ticketService.getAll().subscribe(res => {
-      if (res.success) {
-        this.activeTickets = res.data.filter(t => t.status === 'BEING_CALLED');
-      }
+    this.ticketService.getAll().subscribe({
+      next: res => {
+        if (res.success) {
+          this.activeTickets = res.data.filter(t => t.status === 'BEING_CALLED');
+        }
+      },
+      error: () => { this.activeTickets = []; }
     });
   }
 

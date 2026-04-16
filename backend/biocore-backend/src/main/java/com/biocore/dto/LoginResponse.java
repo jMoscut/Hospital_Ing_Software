@@ -16,4 +16,8 @@ public class LoginResponse {
     private String firstName;
     private String lastName;
     private Long userId;
+    /** Poblado solo para rol PATIENT — permite al frontend consultar sus datos */
+    private Long patientId;
+    /** RN-P003: true si debe cambiar contraseña en el primer inicio de sesión */
+    private boolean mustChangePassword;
 }

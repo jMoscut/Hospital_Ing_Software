@@ -4,11 +4,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCardModule } from '@angular/material/card';
+import { MatMenuModule } from '@angular/material/menu';
 
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [RouterLink, MatButtonModule, MatIconModule, MatToolbarModule, MatCardModule],
+  imports: [RouterLink, MatButtonModule, MatIconModule, MatToolbarModule, MatCardModule, MatMenuModule],
   template: `
     <!-- Header -->
     <mat-toolbar color="primary" class="portal-header">
@@ -17,9 +18,36 @@ import { MatCardModule } from '@angular/material/card';
       <span class="spacer"></span>
       <nav class="nav-links">
         <a href="#inicio">Inicio</a>
-        <a href="#nosotros">Nosotros</a>
-        <a href="#servicios">Servicios</a>
-        <a href="#pacientes">Pacientes</a>
+
+        <!-- Nosotros dropdown -->
+        <button mat-button [matMenuTriggerFor]="menuNosotros" class="nav-btn">
+          Nosotros <mat-icon class="dropdown-arrow">expand_more</mat-icon>
+        </button>
+        <mat-menu #menuNosotros="matMenu">
+          <a mat-menu-item href="#nosotros"><mat-icon>flag</mat-icon> Misión</a>
+          <a mat-menu-item href="#nosotros"><mat-icon>visibility</mat-icon> Visión</a>
+          <a mat-menu-item href="#nosotros"><mat-icon>star</mat-icon> Valores</a>
+        </mat-menu>
+
+        <!-- Servicios dropdown -->
+        <button mat-button [matMenuTriggerFor]="menuServicios" class="nav-btn">
+          Servicios <mat-icon class="dropdown-arrow">expand_more</mat-icon>
+        </button>
+        <mat-menu #menuServicios="matMenu">
+          <a mat-menu-item href="#servicios"><mat-icon>medical_services</mat-icon> Consulta Externa</a>
+          <a mat-menu-item href="#servicios"><mat-icon>healing</mat-icon> Medicina General</a>
+          <a mat-menu-item href="#servicios"><mat-icon>science</mat-icon> Laboratorio</a>
+          <a mat-menu-item href="#servicios"><mat-icon>medication</mat-icon> Farmacia</a>
+        </mat-menu>
+
+        <!-- Pacientes dropdown -->
+        <button mat-button [matMenuTriggerFor]="menuPacientes" class="nav-btn">
+          Pacientes <mat-icon class="dropdown-arrow">expand_more</mat-icon>
+        </button>
+        <mat-menu #menuPacientes="matMenu">
+          <a mat-menu-item routerLink="/register"><mat-icon>person_add</mat-icon> Registro</a>
+          <a mat-menu-item routerLink="/login"><mat-icon>folder_shared</mat-icon> Ver historial</a>
+        </mat-menu>
       </nav>
       <button mat-raised-button color="accent" routerLink="/login">
         <mat-icon>login</mat-icon> Ingresar
@@ -117,17 +145,17 @@ import { MatCardModule } from '@angular/material/card';
       <div class="section-container">
         <h2 class="section-title">Para Pacientes</h2>
         <div class="patient-actions">
-          <mat-card class="patient-card" routerLink="/login">
+          <mat-card class="patient-card" routerLink="/register">
             <mat-icon class="service-icon">person_add</mat-icon>
-            <h3>Registro de Paciente</h3>
-            <p>Registra tus datos y agenda tu cita médica de forma rápida y sencilla.</p>
-            <button mat-raised-button color="primary">Registrarse</button>
+            <h3>Registro en Línea</h3>
+            <p>Pre-regístrate en nuestro sistema desde casa. Al llegar, el personal te asignará tu turno de inmediato.</p>
+            <button mat-raised-button color="primary">Registrarme Ahora</button>
           </mat-card>
           <mat-card class="patient-card" routerLink="/login">
             <mat-icon class="service-icon">folder_shared</mat-icon>
-            <h3>Ver Historial</h3>
-            <p>Accede a tu historial clínico, resultados de laboratorio y recetas médicas.</p>
-            <button mat-raised-button color="accent">Ver Historial</button>
+            <h3>Acceso al Sistema</h3>
+            <p>Accede al sistema hospitalario si eres personal autorizado de BioCore Medical.</p>
+            <button mat-raised-button color="accent">Ingresar</button>
           </mat-card>
         </div>
       </div>
@@ -148,9 +176,12 @@ import { MatCardModule } from '@angular/material/card';
     .portal-header { position: sticky; top: 0; z-index: 100; }
     .brand { font-size: 1.3rem; font-weight: 700; margin-left: 8px; }
     .spacer { flex: 1; }
-    .nav-links { display: flex; gap: 24px; margin-right: 24px; }
-    .nav-links a { color: white; text-decoration: none; font-size: 0.95rem; }
-    .nav-links a:hover { color: #bbdefb; }
+    .nav-links { display: flex; align-items: center; gap: 4px; margin-right: 16px; }
+    .nav-links a { color: white; text-decoration: none; font-size: 0.95rem; padding: 4px 12px; border-radius: 4px; }
+    .nav-links a:hover { color: #bbdefb; background: rgba(255,255,255,0.1); }
+    .nav-btn { color: white !important; font-size: 0.95rem !important; }
+    .nav-btn:hover { background: rgba(255,255,255,0.1) !important; }
+    .dropdown-arrow { font-size: 18px !important; width: 18px !important; height: 18px !important; vertical-align: middle; margin-left: 2px; }
 
     .hero {
       display: flex; align-items: center; justify-content: space-between;

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LabOrder, Medicine, Prescription } from '../../core/models/lab.model';
+import { LabExam, LabOrder, Medicine, Prescription } from '../../core/models/lab.model';
 import { ApiResponse } from '../../core/models/api-response.model';
 
 @Injectable({ providedIn: 'root' })
@@ -33,6 +33,25 @@ export class LabService {
 
   complete(id: number, notes: string, resultAvailableAt: string): Observable<ApiResponse<LabOrder>> {
     return this.http.put<ApiResponse<LabOrder>>(`${this.url}/${id}/complete`, { notes, resultAvailableAt });
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class LabExamService {
+  private url = `${environment.apiUrl}/lab-exams`;
+
+  constructor(private http: HttpClient) {}
+
+  getAll(): Observable<ApiResponse<LabExam[]>> {
+    return this.http.get<ApiResponse<LabExam[]>>(this.url);
+  }
+
+  getCategories(): Observable<ApiResponse<string[]>> {
+    return this.http.get<ApiResponse<string[]>>(`${this.url}/categories`);
+  }
+
+  getByCategory(category: string): Observable<ApiResponse<LabExam[]>> {
+    return this.http.get<ApiResponse<LabExam[]>>(`${this.url}/category/${encodeURIComponent(category)}`);
   }
 }
 

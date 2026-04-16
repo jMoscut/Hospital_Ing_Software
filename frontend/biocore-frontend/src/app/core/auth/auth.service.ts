@@ -65,4 +65,20 @@ export class AuthService {
   getUserId(): number | null {
     return this.currentUser()?.userId ?? null;
   }
+
+  getPatientId(): number | null {
+    return this.currentUser()?.patientId ?? null;
+  }
+
+  updateCurrentUser(updated: LoginResponse): void {
+    localStorage.setItem(this.USER_KEY, JSON.stringify(updated));
+    this.currentUser.set(updated);
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<ApiResponse<void>> {
+    return this.http.put<ApiResponse<void>>(
+      `${environment.apiUrl}/public/change-password`,
+      { currentPassword, newPassword }
+    );
+  }
 }

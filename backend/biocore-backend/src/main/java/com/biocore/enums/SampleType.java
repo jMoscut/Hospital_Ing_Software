@@ -1,7 +1,10 @@
 package com.biocore.enums;
 
 public enum SampleType {
+    BLOOD,
     URINE,
     FECES,
-    BLOOD
+    NASAL_SWAB,
+    TISSUE,
+    CERVICAL_CELLS
 }

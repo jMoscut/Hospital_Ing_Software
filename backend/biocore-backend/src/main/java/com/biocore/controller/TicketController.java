@@ -45,9 +45,9 @@ public class TicketController {
         }
     }
 
-    /** CU3: Médico llama al siguiente paciente (RN-C01, RN-C04) */
+    /** CU3: Médico o personal de salud llama al siguiente paciente (RN-C01, RN-C04) */
     @PutMapping("/clinic/{clinicId}/call-next")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'HEALTH_STAFF', 'NURSE')")
     public ResponseEntity<ApiResponse<TicketDTO>> callNext(@PathVariable Long clinicId,
                                                             @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {

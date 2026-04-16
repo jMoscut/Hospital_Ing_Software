@@ -84,29 +84,29 @@ interface NavItem {
   `,
   styles: [`
     .app-container { height: 100vh; }
-    .app-sidenav { width: 240px; background: #1a237e; color: white; }
+    .app-sidenav { width: 240px; background: #193A31; color: white; }
     .sidenav-header {
       display: flex; align-items: center; gap: 12px;
-      padding: 24px 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding: 24px 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.12);
     }
-    .logo-icon { font-size: 36px; width: 36px; height: 36px; color: #64b5f6; }
+    .logo-icon { font-size: 36px; width: 36px; height: 36px; color: #3EB9A8; }
     .brand-name { font-size: 1.3rem; font-weight: 700; color: white; }
-    .brand-sub { font-size: 0.7rem; color: rgba(255,255,255,0.6); letter-spacing: 1px; text-transform: uppercase; }
+    .brand-sub { font-size: 0.7rem; color: rgba(255,255,255,0.55); letter-spacing: 1px; text-transform: uppercase; }
     mat-nav-list a { color: rgba(255,255,255,0.85) !important; border-radius: 8px; margin: 2px 8px; }
-    mat-nav-list a:hover { background: rgba(255,255,255,0.1) !important; }
-    .active-link { background: rgba(100,181,246,0.25) !important; color: #64b5f6 !important; }
+    mat-nav-list a:hover { background: rgba(62,185,168,0.15) !important; }
+    .active-link { background: rgba(62,185,168,0.25) !important; color: #3EB9A8 !important; font-weight: 600; }
     mat-icon[matListItemIcon] { color: inherit !important; }
     .sidenav-footer {
       position: absolute; bottom: 0; left: 0; right: 0;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.15);
-      background: rgba(0,0,0,0.2);
+      padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
     }
     .user-info { display: flex; align-items: center; gap: 8px; color: white; }
     .user-name { font-size: 0.85rem; font-weight: 500; }
-    .user-role { font-size: 0.7rem; color: rgba(255,255,255,0.6); }
+    .user-role { font-size: 0.7rem; color: rgba(255,255,255,0.55); }
     .app-content { display: flex; flex-direction: column; }
-    .topbar { position: sticky; top: 0; z-index: 10; }
+    .topbar { position: sticky; top: 0; z-index: 10; background: #193A31 !important; }
     .toolbar-title { font-weight: 500; margin-left: 8px; }
     .spacer { flex: 1; }
     .main-content { flex: 1; overflow-y: auto; }
@@ -116,15 +116,18 @@ export class AppComponent {
   showLayout = false;
 
   navItems: NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', icon: 'dashboard', roles: [] },
-    { path: '/patients', label: 'Pacientes', icon: 'people', roles: [] },
-    { path: '/consultation', label: 'Consulta Médica', icon: 'medical_services', roles: ['DOCTOR'] },
-    { path: '/laboratory', label: 'Laboratorio', icon: 'science', roles: ['LAB_TECHNICIAN'] },
-    { path: '/pharmacy', label: 'Farmacia', icon: 'medication', roles: ['PHARMACIST'] },
-    { path: '/payments', label: 'Caja / Pagos', icon: 'point_of_sale', roles: ['CASHIER', 'ADMIN'] },
-    { path: '/emergency', label: 'Emergencias', icon: 'emergency', roles: ['HEALTH_STAFF', 'NURSE', 'ADMIN'] },
-    { path: '/users', label: 'Personal', icon: 'manage_accounts', roles: ['ADMIN'] },
-    { path: '/reports', label: 'Reportería', icon: 'bar_chart', roles: ['ADMIN'] },
+    { path: '/dashboard',    label: 'Dashboard',        icon: 'dashboard',        roles: [] },
+    { path: '/patients',     label: 'Pacientes',         icon: 'people',           roles: [] },
+    { path: '/appointments', label: 'Agendación',        icon: 'calendar_month',   roles: [] },
+    { path: '/health-staff', label: 'Recepción',         icon: 'health_and_safety',roles: ['HEALTH_STAFF', 'NURSE', 'ADMIN'] },
+    { path: '/consultation', label: 'Consulta Médica',   icon: 'medical_services', roles: ['DOCTOR', 'ADMIN'] },
+    { path: '/laboratory',   label: 'Laboratorio',       icon: 'science',          roles: ['LAB_TECHNICIAN', 'ADMIN'] },
+    { path: '/pharmacy',     label: 'Farmacia',          icon: 'medication',       roles: ['PHARMACIST', 'ADMIN'] },
+    { path: '/payments',     label: 'Caja / Pagos',      icon: 'point_of_sale',    roles: ['CASHIER', 'ADMIN'] },
+    { path: '/emergency',    label: 'Emergencias',       icon: 'emergency',        roles: ['HEALTH_STAFF', 'NURSE', 'ADMIN'] },
+    { path: '/users',        label: 'Personal',          icon: 'manage_accounts',  roles: ['ADMIN'] },
+    { path: '/reports',      label: 'Reportería',        icon: 'bar_chart',        roles: ['ADMIN'] },
+    { path: '/call-screen',  label: 'Pantalla de Llamado', icon: 'tv',             roles: ['ADMIN', 'HEALTH_STAFF', 'NURSE'] },
   ];
 
   currentUser = computed(() => this.authService.currentUser());
@@ -141,7 +144,7 @@ export class AppComponent {
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd)
     ).subscribe((e: any) => {
-      const noLayoutRoutes = ['/login', '/portal'];
+        const noLayoutRoutes = ['/login', '/portal', '/register', '/mis-citas', '/call-screen'];
       this.showLayout = this.authService.isLoggedIn() &&
         !noLayoutRoutes.some(r => e.url.startsWith(r));
     });

@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'LAB_TECHNICIAN' | 'PHARMACIST' | 'CASHIER' | 'HEALTH_STAFF';
+export type Role = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'LAB_TECHNICIAN' | 'PHARMACIST' | 'CASHIER' | 'HEALTH_STAFF' | 'PATIENT';
 
 export interface User {
   id: number;
@@ -27,4 +27,8 @@ export interface LoginResponse {
   firstName: string;
   lastName: string;
   userId: number;
+  /** Solo para rol PATIENT — ID del registro de paciente vinculado */
+  patientId?: number;
+  /** RN-P003: el sistema obliga a cambiar contraseña temporal */
+  mustChangePassword?: boolean;
 }

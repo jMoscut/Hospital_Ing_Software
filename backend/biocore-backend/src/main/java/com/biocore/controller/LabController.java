@@ -1,8 +1,8 @@
 package com.biocore.controller;
 
 import com.biocore.dto.ApiResponse;
+import com.biocore.dto.LabOrderDTO;
 import com.biocore.dto.LabOrderRequest;
-import com.biocore.entity.LabOrder;
 import com.biocore.security.CustomUserDetails;
 import com.biocore.service.LabService;
 import jakarta.validation.Valid;
@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/lab-orders")
@@ -24,21 +25,26 @@ public class LabController {
     private final LabService labService;
 
     @GetMapping("/patient/{patientId}")
-    public ResponseEntity<ApiResponse<List<LabOrder>>> getByPatient(@PathVariable Long patientId) {
-        return ResponseEntity.ok(ApiResponse.ok(labService.getByPatient(patientId)));
+    public ResponseEntity<ApiResponse<List<LabOrderDTO>>> getByPatient(@PathVariable Long patientId) {
+        List<LabOrderDTO> dtos = labService.getByPatient(patientId)
+                .stream().map(LabOrderDTO::from).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok(dtos));
     }
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'ADMIN')")
-    public ResponseEntity<ApiResponse<List<LabOrder>>> getPending() {
-        return ResponseEntity.ok(ApiResponse.ok(labService.getPending()));
+    public ResponseEntity<ApiResponse<List<LabOrderDTO>>> getPending() {
+        List<LabOrderDTO> dtos = labService.getPending()
+                .stream().map(LabOrderDTO::from).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok(dtos));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
-    public ResponseEntity<ApiResponse<LabOrder>> create(@Valid @RequestBody LabOrderRequest req) {
+    public ResponseEntity<ApiResponse<LabOrderDTO>> create(@Valid @RequestBody LabOrderRequest req) {
         try {
-            return ResponseEntity.status(201).body(ApiResponse.ok("Orden de laboratorio generada", labService.create(req)));
+            return ResponseEntity.status(201).body(
+                    ApiResponse.ok("Orden de laboratorio generada", LabOrderDTO.from(labService.create(req))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -46,9 +52,9 @@ public class LabController {
 
     @PutMapping("/{id}/collect-sample")
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'HEALTH_STAFF', 'ADMIN')")
-    public ResponseEntity<ApiResponse<LabOrder>> collectSample(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<LabOrderDTO>> collectSample(@PathVariable Long id) {
         try {
-            return ResponseEntity.ok(ApiResponse.ok("Muestra recolectada", labService.collectSample(id)));
+            return ResponseEntity.ok(ApiResponse.ok("Muestra recolectada", LabOrderDTO.from(labService.collectSample(id))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -56,10 +62,10 @@ public class LabController {
 
     @PutMapping("/{id}/schedule")
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'ADMIN')")
-    public ResponseEntity<ApiResponse<LabOrder>> schedule(@PathVariable Long id,
-                                                          @RequestBody ScheduleRequest req) {
+    public ResponseEntity<ApiResponse<LabOrderDTO>> schedule(@PathVariable Long id,
+                                                              @RequestBody ScheduleRequest req) {
         try {
-            return ResponseEntity.ok(ApiResponse.ok("Cita programada", labService.schedule(id, req.getScheduledAt())));
+            return ResponseEntity.ok(ApiResponse.ok("Cita programada", LabOrderDTO.from(labService.schedule(id, req.getScheduledAt()))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -67,12 +73,12 @@ public class LabController {
 
     @PutMapping("/{id}/complete")
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'ADMIN')")
-    public ResponseEntity<ApiResponse<LabOrder>> complete(@PathVariable Long id,
-                                                          @RequestBody CompleteLabRequest req,
-                                                          @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<LabOrderDTO>> complete(@PathVariable Long id,
+                                                              @RequestBody CompleteLabRequest req,
+                                                              @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Resultado registrado y notificación enviada",
-                    labService.complete(id, req.getNotes(), req.getResultAvailableAt(), userDetails.getUser().getId())));
+                    LabOrderDTO.from(labService.complete(id, req.getNotes(), req.getResultAvailableAt(), userDetails.getUser().getId()))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

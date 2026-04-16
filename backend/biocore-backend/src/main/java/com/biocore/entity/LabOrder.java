@@ -32,6 +32,11 @@ public class LabOrder {
     @JoinColumn(name = "ticket_id")
     private Ticket ticket;
 
+    /** Examen específico del catálogo (LAB-001 … LAB-040). Opcional. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lab_exam_id")
+    private LabExam labExam;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SampleType sampleType;

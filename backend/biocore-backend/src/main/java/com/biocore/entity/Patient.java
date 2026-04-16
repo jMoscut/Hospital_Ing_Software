@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -43,10 +44,20 @@ public class Patient {
     /** RN-L03: Correo obligatorio para notificaciones de laboratorio */
     private String email;
 
+    /** FA02 CU 00 / FA01 CU 01: Fecha de nacimiento */
+    private LocalDate birthDate;
+
     /** Seguro médico (opcional) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "insurance_id")
     private Insurance insurance;
+
+    /**
+     * Referencia al usuario del portal (rol PATIENT).
+     * Nulo si el paciente no tiene cuenta en el portal.
+     */
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(nullable = false)
     @Builder.Default

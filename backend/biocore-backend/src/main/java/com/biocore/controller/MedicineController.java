@@ -22,6 +22,18 @@ public class MedicineController {
         return ResponseEntity.ok(ApiResponse.ok(medicineRepository.findByActiveTrue()));
     }
 
+    /** Categorías disponibles en el inventario */
+    @GetMapping("/categories")
+    public ResponseEntity<ApiResponse<List<String>>> getCategories() {
+        return ResponseEntity.ok(ApiResponse.ok(medicineRepository.findDistinctCategories()));
+    }
+
+    /** Medicamentos filtrados por categoría */
+    @GetMapping("/category/{category}")
+    public ResponseEntity<ApiResponse<List<Medicine>>> getByCategory(@PathVariable String category) {
+        return ResponseEntity.ok(ApiResponse.ok(medicineRepository.findByCategoryAndActiveTrue(category)));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
     public ResponseEntity<ApiResponse<Medicine>> create(@RequestBody Medicine medicine) {
@@ -34,6 +46,8 @@ public class MedicineController {
     public ResponseEntity<ApiResponse<Medicine>> update(@PathVariable Long id, @RequestBody Medicine data) {
         return medicineRepository.findById(id).map(med -> {
             med.setName(data.getName());
+            med.setPresentation(data.getPresentation());
+            med.setCategory(data.getCategory());
             med.setDescription(data.getDescription());
             med.setPrice(data.getPrice());
             med.setUnit(data.getUnit());
