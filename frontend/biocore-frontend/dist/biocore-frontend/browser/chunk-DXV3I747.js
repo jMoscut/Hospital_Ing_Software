@@ -27,7 +27,7 @@ import {
 import {
   ClinicService,
   TicketService
-} from "./chunk-VSICXZFN.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   InsuranceService
 } from "./chunk-LDLLK6DA.js";
@@ -515,4 +515,4 @@ var PatientRegisterComponent = class _PatientRegisterComponent {
 export {
   PatientRegisterComponent
 };
-//# sourceMappingURL=chunk-Z3ILA5ET.js.map
+//# sourceMappingURL=chunk-DXV3I747.js.map

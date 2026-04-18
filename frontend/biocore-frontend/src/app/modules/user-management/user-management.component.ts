@@ -188,6 +188,9 @@ function defaultSettings(): NotifSettings {
                               [title]="u.assignedClinic ? 'Reasignar clínica (FA03)' : 'Asignar clínica (FA04)'">
                         <mat-icon>{{ u.assignedClinic ? 'sync_alt' : 'add_location' }}</mat-icon>
                       </button>
+                      <button mat-icon-button color="accent" (click)="openEditDialog(u)" title="Editar usuario">
+                        <mat-icon>edit</mat-icon>
+                      </button>
                       <button mat-icon-button color="warn" (click)="deleteUser(u.id)" title="Desactivar usuario">
                         <mat-icon>person_off</mat-icon>
                       </button>
@@ -310,6 +313,62 @@ function defaultSettings(): NotifSettings {
       </mat-tab-group>
     </div>
 
+    <!-- Edit user dialog -->
+    <div class="assign-overlay" *ngIf="editDialogOpen">
+      <mat-card class="assign-dialog" style="width:500px">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>edit</mat-icon>
+          <mat-card-title>Editar Usuario</mat-card-title>
+          <mat-card-subtitle *ngIf="editingUser">{{ editingUser.username }} · {{ roleLabel(editingUser.role) }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="editUserForm" class="form-grid" style="margin-top:8px">
+            <mat-form-field appearance="outline">
+              <mat-label>Nombres *</mat-label>
+              <input matInput formControlName="firstName">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Apellidos *</mat-label>
+              <input matInput formControlName="lastName">
+            </mat-form-field>
+            <mat-form-field appearance="outline" style="grid-column:1/-1">
+              <mat-label>Correo Electrónico *</mat-label>
+              <input matInput formControlName="email">
+            </mat-form-field>
+            <mat-form-field appearance="outline" style="grid-column:1/-1">
+              <mat-label>Rol *</mat-label>
+              <mat-select formControlName="role">
+                <mat-option value="ADMIN">Administrador</mat-option>
+                <mat-option value="DOCTOR">Médico</mat-option>
+                <mat-option value="HEALTH_STAFF">Personal de Salud / Enfermería</mat-option>
+                <mat-option value="LAB_TECHNICIAN">Técnico de Laboratorio</mat-option>
+                <mat-option value="PHARMACIST">Farmacéutico/a</mat-option>
+                <mat-option value="CASHIER">Cajero/a</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" *ngIf="editUserForm.value.role === 'DOCTOR'">
+              <mat-label>Especialidad</mat-label>
+              <input matInput formControlName="specialty">
+            </mat-form-field>
+            <mat-form-field appearance="outline"
+              *ngIf="['DOCTOR','LAB_TECHNICIAN','HEALTH_STAFF'].includes(editUserForm.value.role)">
+              <mat-label>N° Colegiado</mat-label>
+              <input matInput formControlName="collegiateNumber">
+            </mat-form-field>
+          </form>
+          <div class="error-msg" *ngIf="editError">
+            <mat-icon>error_outline</mat-icon> {{ editError }}
+          </div>
+        </mat-card-content>
+        <mat-card-actions style="display:flex;gap:8px;padding:16px">
+          <button mat-raised-button color="primary" (click)="saveEditUser()" [disabled]="editUserForm.invalid || editSaving">
+            <mat-icon>save</mat-icon> {{ editSaving ? 'Guardando...' : 'Guardar' }}
+          </button>
+          <button mat-button (click)="editDialogOpen = false">Cancelar</button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+
     <!-- Dialog de asignación / reasignación de clínica -->
     <div class="assign-overlay" *ngIf="assignDialogOpen">
       <mat-card class="assign-dialog">
@@ -407,6 +466,12 @@ export class UserManagementComponent implements OnInit {
   creating = false;
   columns = ['name', 'role', 'specialty', 'clinic', 'actions'];
   notifSettings: NotifSettings = defaultSettings();
+
+  editDialogOpen = false;
+  editingUser: any = null;
+  editUserForm!: FormGroup;
+  editError = '';
+  editSaving = false;
 
   constructor(
     private fb: FormBuilder,
@@ -542,6 +607,42 @@ export class UserManagementComponent implements OnInit {
         this.assigning = false;
       },
       error: err => { this.notification.error(err.error?.message || 'Error al desasignar'); this.assigning = false; }
+    });
+  }
+
+  openEditDialog(user: any): void {
+    this.editingUser = user;
+    this.editError = '';
+    this.editUserForm = this.fb.group({
+      firstName:        [user.firstName,          Validators.required],
+      lastName:         [user.lastName,           Validators.required],
+      email:            [user.email,              [Validators.required, Validators.email]],
+      role:             [user.role,               Validators.required],
+      specialty:        [user.specialty        || ''],
+      collegiateNumber: [user.collegiateNumber || '']
+    });
+    this.editDialogOpen = true;
+  }
+
+  saveEditUser(): void {
+    if (this.editUserForm.invalid || !this.editingUser) return;
+    this.editSaving = true;
+    this.editError = '';
+    this.userService.update(this.editingUser.id, this.editUserForm.value).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Usuario actualizado exitosamente');
+          this.editDialogOpen = false;
+          this.load();
+        } else {
+          this.editError = res.message || 'Error al actualizar';
+        }
+        this.editSaving = false;
+      },
+      error: err => {
+        this.editError = err.error?.message || 'Error al actualizar usuario';
+        this.editSaving = false;
+      }
     });
   }
 

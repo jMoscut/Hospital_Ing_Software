@@ -52,6 +52,10 @@ public class Patient {
     @JoinColumn(name = "insurance_id")
     private Insurance insurance;
 
+    /** Número de póliza / carné del seguro del paciente */
+    @Column(name = "insurance_number", length = 60)
+    private String insuranceNumber;
+
     /**
      * Referencia al usuario del portal (rol PATIENT).
      * Nulo si el paciente no tiene cuenta en el portal.

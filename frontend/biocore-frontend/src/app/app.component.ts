@@ -118,7 +118,7 @@ export class AppComponent {
   navItems: NavItem[] = [
     { path: '/dashboard',    label: 'Dashboard',        icon: 'dashboard',        roles: [] },
     { path: '/patients',     label: 'Pacientes',         icon: 'people',           roles: [] },
-    { path: '/appointments', label: 'Agendación',        icon: 'calendar_month',   roles: [] },
+    { path: '/appointments', label: 'Monitoreo de Cola',  icon: 'queue',            roles: [] },
     { path: '/health-staff', label: 'Recepción',         icon: 'health_and_safety',roles: ['HEALTH_STAFF', 'NURSE', 'ADMIN'] },
     { path: '/consultation', label: 'Consulta Médica',   icon: 'medical_services', roles: ['DOCTOR', 'ADMIN'] },
     { path: '/laboratory',   label: 'Laboratorio',       icon: 'science',          roles: ['LAB_TECHNICIAN', 'ADMIN'] },

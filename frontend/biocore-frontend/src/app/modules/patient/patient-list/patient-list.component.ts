@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,7 +11,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { MatSelectModule } from '@angular/material/select';
 import { PatientService } from '../../../shared/services/patient.service';
+import { InsuranceService } from '../../../shared/services/payment.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
 
@@ -22,7 +24,7 @@ import { Patient } from '../../../core/models/patient.model';
     CommonModule, RouterLink, ReactiveFormsModule,
     MatTableModule, MatInputModule, MatFormFieldModule,
     MatButtonModule, MatIconModule, MatCardModule,
-    MatChipsModule, MatProgressSpinnerModule
+    MatChipsModule, MatProgressSpinnerModule, MatSelectModule
   ],
   template: `
     <div class="page-container">
@@ -79,6 +81,9 @@ import { Patient } from '../../../core/models/patient.model';
                 <button mat-icon-button color="primary" [routerLink]="['/patients', p.id]" title="Ver detalle">
                   <mat-icon>visibility</mat-icon>
                 </button>
+                <button mat-icon-button color="accent" (click)="openEdit(p); $event.stopPropagation()" title="Editar">
+                  <mat-icon>edit</mat-icon>
+                </button>
               </td>
             </ng-container>
 
@@ -94,12 +99,79 @@ import { Patient } from '../../../core/models/patient.model';
         </mat-card-content>
       </mat-card>
     </div>
+
+    <!-- Edit dialog -->
+    <div class="edit-overlay" *ngIf="editDialogOpen">
+      <mat-card class="edit-dialog">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>edit</mat-icon>
+          <mat-card-title>Editar Paciente</mat-card-title>
+          <mat-card-subtitle *ngIf="editingPatient">{{ editingPatient.patientCode }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="editForm" class="edit-form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Nombres *</mat-label>
+              <input matInput formControlName="firstName">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Apellidos *</mat-label>
+              <input matInput formControlName="lastName">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>DPI *</mat-label>
+              <input matInput formControlName="dpi">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Teléfono</mat-label>
+              <input matInput formControlName="phone">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Correo Electrónico</mat-label>
+              <input matInput formControlName="email">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Dirección</mat-label>
+              <input matInput formControlName="address">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Contacto de Emergencia</mat-label>
+              <input matInput formControlName="emergencyContact">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Teléfono de Emergencia</mat-label>
+              <input matInput formControlName="emergencyPhone">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Seguro Médico</mat-label>
+              <mat-select formControlName="insuranceId">
+                <mat-option [value]="null">Sin seguro</mat-option>
+                <mat-option *ngFor="let ins of insurances" [value]="ins.id">{{ ins.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>No. de Póliza / Carné de Seguro</mat-label>
+              <input matInput formControlName="insuranceNumber" placeholder="Opcional">
+            </mat-form-field>
+          </form>
+        </mat-card-content>
+        <mat-card-actions style="display:flex;gap:8px;padding:16px">
+          <button mat-raised-button color="primary" (click)="saveEdit()" [disabled]="editForm.invalid || saving">
+            <mat-icon>save</mat-icon> {{ saving ? 'Guardando...' : 'Guardar' }}
+          </button>
+          <button mat-button (click)="editDialogOpen = false">Cancelar</button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
   `,
   styles: [`
     .search-field { width: 100%; max-width: 400px; margin-bottom: 16px; }
     .w-full { width: 100%; }
     .clickable-row { cursor: pointer; }
     .clickable-row:hover { background: #f5f5f5; }
+    .edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .edit-dialog { width: 560px; max-height: 90vh; overflow-y: auto; }
+    .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   `]
 })
 export class PatientListComponent implements OnInit {
@@ -108,10 +180,22 @@ export class PatientListComponent implements OnInit {
   searchCtrl = new FormControl('');
   columns = ['patientCode', 'dpi', 'name', 'phone', 'insurance', 'actions'];
 
-  constructor(private patientService: PatientService, private notification: NotificationService) {}
+  editDialogOpen = false;
+  editingPatient: Patient | null = null;
+  editForm!: FormGroup;
+  saving = false;
+  insurances: any[] = [];
+
+  constructor(
+    private fb: FormBuilder,
+    private patientService: PatientService,
+    private insuranceService: InsuranceService,
+    private notification: NotificationService
+  ) {}
 
   ngOnInit(): void {
     this.loadAll();
+    this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
     this.searchCtrl.valueChanges.pipe(
       debounceTime(400), distinctUntilChanged()
     ).subscribe(q => {
@@ -132,9 +216,47 @@ export class PatientListComponent implements OnInit {
         if (res.success) this.patients = res.data;
         this.loading = false;
       },
-      error: err => {
+      error: () => {
         this.notification.error('Error al cargar pacientes. Verifique que el backend esté corriendo.');
         this.loading = false;
+      }
+    });
+  }
+
+  openEdit(p: Patient): void {
+    this.editingPatient = p;
+    this.editForm = this.fb.group({
+      firstName:        [p.firstName,            Validators.required],
+      lastName:         [p.lastName,             Validators.required],
+      dpi:              [p.dpi,                  Validators.required],
+      phone:            [p.phone            || ''],
+      email:            [p.email            || ''],
+      address:          [p.address          || ''],
+      emergencyContact: [p.emergencyContact || ''],
+      emergencyPhone:   [p.emergencyPhone   || ''],
+      insuranceId:      [p.insuranceId      ?? null],
+      insuranceNumber:  [p.insuranceNumber  || '']
+    });
+    this.editDialogOpen = true;
+  }
+
+  saveEdit(): void {
+    if (!this.editingPatient || this.editForm.invalid) return;
+    this.saving = true;
+    this.patientService.update(this.editingPatient.id, this.editForm.value).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Paciente actualizado exitosamente');
+          this.editDialogOpen = false;
+          this.loadAll();
+        } else {
+          this.notification.error(res.message || 'Error al actualizar');
+        }
+        this.saving = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al actualizar paciente');
+        this.saving = false;
       }
     });
   }

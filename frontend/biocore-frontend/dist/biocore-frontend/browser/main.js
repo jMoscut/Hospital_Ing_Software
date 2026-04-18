@@ -7701,7 +7701,7 @@ var AppComponent = class _AppComponent {
     this.navItems = [
       { path: "/dashboard", label: "Dashboard", icon: "dashboard", roles: [] },
       { path: "/patients", label: "Pacientes", icon: "people", roles: [] },
-      { path: "/appointments", label: "Agendaci\xF3n", icon: "calendar_month", roles: [] },
+      { path: "/appointments", label: "Monitoreo de Cola", icon: "queue", roles: [] },
       { path: "/health-staff", label: "Recepci\xF3n", icon: "health_and_safety", roles: ["HEALTH_STAFF", "NURSE", "ADMIN"] },
       { path: "/consultation", label: "Consulta M\xE9dica", icon: "medical_services", roles: ["DOCTOR", "ADMIN"] },
       { path: "/laboratory", label: "Laboratorio", icon: "science", roles: ["LAB_TECHNICIAN", "ADMIN"] },
@@ -7777,7 +7777,7 @@ var routes = [
   {
     path: "dashboard",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-G7T7XV4U.js").then((m) => m.DashboardComponent)
+    loadComponent: () => import("./chunk-D2MSHQDR.js").then((m) => m.DashboardComponent)
   },
   {
     path: "patients",
@@ -7787,22 +7787,22 @@ var routes = [
   {
     path: "patients/register",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-Z3ILA5ET.js").then((m) => m.PatientRegisterComponent)
+    loadComponent: () => import("./chunk-DXV3I747.js").then((m) => m.PatientRegisterComponent)
   },
   {
     path: "patients/:id",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-7CV4FVFG.js").then((m) => m.PatientDetailComponent)
+    loadComponent: () => import("./chunk-JTFWG5Q5.js").then((m) => m.PatientDetailComponent)
   },
   {
     path: "users",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-HYRJCGQ6.js").then((m) => m.UserManagementComponent)
+    loadComponent: () => import("./chunk-5MI2ESMG.js").then((m) => m.UserManagementComponent)
   },
   {
     path: "consultation",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-CN55BGZO.js").then((m) => m.ConsultationComponent)
+    loadComponent: () => import("./chunk-KBEMDLY4.js").then((m) => m.ConsultationComponent)
   },
   {
     path: "laboratory",
@@ -7817,24 +7817,24 @@ var routes = [
   {
     path: "payments",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-UZVVNZ5X.js").then((m) => m.PaymentsComponent)
+    loadComponent: () => import("./chunk-XUOIKGAX.js").then((m) => m.PaymentsComponent)
   },
   {
     path: "emergency",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-WJ27IKHC.js").then((m) => m.EmergencyComponent)
+    loadComponent: () => import("./chunk-BHO5VWGG.js").then((m) => m.EmergencyComponent)
   },
   {
     // CU 01: Módulo de Personal de Salud (recepción + signos vitales)
     path: "health-staff",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-LZ2O7SBS.js").then((m) => m.HealthStaffComponent)
+    loadComponent: () => import("./chunk-RSTO2VDT.js").then((m) => m.HealthStaffComponent)
   },
   {
     // CU 03: Agendación de citas
     path: "appointments",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-2J576JML.js").then((m) => m.AppointmentsComponent)
+    loadComponent: () => import("./chunk-FB3ZGTNC.js").then((m) => m.AppointmentsComponent)
   },
   {
     path: "reports",
@@ -7845,7 +7845,7 @@ var routes = [
     // CU 00: Portal del paciente — mis turnos, recetas y laboratorio
     path: "mis-citas",
     canActivate: [authGuard],
-    loadComponent: () => import("./chunk-S2LHI3WU.js").then((m) => m.MisCitasComponent)
+    loadComponent: () => import("./chunk-Z6VUBYEH.js").then((m) => m.MisCitasComponent)
   },
   {
     // CU 03 RN-CT04: Pantalla de sala de espera (sin layout, para monitor dedicado)

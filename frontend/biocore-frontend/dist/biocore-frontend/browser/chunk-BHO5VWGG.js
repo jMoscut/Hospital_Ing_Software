@@ -25,7 +25,7 @@ import {
 } from "./chunk-PA55PL57.js";
 import {
   VitalSignsService
-} from "./chunk-VSICXZFN.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   EmergencyService
 } from "./chunk-LDLLK6DA.js";
@@ -483,4 +483,4 @@ var EmergencyComponent = class _EmergencyComponent {
 export {
   EmergencyComponent
 };
-//# sourceMappingURL=chunk-WJ27IKHC.js.map
+//# sourceMappingURL=chunk-BHO5VWGG.js.map

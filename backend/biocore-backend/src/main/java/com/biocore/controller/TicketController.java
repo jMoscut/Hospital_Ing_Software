@@ -60,7 +60,7 @@ public class TicketController {
 
     /** CU3: Confirmar llegada del paciente (requiere signos vitales, RN-03) */
     @PutMapping("/{ticketId}/confirm-arrival")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'HEALTH_STAFF', 'NURSE')")
     public ResponseEntity<ApiResponse<TicketDTO>> confirmArrival(@PathVariable Long ticketId) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Consulta iniciada", ticketService.confirmArrival(ticketId)));

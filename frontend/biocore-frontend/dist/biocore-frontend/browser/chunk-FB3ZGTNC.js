@@ -9,7 +9,6 @@ import {
   NotificationService
 } from "./chunk-4BLU4O7B.js";
 import {
-  MatInput,
   MatInputModule
 } from "./chunk-ZDRD2YW4.js";
 import {
@@ -32,34 +31,24 @@ import {
 import {
   ClinicService,
   TicketService
-} from "./chunk-VSICXZFN.js";
-import {
-  PatientService
-} from "./chunk-SM4IRFQU.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   CdkScrollableModule,
   ComponentPortal,
   ScrollDispatcher
 } from "./chunk-MHA7Y7AJ.js";
 import {
-  MatError,
   MatFormField,
   MatFormFieldModule,
   MatLabel,
   MatPrefix
 } from "./chunk-QEMZUU6G.js";
 import {
-  DefaultValueAccessor,
   FormBuilder,
-  FormControlName,
-  FormGroupDirective,
   FormsModule,
   NgControlStatus,
-  NgControlStatusGroup,
   NgModel,
-  ReactiveFormsModule,
-  Validators,
-  ɵNgNoValidate
+  ReactiveFormsModule
 } from "./chunk-2J4O7HWV.js";
 import "./chunk-EURQNLKS.js";
 import {
@@ -136,8 +125,6 @@ import {
   ɵɵdefineNgModule,
   ɵɵdirectiveInject,
   ɵɵelement,
-  ɵɵelementContainerEnd,
-  ɵɵelementContainerStart,
   ɵɵelementEnd,
   ɵɵelementStart,
   ɵɵgetCurrentView,
@@ -1119,16 +1106,16 @@ var _c02 = () => ({ standalone: true });
 function AppointmentsComponent_div_15_div_6_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 28)(1, "span", 29);
+    \u0275\u0275elementStart(0, "div", 27)(1, "span", 28);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span", 30);
+    \u0275\u0275elementStart(3, "span", 29);
     \u0275\u0275text(4);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "span", 31);
+    \u0275\u0275elementStart(5, "span", 30);
     \u0275\u0275text(6);
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "button", 32);
+    \u0275\u0275elementStart(7, "button", 31);
     \u0275\u0275listener("click", function AppointmentsComponent_div_15_div_6_Template_button_click_7_listener() {
       const t_r2 = \u0275\u0275restoreView(_r1).$implicit;
       const ctx_r2 = \u0275\u0275nextContext(2);
@@ -1150,13 +1137,13 @@ function AppointmentsComponent_div_15_div_6_Template(rf, ctx) {
 }
 function AppointmentsComponent_div_15_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 24)(1, "div", 25)(2, "mat-icon");
+    \u0275\u0275elementStart(0, "div", 23)(1, "div", 24)(2, "mat-icon");
     \u0275\u0275text(3, "campaign");
     \u0275\u0275elementEnd();
     \u0275\u0275text(4, " LLAMANDO AHORA ");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(5, "div", 26);
-    \u0275\u0275template(6, AppointmentsComponent_div_15_div_6_Template, 10, 3, "div", 27);
+    \u0275\u0275elementStart(5, "div", 25);
+    \u0275\u0275template(6, AppointmentsComponent_div_15_div_6_Template, 10, 3, "div", 26);
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
@@ -1167,7 +1154,7 @@ function AppointmentsComponent_div_15_Template(rf, ctx) {
 }
 function AppointmentsComponent_ng_template_18_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 33);
+    \u0275\u0275elementStart(0, "mat-icon", 32);
     \u0275\u0275text(1, "today");
     \u0275\u0275elementEnd();
     \u0275\u0275text(2);
@@ -1206,7 +1193,7 @@ function AppointmentsComponent_mat_card_20_mat_icon_21_Template(rf, ctx) {
 function AppointmentsComponent_mat_card_20_Template(rf, ctx) {
   if (rf & 1) {
     const _r4 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "mat-card", 34)(1, "mat-card-header")(2, "mat-icon", 35);
+    \u0275\u0275elementStart(0, "mat-card", 33)(1, "mat-card-header")(2, "mat-icon", 34);
     \u0275\u0275text(3, "campaign");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(4, "mat-card-title");
@@ -1215,31 +1202,31 @@ function AppointmentsComponent_mat_card_20_Template(rf, ctx) {
     \u0275\u0275elementStart(6, "mat-card-subtitle");
     \u0275\u0275text(7, "RN-CT03: orden cronol\xF3gico \xB7 RN-CT04: visual + audio");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "mat-card-content")(9, "div", 36)(10, "mat-form-field", 37)(11, "mat-label");
+    \u0275\u0275elementStart(8, "mat-card-content")(9, "div", 35)(10, "mat-form-field", 36)(11, "mat-label");
     \u0275\u0275text(12, "Cl\xEDnica a llamar");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(13, "mat-icon", 38);
+    \u0275\u0275elementStart(13, "mat-icon", 37);
     \u0275\u0275text(14, "local_hospital");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "mat-select", 39);
+    \u0275\u0275elementStart(15, "mat-select", 38);
     \u0275\u0275twoWayListener("ngModelChange", function AppointmentsComponent_mat_card_20_Template_mat_select_ngModelChange_15_listener($event) {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
       \u0275\u0275twoWayBindingSet(ctx_r2.callClinicId, $event) || (ctx_r2.callClinicId = $event);
       return \u0275\u0275resetView($event);
     });
-    \u0275\u0275elementStart(16, "mat-option", 40);
+    \u0275\u0275elementStart(16, "mat-option", 39);
     \u0275\u0275text(17, "\u2014 Seleccione cl\xEDnica \u2014");
     \u0275\u0275elementEnd();
     \u0275\u0275template(18, AppointmentsComponent_mat_card_20_mat_option_18_Template, 2, 2, "mat-option", 15);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(19, "button", 41);
+    \u0275\u0275elementStart(19, "button", 40);
     \u0275\u0275listener("click", function AppointmentsComponent_mat_card_20_Template_button_click_19_listener() {
       \u0275\u0275restoreView(_r4);
       const ctx_r2 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r2.callNextTicket());
     });
-    \u0275\u0275template(20, AppointmentsComponent_mat_card_20_mat_spinner_20_Template, 1, 0, "mat-spinner", 42)(21, AppointmentsComponent_mat_card_20_mat_icon_21_Template, 2, 0, "mat-icon", 22);
+    \u0275\u0275template(20, AppointmentsComponent_mat_card_20_mat_spinner_20_Template, 1, 0, "mat-spinner", 41)(21, AppointmentsComponent_mat_card_20_mat_icon_21_Template, 2, 0, "mat-icon", 42);
     \u0275\u0275text(22);
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(23, "p", 43)(24, "mat-icon", 44);
@@ -1308,7 +1295,7 @@ function AppointmentsComponent_div_36_div_12_Template(rf, ctx) {
 function AppointmentsComponent_div_36_button_14_Template(rf, ctx) {
   if (rf & 1) {
     const _r8 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "button", 32);
+    \u0275\u0275elementStart(0, "button", 31);
     \u0275\u0275listener("click", function AppointmentsComponent_div_36_button_14_Template_button_click_0_listener() {
       \u0275\u0275restoreView(_r8);
       const t_r7 = \u0275\u0275nextContext().$implicit;
@@ -1374,277 +1361,9 @@ function AppointmentsComponent_div_37_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function AppointmentsComponent_mat_tab_38_ng_template_1_Template(rf, ctx) {
+function AppointmentsComponent_ng_template_39_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 33);
-    \u0275\u0275text(1, "add_circle");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(2, " Agendar Cita ");
-  }
-}
-function AppointmentsComponent_mat_tab_38_mat_spinner_22_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "mat-spinner", 45);
-  }
-}
-function AppointmentsComponent_mat_tab_38_mat_icon_23_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon");
-    \u0275\u0275text(1, "search");
-    \u0275\u0275elementEnd();
-  }
-}
-function AppointmentsComponent_mat_tab_38_div_25_div_1_mat_icon_8_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 71);
-    \u0275\u0275text(1, "check_circle");
-    \u0275\u0275elementEnd();
-  }
-}
-function AppointmentsComponent_mat_tab_38_div_25_div_1_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r10 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 67);
-    \u0275\u0275listener("click", function AppointmentsComponent_mat_tab_38_div_25_div_1_Template_div_click_0_listener() {
-      const p_r11 = \u0275\u0275restoreView(_r10).$implicit;
-      const ctx_r2 = \u0275\u0275nextContext(3);
-      return \u0275\u0275resetView(ctx_r2.selectPatient(p_r11));
-    });
-    \u0275\u0275elementStart(1, "mat-icon");
-    \u0275\u0275text(2, "person");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "div")(4, "div", 68);
-    \u0275\u0275text(5);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(6, "div", 69);
-    \u0275\u0275text(7);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(8, AppointmentsComponent_mat_tab_38_div_25_div_1_mat_icon_8_Template, 2, 0, "mat-icon", 70);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const p_r11 = ctx.$implicit;
-    const ctx_r2 = \u0275\u0275nextContext(3);
-    \u0275\u0275classProp("selected", (ctx_r2.selectedPatient == null ? null : ctx_r2.selectedPatient.id) === p_r11.id);
-    \u0275\u0275advance(5);
-    \u0275\u0275textInterpolate2("", p_r11.firstName, " ", p_r11.lastName, "");
-    \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate2("", p_r11.patientCode, " \xB7 ", p_r11.phone || "Sin tel\xE9fono", "");
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", (ctx_r2.selectedPatient == null ? null : ctx_r2.selectedPatient.id) === p_r11.id);
-  }
-}
-function AppointmentsComponent_mat_tab_38_div_25_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 65);
-    \u0275\u0275template(1, AppointmentsComponent_mat_tab_38_div_25_div_1_Template, 9, 7, "div", 66);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngForOf", ctx_r2.searchResults);
-  }
-}
-function AppointmentsComponent_mat_tab_38_div_26_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 72)(1, "mat-icon");
-    \u0275\u0275text(2, "search_off");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "span");
-    \u0275\u0275text(4, "Sin resultados. ");
-    \u0275\u0275elementStart(5, "strong");
-    \u0275\u0275text(6, "Registre al paciente primero");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(7, " en Recepci\xF3n (m\xF3dulo Personal de Salud).");
-    \u0275\u0275elementEnd()();
-  }
-}
-function AppointmentsComponent_mat_tab_38_ng_container_27_mat_option_22_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-option", 14);
-    \u0275\u0275text(1);
-    \u0275\u0275elementEnd();
-  }
-  if (rf & 2) {
-    const c_r13 = ctx.$implicit;
-    \u0275\u0275property("value", c_r13.id);
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate(c_r13.name);
-  }
-}
-function AppointmentsComponent_mat_tab_38_ng_container_27_mat_spinner_43_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275element(0, "mat-spinner", 45);
-  }
-}
-function AppointmentsComponent_mat_tab_38_ng_container_27_mat_icon_44_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon");
-    \u0275\u0275text(1, "confirmation_number");
-    \u0275\u0275elementEnd();
-  }
-}
-function AppointmentsComponent_mat_tab_38_ng_container_27_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r12 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementContainerStart(0);
-    \u0275\u0275elementStart(1, "div", 73)(2, "mat-icon");
-    \u0275\u0275text(3, "account_circle");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "div")(5, "strong");
-    \u0275\u0275text(6);
-    \u0275\u0275elementEnd();
-    \u0275\u0275element(7, "br");
-    \u0275\u0275elementStart(8, "small");
-    \u0275\u0275text(9);
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(10, "button", 74);
-    \u0275\u0275listener("click", function AppointmentsComponent_mat_tab_38_ng_container_27_Template_button_click_10_listener() {
-      \u0275\u0275restoreView(_r12);
-      const ctx_r2 = \u0275\u0275nextContext(2);
-      ctx_r2.selectedPatient = null;
-      return \u0275\u0275resetView(ctx_r2.searchResults = []);
-    });
-    \u0275\u0275elementStart(11, "mat-icon");
-    \u0275\u0275text(12, "close");
-    \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(13, "h3", 75);
-    \u0275\u0275text(14, "2. Configurar Cita");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(15, "form", 76)(16, "mat-form-field", 77)(17, "mat-label");
-    \u0275\u0275text(18, "Cl\xEDnica de Destino * [RN-CT01]");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(19, "mat-icon", 38);
-    \u0275\u0275text(20, "local_hospital");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(21, "mat-select", 78);
-    \u0275\u0275template(22, AppointmentsComponent_mat_tab_38_ng_container_27_mat_option_22_Template, 2, 2, "mat-option", 15);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "mat-error");
-    \u0275\u0275text(24, "Selecci\xF3n de cl\xEDnica obligatoria");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(25, "mat-form-field", 77)(26, "mat-label");
-    \u0275\u0275text(27, "Tipo de Consulta");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(28, "mat-select", 79)(29, "mat-option", 80);
-    \u0275\u0275text(30, "Consulta General");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(31, "mat-option", 81);
-    \u0275\u0275text(32, "Control");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(33, "mat-option", 82);
-    \u0275\u0275text(34, "Especialidad");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(35, "mat-option", 83);
-    \u0275\u0275text(36, "Emergencia");
-    \u0275\u0275elementEnd()()();
-    \u0275\u0275elementStart(37, "mat-form-field", 84)(38, "mat-label");
-    \u0275\u0275text(39, "Notas adicionales");
-    \u0275\u0275elementEnd();
-    \u0275\u0275element(40, "textarea", 85);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(41, "div", 86)(42, "button", 41);
-    \u0275\u0275listener("click", function AppointmentsComponent_mat_tab_38_ng_container_27_Template_button_click_42_listener() {
-      \u0275\u0275restoreView(_r12);
-      const ctx_r2 = \u0275\u0275nextContext(2);
-      return \u0275\u0275resetView(ctx_r2.createAppointment());
-    });
-    \u0275\u0275template(43, AppointmentsComponent_mat_tab_38_ng_container_27_mat_spinner_43_Template, 1, 0, "mat-spinner", 42)(44, AppointmentsComponent_mat_tab_38_ng_container_27_mat_icon_44_Template, 2, 0, "mat-icon", 22);
-    \u0275\u0275text(45);
-    \u0275\u0275elementEnd()()();
-    \u0275\u0275elementContainerEnd();
-  }
-  if (rf & 2) {
-    const ctx_r2 = \u0275\u0275nextContext(2);
-    \u0275\u0275advance(6);
-    \u0275\u0275textInterpolate2("", ctx_r2.selectedPatient.firstName, " ", ctx_r2.selectedPatient.lastName, "");
-    \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(ctx_r2.selectedPatient.patientCode);
-    \u0275\u0275advance(6);
-    \u0275\u0275property("formGroup", ctx_r2.appointmentForm);
-    \u0275\u0275advance(7);
-    \u0275\u0275property("ngForOf", ctx_r2.clinics);
-    \u0275\u0275advance(20);
-    \u0275\u0275property("disabled", ctx_r2.appointmentForm.invalid || ctx_r2.submitting);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", ctx_r2.submitting);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", !ctx_r2.submitting);
-    \u0275\u0275advance();
-    \u0275\u0275textInterpolate1(" ", ctx_r2.submitting ? "Agendando..." : "Generar Turno", " ");
-  }
-}
-function AppointmentsComponent_mat_tab_38_Template(rf, ctx) {
-  if (rf & 1) {
-    const _r9 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "mat-tab");
-    \u0275\u0275template(1, AppointmentsComponent_mat_tab_38_ng_template_1_Template, 3, 0, "ng-template", 8);
-    \u0275\u0275elementStart(2, "div", 9)(3, "mat-card")(4, "mat-card-header")(5, "mat-icon", 59);
-    \u0275\u0275text(6, "confirmation_number");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(7, "mat-card-title");
-    \u0275\u0275text(8, "Nueva Cita Presencial");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(9, "mat-card-subtitle");
-    \u0275\u0275text(10, "CU 03 \xB7 RN-CT01: selecci\xF3n obligatoria de cl\xEDnica");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(11, "mat-card-content")(12, "h3");
-    \u0275\u0275text(13, "1. Buscar Paciente");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "div", 60)(15, "mat-form-field", 61)(16, "mat-label");
-    \u0275\u0275text(17, "Nombre, DPI o c\xF3digo de paciente");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(18, "mat-icon", 38);
-    \u0275\u0275text(19, "search");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "input", 62);
-    \u0275\u0275twoWayListener("ngModelChange", function AppointmentsComponent_mat_tab_38_Template_input_ngModelChange_20_listener($event) {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r2 = \u0275\u0275nextContext();
-      \u0275\u0275twoWayBindingSet(ctx_r2.searchQuery, $event) || (ctx_r2.searchQuery = $event);
-      return \u0275\u0275resetView($event);
-    });
-    \u0275\u0275listener("keyup.enter", function AppointmentsComponent_mat_tab_38_Template_input_keyup_enter_20_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.searchPatient());
-    });
-    \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(21, "button", 41);
-    \u0275\u0275listener("click", function AppointmentsComponent_mat_tab_38_Template_button_click_21_listener() {
-      \u0275\u0275restoreView(_r9);
-      const ctx_r2 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r2.searchPatient());
-    });
-    \u0275\u0275template(22, AppointmentsComponent_mat_tab_38_mat_spinner_22_Template, 1, 0, "mat-spinner", 42)(23, AppointmentsComponent_mat_tab_38_mat_icon_23_Template, 2, 0, "mat-icon", 22);
-    \u0275\u0275text(24, " Buscar ");
-    \u0275\u0275elementEnd()();
-    \u0275\u0275template(25, AppointmentsComponent_mat_tab_38_div_25_Template, 2, 1, "div", 63)(26, AppointmentsComponent_mat_tab_38_div_26_Template, 8, 0, "div", 64)(27, AppointmentsComponent_mat_tab_38_ng_container_27_Template, 46, 9, "ng-container", 22);
-    \u0275\u0275elementEnd()()()();
-  }
-  if (rf & 2) {
-    const ctx_r2 = \u0275\u0275nextContext();
-    \u0275\u0275advance(20);
-    \u0275\u0275twoWayProperty("ngModel", ctx_r2.searchQuery);
-    \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(8, _c02));
-    \u0275\u0275advance();
-    \u0275\u0275property("disabled", ctx_r2.searching);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", ctx_r2.searching);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", !ctx_r2.searching);
-    \u0275\u0275advance(2);
-    \u0275\u0275property("ngIf", ctx_r2.searchResults.length > 0);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", ctx_r2.searchResults.length === 0 && ctx_r2.searchQuery && !ctx_r2.searching);
-    \u0275\u0275advance();
-    \u0275\u0275property("ngIf", ctx_r2.selectedPatient);
-  }
-}
-function AppointmentsComponent_ng_template_40_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "mat-icon", 33);
+    \u0275\u0275elementStart(0, "mat-icon", 32);
     \u0275\u0275text(1, "task_alt");
     \u0275\u0275elementEnd();
     \u0275\u0275text(2);
@@ -1655,9 +1374,9 @@ function AppointmentsComponent_ng_template_40_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" Completados (", ctx_r2.completedTickets.length, ") ");
   }
 }
-function AppointmentsComponent_div_42_Template(rf, ctx) {
+function AppointmentsComponent_div_41_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 87)(1, "div", 47);
+    \u0275\u0275elementStart(0, "div", 59)(1, "div", 47);
     \u0275\u0275text(2);
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "div", 48)(4, "div", 49);
@@ -1666,21 +1385,21 @@ function AppointmentsComponent_div_42_Template(rf, ctx) {
     \u0275\u0275elementStart(6, "div", 50);
     \u0275\u0275text(7);
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(8, "span", 88);
+    \u0275\u0275elementStart(8, "span", 60);
     \u0275\u0275text(9, "Completado");
     \u0275\u0275elementEnd()();
   }
   if (rf & 2) {
-    const t_r14 = ctx.$implicit;
+    const t_r9 = ctx.$implicit;
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate(t_r14.ticketNumber);
+    \u0275\u0275textInterpolate(t_r9.ticketNumber);
     \u0275\u0275advance(3);
-    \u0275\u0275textInterpolate(t_r14.patientName);
+    \u0275\u0275textInterpolate(t_r9.patientName);
     \u0275\u0275advance(2);
-    \u0275\u0275textInterpolate2("", t_r14.clinicName, " \xB7 ", t_r14.type, "");
+    \u0275\u0275textInterpolate2("", t_r9.clinicName, " \xB7 ", t_r9.type, "");
   }
 }
-function AppointmentsComponent_div_43_Template(rf, ctx) {
+function AppointmentsComponent_div_42_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "div", 58)(1, "mat-icon");
     \u0275\u0275text(2, "task_alt");
@@ -1692,11 +1411,10 @@ function AppointmentsComponent_div_43_Template(rf, ctx) {
 }
 var NOTIF_KEY = "biocore_notification_settings";
 var AppointmentsComponent = class _AppointmentsComponent {
-  constructor(fb, ticketService, clinicService, patientService, authService, notification) {
+  constructor(fb, ticketService, clinicService, authService, notification) {
     this.fb = fb;
     this.ticketService = ticketService;
     this.clinicService = clinicService;
-    this.patientService = patientService;
     this.authService = authService;
     this.notification = notification;
     this.clinics = [];
@@ -1707,19 +1425,9 @@ var AppointmentsComponent = class _AppointmentsComponent {
     this.selectedClinicFilter = 0;
     this.callClinicId = 0;
     this.calling = false;
-    this.searchQuery = "";
-    this.searchResults = [];
-    this.selectedPatient = null;
-    this.searching = false;
-    this.submitting = false;
     this.lastCalledIds = /* @__PURE__ */ new Set();
   }
   ngOnInit() {
-    this.appointmentForm = this.fb.group({
-      clinicId: [null, Validators.required],
-      type: ["CONSULTA"],
-      notes: [""]
-    });
     this.clinicService.getAll().subscribe((res) => {
       if (res.success)
         this.clinics = res.data;
@@ -1824,49 +1532,6 @@ var AppointmentsComponent = class _AppointmentsComponent {
   openCallScreen() {
     window.open("/call-screen", "_blank", "width=1280,height=720");
   }
-  searchPatient() {
-    if (!this.searchQuery.trim())
-      return;
-    this.searching = true;
-    this.patientService.search(this.searchQuery).subscribe({
-      next: (res) => {
-        if (res.success)
-          this.searchResults = res.data;
-        this.searching = false;
-      },
-      error: () => {
-        this.searching = false;
-      }
-    });
-  }
-  selectPatient(p) {
-    this.selectedPatient = p;
-    this.searchResults = [];
-  }
-  createAppointment() {
-    if (!this.selectedPatient)
-      return;
-    this.submitting = true;
-    const { clinicId, type, notes } = this.appointmentForm.value;
-    this.ticketService.create({ patientId: this.selectedPatient.id, clinicId, type, notes }).subscribe({
-      next: (res) => {
-        if (res.success) {
-          this.notification.success(`Turno ${res.data.ticketNumber} generado para ${res.data.patientName}`);
-          this.selectedPatient = null;
-          this.searchQuery = "";
-          this.appointmentForm.reset({ type: "CONSULTA" });
-          this.loadAll();
-        } else {
-          this.notification.error(res.message || "Error al generar turno");
-        }
-        this.submitting = false;
-      },
-      error: (err) => {
-        this.notification.error(err.error?.message || "Error al crear turno");
-        this.submitting = false;
-      }
-    });
-  }
   markAbsent(ticketId) {
     this.ticketService.markAbsent(ticketId).subscribe({
       next: () => {
@@ -1903,16 +1568,16 @@ var AppointmentsComponent = class _AppointmentsComponent {
   }
   static {
     this.\u0275fac = function AppointmentsComponent_Factory(t) {
-      return new (t || _AppointmentsComponent)(\u0275\u0275directiveInject(FormBuilder), \u0275\u0275directiveInject(TicketService), \u0275\u0275directiveInject(ClinicService), \u0275\u0275directiveInject(PatientService), \u0275\u0275directiveInject(AuthService), \u0275\u0275directiveInject(NotificationService));
+      return new (t || _AppointmentsComponent)(\u0275\u0275directiveInject(FormBuilder), \u0275\u0275directiveInject(TicketService), \u0275\u0275directiveInject(ClinicService), \u0275\u0275directiveInject(AuthService), \u0275\u0275directiveInject(NotificationService));
     };
   }
   static {
-    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AppointmentsComponent, selectors: [["app-appointments"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 44, vars: 15, consts: [[1, "page-container"], [1, "page-header"], [2, "vertical-align", "middle", "margin-right", "8px"], [1, "header-actions"], ["mat-stroked-button", "", "color", "primary", "matTooltip", "Abrir pantalla de sala de espera en nueva ventana", 3, "click"], ["mat-stroked-button", "", 3, "click"], ["class", "calling-banner", 4, "ngIf"], ["animationDuration", "200ms"], ["mat-tab-label", ""], [1, "tab-content"], ["class", "call-panel", 4, "ngIf"], [1, "queue-toolbar"], ["appearance", "outline", 1, "filter-field"], [3, "ngModelChange", "selectionChange", "ngModel", "ngModelOptions"], [3, "value"], [3, "value", 4, "ngFor", "ngForOf"], [1, "queue-stats"], [1, "stat-chip", "waiting"], [1, "stat-chip", "calling"], [1, "stat-chip", "consulting"], ["class", "ticket-card", 3, "being-called", 4, "ngFor", "ngForOf"], ["class", "empty-state", 4, "ngIf"], [4, "ngIf"], ["class", "ticket-card completed", 4, "ngFor", "ngForOf"], [1, "calling-banner"], [1, "calling-label"], [1, "calling-tickets"], ["class", "calling-item", 4, "ngFor", "ngForOf"], [1, "calling-item"], [1, "calling-num"], [1, "calling-name"], [1, "calling-clinic"], ["mat-icon-button", "", "color", "warn", "matTooltip", "Marcar ausente", 3, "click"], [1, "tab-icon"], [1, "call-panel"], ["mat-card-avatar", "", 2, "color", "#1D6C61"], [1, "call-controls"], ["appearance", "outline", 1, "call-clinic-field"], ["matPrefix", ""], [3, "ngModelChange", "ngModel", "ngModelOptions"], ["disabled", "", 3, "value"], ["mat-raised-button", "", "color", "primary", 3, "click", "disabled"], ["diameter", "20", 4, "ngIf"], [1, "call-hint"], [2, "font-size", "15px", "vertical-align", "middle"], ["diameter", "20"], [1, "ticket-card"], [1, "ticket-num"], [1, "ticket-body"], [1, "ticket-name"], [1, "ticket-sub"], ["class", "ticket-sub", 4, "ngIf"], [1, "ticket-right"], [1, "status-chip"], ["class", "ticket-time", 4, "ngIf"], [1, "ticket-actions"], ["mat-icon-button", "", "color", "warn", "matTooltip", "Marcar ausente", 3, "click", 4, "ngIf"], [1, "ticket-time"], [1, "empty-state"], ["mat-card-avatar", ""], [1, "search-row"], ["appearance", "outline", 1, "search-field"], ["matInput", "", "placeholder", "Ej: Juan Garc\xEDa / 1234567890123 / PAT-0001", 3, "ngModelChange", "keyup.enter", "ngModel", "ngModelOptions"], ["class", "search-results", 4, "ngIf"], ["class", "no-results", 4, "ngIf"], [1, "search-results"], ["class", "result-item", 3, "selected", "click", 4, "ngFor", "ngForOf"], [1, "result-item", 3, "click"], [1, "result-name"], [1, "result-meta"], ["class", "check-icon", 4, "ngIf"], [1, "check-icon"], [1, "no-results"], [1, "selected-patient-box"], ["mat-icon-button", "", "matTooltip", "Cambiar paciente", 3, "click"], [2, "margin-top", "20px"], [1, "appt-form", 3, "formGroup"], ["appearance", "outline"], ["formControlName", "clinicId"], ["formControlName", "type"], ["value", "CONSULTA"], ["value", "CONTROL"], ["value", "ESPECIALIDAD"], ["value", "EMERGENCIA"], ["appearance", "outline", 1, "full-width"], ["matInput", "", "formControlName", "notes", "rows", "2"], [1, "full-width"], [1, "ticket-card", "completed"], [1, "status-chip", "status-completed"]], template: function AppointmentsComponent_Template(rf, ctx) {
+    this.\u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _AppointmentsComponent, selectors: [["app-appointments"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 43, vars: 14, consts: [[1, "page-container"], [1, "page-header"], [2, "vertical-align", "middle", "margin-right", "8px"], [1, "header-actions"], ["mat-stroked-button", "", "color", "primary", "matTooltip", "Abrir pantalla de sala de espera en nueva ventana", 3, "click"], ["mat-stroked-button", "", 3, "click"], ["class", "calling-banner", 4, "ngIf"], ["animationDuration", "200ms"], ["mat-tab-label", ""], [1, "tab-content"], ["class", "call-panel", 4, "ngIf"], [1, "queue-toolbar"], ["appearance", "outline", 1, "filter-field"], [3, "ngModelChange", "selectionChange", "ngModel", "ngModelOptions"], [3, "value"], [3, "value", 4, "ngFor", "ngForOf"], [1, "queue-stats"], [1, "stat-chip", "waiting"], [1, "stat-chip", "calling"], [1, "stat-chip", "consulting"], ["class", "ticket-card", 3, "being-called", 4, "ngFor", "ngForOf"], ["class", "empty-state", 4, "ngIf"], ["class", "ticket-card completed", 4, "ngFor", "ngForOf"], [1, "calling-banner"], [1, "calling-label"], [1, "calling-tickets"], ["class", "calling-item", 4, "ngFor", "ngForOf"], [1, "calling-item"], [1, "calling-num"], [1, "calling-name"], [1, "calling-clinic"], ["mat-icon-button", "", "color", "warn", "matTooltip", "Marcar ausente", 3, "click"], [1, "tab-icon"], [1, "call-panel"], ["mat-card-avatar", "", 2, "color", "#1D6C61"], [1, "call-controls"], ["appearance", "outline", 1, "call-clinic-field"], ["matPrefix", ""], [3, "ngModelChange", "ngModel", "ngModelOptions"], ["disabled", "", 3, "value"], ["mat-raised-button", "", "color", "primary", 3, "click", "disabled"], ["diameter", "20", 4, "ngIf"], [4, "ngIf"], [1, "call-hint"], [2, "font-size", "15px", "vertical-align", "middle"], ["diameter", "20"], [1, "ticket-card"], [1, "ticket-num"], [1, "ticket-body"], [1, "ticket-name"], [1, "ticket-sub"], ["class", "ticket-sub", 4, "ngIf"], [1, "ticket-right"], [1, "status-chip"], ["class", "ticket-time", 4, "ngIf"], [1, "ticket-actions"], ["mat-icon-button", "", "color", "warn", "matTooltip", "Marcar ausente", 3, "click", 4, "ngIf"], [1, "ticket-time"], [1, "empty-state"], [1, "ticket-card", "completed"], [1, "status-chip", "status-completed"]], template: function AppointmentsComponent_Template(rf, ctx) {
       if (rf & 1) {
         \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "h1")(3, "mat-icon", 2);
-        \u0275\u0275text(4, "calendar_month");
+        \u0275\u0275text(4, "queue");
         \u0275\u0275elementEnd();
-        \u0275\u0275text(5, "Agendaci\xF3n de Citas");
+        \u0275\u0275text(5, "Monitoreo de Cola");
         \u0275\u0275elementEnd();
         \u0275\u0275elementStart(6, "div", 3)(7, "button", 4);
         \u0275\u0275listener("click", function AppointmentsComponent_Template_button_click_7_listener() {
@@ -1964,11 +1629,10 @@ var AppointmentsComponent = class _AppointmentsComponent {
         \u0275\u0275elementEnd()()();
         \u0275\u0275template(36, AppointmentsComponent_div_36_Template, 15, 12, "div", 20)(37, AppointmentsComponent_div_37_Template, 5, 0, "div", 21);
         \u0275\u0275elementEnd()();
-        \u0275\u0275template(38, AppointmentsComponent_mat_tab_38_Template, 28, 9, "mat-tab", 22);
-        \u0275\u0275elementStart(39, "mat-tab");
-        \u0275\u0275template(40, AppointmentsComponent_ng_template_40_Template, 3, 1, "ng-template", 8);
-        \u0275\u0275elementStart(41, "div", 9);
-        \u0275\u0275template(42, AppointmentsComponent_div_42_Template, 10, 4, "div", 23)(43, AppointmentsComponent_div_43_Template, 5, 0, "div", 21);
+        \u0275\u0275elementStart(38, "mat-tab");
+        \u0275\u0275template(39, AppointmentsComponent_ng_template_39_Template, 3, 1, "ng-template", 8);
+        \u0275\u0275elementStart(40, "div", 9);
+        \u0275\u0275template(41, AppointmentsComponent_div_41_Template, 10, 4, "div", 22)(42, AppointmentsComponent_div_42_Template, 5, 0, "div", 21);
         \u0275\u0275elementEnd()()()();
       }
       if (rf & 2) {
@@ -1978,7 +1642,7 @@ var AppointmentsComponent = class _AppointmentsComponent {
         \u0275\u0275property("ngIf", ctx.canManage());
         \u0275\u0275advance(5);
         \u0275\u0275twoWayProperty("ngModel", ctx.selectedClinicFilter);
-        \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(14, _c02));
+        \u0275\u0275property("ngModelOptions", \u0275\u0275pureFunction0(13, _c02));
         \u0275\u0275advance();
         \u0275\u0275property("value", 0);
         \u0275\u0275advance(2);
@@ -1993,20 +1657,18 @@ var AppointmentsComponent = class _AppointmentsComponent {
         \u0275\u0275property("ngForOf", ctx.filteredActive);
         \u0275\u0275advance();
         \u0275\u0275property("ngIf", ctx.filteredActive.length === 0);
-        \u0275\u0275advance();
-        \u0275\u0275property("ngIf", ctx.canManage());
         \u0275\u0275advance(4);
         \u0275\u0275property("ngForOf", ctx.completedTickets);
         \u0275\u0275advance();
         \u0275\u0275property("ngIf", ctx.completedTickets.length === 0);
       }
-    }, dependencies: [CommonModule, NgForOf, NgIf, DatePipe, ReactiveFormsModule, \u0275NgNoValidate, DefaultValueAccessor, NgControlStatus, NgControlStatusGroup, FormGroupDirective, FormControlName, FormsModule, NgModel, MatCardModule, MatCard, MatCardAvatar, MatCardContent, MatCardHeader, MatCardSubtitle, MatCardTitle, MatButtonModule, MatButton, MatIconButton, MatIconModule, MatIcon, MatFormFieldModule, MatFormField, MatLabel, MatError, MatPrefix, MatInputModule, MatInput, MatSelectModule, MatSelect, MatOption, MatTabsModule, MatTabLabel, MatTab, MatTabGroup, MatProgressSpinnerModule, MatProgressSpinner, MatChipsModule, MatTooltipModule, MatTooltip], styles: ["\n\n.page-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 20px;\n  flex-wrap: wrap;\n  gap: 12px;\n}\n.page-header[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n  font-size: 1.6rem;\n  font-weight: 500;\n  color: #1D6C61;\n  margin: 0;\n}\n.header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n}\n.tab-content[_ngcontent-%COMP%] {\n  padding: 20px 0;\n}\n.tab-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  margin-right: 6px;\n  vertical-align: middle;\n}\nh3[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  font-weight: 600;\n  color: #1D6C61;\n  margin-bottom: 12px;\n  margin-top: 4px;\n}\n.calling-banner[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  flex-wrap: wrap;\n  background:\n    linear-gradient(\n      90deg,\n      #1D6C61,\n      #3EB9A8);\n  color: white;\n  border-radius: 10px;\n  padding: 12px 20px;\n  margin-bottom: 20px;\n  box-shadow: 0 4px 16px rgba(29, 108, 97, 0.3);\n}\n.calling-label[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  font-weight: 700;\n  font-size: 0.85rem;\n  letter-spacing: 1px;\n  text-transform: uppercase;\n  white-space: nowrap;\n}\n.calling-tickets[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  flex-wrap: wrap;\n  flex: 1;\n}\n.calling-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(255, 255, 255, 0.15);\n  border-radius: 8px;\n  padding: 6px 12px;\n}\n.calling-num[_ngcontent-%COMP%] {\n  font-size: 1.4rem;\n  font-weight: 700;\n}\n.calling-name[_ngcontent-%COMP%] {\n  font-weight: 500;\n}\n.calling-clinic[_ngcontent-%COMP%] {\n  font-size: 0.85rem;\n  opacity: 0.9;\n}\n.call-panel[_ngcontent-%COMP%] {\n  margin-bottom: 16px;\n  border-left: 4px solid #1D6C61;\n}\n.call-controls[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  flex-wrap: wrap;\n}\n.call-clinic-field[_ngcontent-%COMP%] {\n  flex: 1;\n  min-width: 220px;\n}\n.call-hint[_ngcontent-%COMP%] {\n  font-size: 0.78rem;\n  color: #757575;\n  margin: 6px 0 0;\n}\n.queue-toolbar[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  margin-bottom: 16px;\n  flex-wrap: wrap;\n}\n.filter-field[_ngcontent-%COMP%] {\n  flex: 1;\n  min-width: 200px;\n}\n.queue-stats[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n  flex-wrap: wrap;\n}\n.stat-chip[_ngcontent-%COMP%] {\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 0.78rem;\n  font-weight: 500;\n}\n.waiting[_ngcontent-%COMP%] {\n  background: #fff8e1;\n  color: #f57f17;\n}\n.calling[_ngcontent-%COMP%] {\n  background: #e3f2fd;\n  color: #1565c0;\n}\n.consulting[_ngcontent-%COMP%] {\n  background: #e8f5e9;\n  color: #2e7d32;\n}\n.ticket-card[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  padding: 14px 18px;\n  background: white;\n  border-radius: 10px;\n  margin-bottom: 10px;\n  box-shadow: 0 2px 8px rgba(29, 108, 97, 0.07);\n  border: 1px solid #e8e8e8;\n  transition: border-color 0.2s;\n}\n.ticket-card.being-called[_ngcontent-%COMP%] {\n  border-color: #3EB9A8;\n  box-shadow: 0 2px 12px rgba(62, 185, 168, 0.25);\n}\n.ticket-card.completed[_ngcontent-%COMP%] {\n  opacity: 0.7;\n}\n.ticket-num[_ngcontent-%COMP%] {\n  font-size: 1.5rem;\n  font-weight: 700;\n  color: #1D6C61;\n  min-width: 85px;\n}\n.ticket-body[_ngcontent-%COMP%] {\n  flex: 1;\n}\n.ticket-name[_ngcontent-%COMP%] {\n  font-weight: 600;\n}\n.ticket-sub[_ngcontent-%COMP%] {\n  font-size: 0.8rem;\n  color: #757575;\n  margin-top: 2px;\n}\n.ticket-right[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-end;\n  gap: 4px;\n}\n.ticket-time[_ngcontent-%COMP%] {\n  font-size: 0.75rem;\n  color: #9e9e9e;\n}\n.ticket-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 4px;\n}\n.status-chip[_ngcontent-%COMP%] {\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 0.8rem;\n  font-weight: 500;\n}\n.search-row[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  align-items: center;\n  margin-bottom: 12px;\n  flex-wrap: wrap;\n}\n.search-field[_ngcontent-%COMP%] {\n  flex: 1;\n  min-width: 250px;\n}\n.search-results[_ngcontent-%COMP%] {\n  margin-bottom: 12px;\n}\n.result-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  padding: 10px 14px;\n  border-radius: 8px;\n  cursor: pointer;\n  border: 2px solid transparent;\n  margin-bottom: 6px;\n  background: #f8f9ff;\n  transition: all 0.15s;\n}\n.result-item[_ngcontent-%COMP%]:hover {\n  background: #e3f2fd;\n}\n.result-item.selected[_ngcontent-%COMP%] {\n  border-color: #1D6C61;\n  background: #d0f4ef;\n}\n.result-name[_ngcontent-%COMP%] {\n  font-weight: 500;\n}\n.result-meta[_ngcontent-%COMP%] {\n  font-size: 0.78rem;\n  color: #757575;\n}\n.check-icon[_ngcontent-%COMP%] {\n  color: #1D6C61;\n  margin-left: auto;\n}\n.no-results[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  color: #757575;\n  font-size: 0.85rem;\n  padding: 8px 0;\n}\n.selected-patient-box[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  background: #e8f5e9;\n  padding: 14px;\n  border-radius: 8px;\n  margin-bottom: 8px;\n  color: #2e7d32;\n}\n.selected-patient-box[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 36px;\n  width: 36px;\n  height: 36px;\n}\n.selected-patient-box[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  margin-left: auto;\n  color: #757575;\n}\n.appt-form[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));\n  gap: 12px;\n  margin-top: 8px;\n}\n.full-width[_ngcontent-%COMP%] {\n  grid-column: 1 / -1;\n}\n.empty-state[_ngcontent-%COMP%] {\n  text-align: center;\n  padding: 48px;\n  color: #9e9e9e;\n}\n.empty-state[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 48px;\n  width: 48px;\n  height: 48px;\n  color: #3EB9A8;\n  opacity: 0.5;\n  margin-bottom: 8px;\n}\n/*# sourceMappingURL=appointments.component.css.map */"] });
+    }, dependencies: [CommonModule, NgForOf, NgIf, DatePipe, ReactiveFormsModule, NgControlStatus, FormsModule, NgModel, MatCardModule, MatCard, MatCardAvatar, MatCardContent, MatCardHeader, MatCardSubtitle, MatCardTitle, MatButtonModule, MatButton, MatIconButton, MatIconModule, MatIcon, MatFormFieldModule, MatFormField, MatLabel, MatPrefix, MatInputModule, MatSelectModule, MatSelect, MatOption, MatTabsModule, MatTabLabel, MatTab, MatTabGroup, MatProgressSpinnerModule, MatProgressSpinner, MatChipsModule, MatTooltipModule, MatTooltip], styles: ["\n\n.page-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 20px;\n  flex-wrap: wrap;\n  gap: 12px;\n}\n.page-header[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n  font-size: 1.6rem;\n  font-weight: 500;\n  color: #1D6C61;\n  margin: 0;\n}\n.header-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n}\n.tab-content[_ngcontent-%COMP%] {\n  padding: 20px 0;\n}\n.tab-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  margin-right: 6px;\n  vertical-align: middle;\n}\nh3[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  font-weight: 600;\n  color: #1D6C61;\n  margin-bottom: 12px;\n  margin-top: 4px;\n}\n.calling-banner[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  flex-wrap: wrap;\n  background:\n    linear-gradient(\n      90deg,\n      #1D6C61,\n      #3EB9A8);\n  color: white;\n  border-radius: 10px;\n  padding: 12px 20px;\n  margin-bottom: 20px;\n  box-shadow: 0 4px 16px rgba(29, 108, 97, 0.3);\n}\n.calling-label[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  font-weight: 700;\n  font-size: 0.85rem;\n  letter-spacing: 1px;\n  text-transform: uppercase;\n  white-space: nowrap;\n}\n.calling-tickets[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  flex-wrap: wrap;\n  flex: 1;\n}\n.calling-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(255, 255, 255, 0.15);\n  border-radius: 8px;\n  padding: 6px 12px;\n}\n.calling-num[_ngcontent-%COMP%] {\n  font-size: 1.4rem;\n  font-weight: 700;\n}\n.calling-name[_ngcontent-%COMP%] {\n  font-weight: 500;\n}\n.calling-clinic[_ngcontent-%COMP%] {\n  font-size: 0.85rem;\n  opacity: 0.9;\n}\n.call-panel[_ngcontent-%COMP%] {\n  margin-bottom: 16px;\n  border-left: 4px solid #1D6C61;\n}\n.call-controls[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  flex-wrap: wrap;\n}\n.call-clinic-field[_ngcontent-%COMP%] {\n  flex: 1;\n  min-width: 220px;\n}\n.call-hint[_ngcontent-%COMP%] {\n  font-size: 0.78rem;\n  color: #757575;\n  margin: 6px 0 0;\n}\n.queue-toolbar[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  margin-bottom: 16px;\n  flex-wrap: wrap;\n}\n.filter-field[_ngcontent-%COMP%] {\n  flex: 1;\n  min-width: 200px;\n}\n.queue-stats[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 8px;\n  flex-wrap: wrap;\n}\n.stat-chip[_ngcontent-%COMP%] {\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 0.78rem;\n  font-weight: 500;\n}\n.waiting[_ngcontent-%COMP%] {\n  background: #fff8e1;\n  color: #f57f17;\n}\n.calling[_ngcontent-%COMP%] {\n  background: #e3f2fd;\n  color: #1565c0;\n}\n.consulting[_ngcontent-%COMP%] {\n  background: #e8f5e9;\n  color: #2e7d32;\n}\n.ticket-card[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  padding: 14px 18px;\n  background: white;\n  border-radius: 10px;\n  margin-bottom: 10px;\n  box-shadow: 0 2px 8px rgba(29, 108, 97, 0.07);\n  border: 1px solid #e8e8e8;\n  transition: border-color 0.2s;\n}\n.ticket-card.being-called[_ngcontent-%COMP%] {\n  border-color: #3EB9A8;\n  box-shadow: 0 2px 12px rgba(62, 185, 168, 0.25);\n}\n.ticket-card.completed[_ngcontent-%COMP%] {\n  opacity: 0.7;\n}\n.ticket-num[_ngcontent-%COMP%] {\n  font-size: 1.5rem;\n  font-weight: 700;\n  color: #1D6C61;\n  min-width: 85px;\n}\n.ticket-body[_ngcontent-%COMP%] {\n  flex: 1;\n}\n.ticket-name[_ngcontent-%COMP%] {\n  font-weight: 600;\n}\n.ticket-sub[_ngcontent-%COMP%] {\n  font-size: 0.8rem;\n  color: #757575;\n  margin-top: 2px;\n}\n.ticket-right[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-end;\n  gap: 4px;\n}\n.ticket-time[_ngcontent-%COMP%] {\n  font-size: 0.75rem;\n  color: #9e9e9e;\n}\n.ticket-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 4px;\n}\n.status-chip[_ngcontent-%COMP%] {\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 0.8rem;\n  font-weight: 500;\n}\n.search-row[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 12px;\n  align-items: center;\n  margin-bottom: 12px;\n  flex-wrap: wrap;\n}\n.search-field[_ngcontent-%COMP%] {\n  flex: 1;\n  min-width: 250px;\n}\n.search-results[_ngcontent-%COMP%] {\n  margin-bottom: 12px;\n}\n.result-item[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  padding: 10px 14px;\n  border-radius: 8px;\n  cursor: pointer;\n  border: 2px solid transparent;\n  margin-bottom: 6px;\n  background: #f8f9ff;\n  transition: all 0.15s;\n}\n.result-item[_ngcontent-%COMP%]:hover {\n  background: #e3f2fd;\n}\n.result-item.selected[_ngcontent-%COMP%] {\n  border-color: #1D6C61;\n  background: #d0f4ef;\n}\n.result-name[_ngcontent-%COMP%] {\n  font-weight: 500;\n}\n.result-meta[_ngcontent-%COMP%] {\n  font-size: 0.78rem;\n  color: #757575;\n}\n.check-icon[_ngcontent-%COMP%] {\n  color: #1D6C61;\n  margin-left: auto;\n}\n.no-results[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  color: #757575;\n  font-size: 0.85rem;\n  padding: 8px 0;\n}\n.selected-patient-box[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  background: #e8f5e9;\n  padding: 14px;\n  border-radius: 8px;\n  margin-bottom: 8px;\n  color: #2e7d32;\n}\n.selected-patient-box[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 36px;\n  width: 36px;\n  height: 36px;\n}\n.selected-patient-box[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  margin-left: auto;\n  color: #757575;\n}\n.appt-form[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));\n  gap: 12px;\n  margin-top: 8px;\n}\n.full-width[_ngcontent-%COMP%] {\n  grid-column: 1 / -1;\n}\n.empty-state[_ngcontent-%COMP%] {\n  text-align: center;\n  padding: 48px;\n  color: #9e9e9e;\n}\n.empty-state[_ngcontent-%COMP%]   mat-icon[_ngcontent-%COMP%] {\n  font-size: 48px;\n  width: 48px;\n  height: 48px;\n  color: #3EB9A8;\n  opacity: 0.5;\n  margin-bottom: 8px;\n}\n/*# sourceMappingURL=appointments.component.css.map */"] });
   }
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(AppointmentsComponent, { className: "AppointmentsComponent", filePath: "src\\app\\modules\\appointments\\appointments.component.ts", lineNumber: 355 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(AppointmentsComponent, { className: "AppointmentsComponent", filePath: "src\\app\\modules\\appointments\\appointments.component.ts", lineNumber: 253 });
 })();
 export {
   AppointmentsComponent
 };
-//# sourceMappingURL=chunk-2J576JML.js.map
+//# sourceMappingURL=chunk-FB3ZGTNC.js.map

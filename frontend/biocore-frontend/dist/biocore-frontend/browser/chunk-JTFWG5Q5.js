@@ -15,7 +15,7 @@ import {
 } from "./chunk-PA55PL57.js";
 import {
   TicketService
-} from "./chunk-VSICXZFN.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   PaymentService
 } from "./chunk-LDLLK6DA.js";
@@ -391,4 +391,4 @@ var PatientDetailComponent = class _PatientDetailComponent {
 export {
   PatientDetailComponent
 };
-//# sourceMappingURL=chunk-7CV4FVFG.js.map
+//# sourceMappingURL=chunk-JTFWG5Q5.js.map

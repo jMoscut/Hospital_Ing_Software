@@ -77,6 +77,7 @@ public class UserService {
         user.setLastName(req.getLastName());
         user.setEmail(req.getEmail());
         user.setSpecialty(req.getSpecialty());
+        user.setCollegiateNumber(req.getCollegiateNumber());
         user.setRole(req.getRole());
 
         if (req.getPassword() != null && !req.getPassword().isBlank()) {

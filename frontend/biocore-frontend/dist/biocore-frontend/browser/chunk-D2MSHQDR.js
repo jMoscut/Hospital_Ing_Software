@@ -10,7 +10,7 @@ import {
 } from "./chunk-PA55PL57.js";
 import {
   TicketService
-} from "./chunk-VSICXZFN.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   ReportService
 } from "./chunk-LDLLK6DA.js";
@@ -311,4 +311,4 @@ var DashboardComponent = class _DashboardComponent {
 export {
   DashboardComponent
 };
-//# sourceMappingURL=chunk-G7T7XV4U.js.map
+//# sourceMappingURL=chunk-D2MSHQDR.js.map

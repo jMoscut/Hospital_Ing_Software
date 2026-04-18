@@ -83,6 +83,9 @@ var AppointmentService = class _AppointmentService {
   getByPatient(patientId) {
     return this.http.get(`${this.url}/patient/${patientId}`);
   }
+  getByVoucherCode(code) {
+    return this.http.get(`${this.url}/voucher/${code}`);
+  }
   static {
     this.\u0275fac = function AppointmentService_Factory(t) {
       return new (t || _AppointmentService)(\u0275\u0275inject(HttpClient));
@@ -119,4 +122,4 @@ export {
   AppointmentService,
   VitalSignsService
 };
-//# sourceMappingURL=chunk-VSICXZFN.js.map
+//# sourceMappingURL=chunk-ELYEA2RZ.js.map

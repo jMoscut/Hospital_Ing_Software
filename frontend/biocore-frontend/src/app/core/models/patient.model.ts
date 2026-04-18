@@ -19,6 +19,7 @@ export interface Patient {
   insuranceId?: number;
   insuranceName?: string;
   discountPercentage?: number;
+  insuranceNumber?: string;
   active: boolean;
   createdAt: string;
   birthDate?: string;
@@ -40,4 +41,5 @@ export interface PatientCreateRequest {
   emergencyPhone?: string;
   email?: string;
   insuranceId?: number;
+  insuranceNumber?: string;
 }

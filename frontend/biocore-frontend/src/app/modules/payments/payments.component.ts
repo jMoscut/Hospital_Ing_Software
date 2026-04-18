@@ -9,8 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { PatientService } from '../../shared/services/patient.service';
 import { PaymentService } from '../../shared/services/payment.service';
+import { AppointmentService } from '../../shared/services/ticket.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Patient } from '../../core/models/patient.model';
 import { Payment } from '../../core/models/payment.model';
@@ -21,7 +24,7 @@ import { Payment } from '../../core/models/payment.model';
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule, MatCardModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatTableModule, MatDividerModule
+    MatTableModule, MatDividerModule, MatTabsModule, MatProgressSpinnerModule
   ],
   template: `
     <div class="page-container">
@@ -29,6 +32,15 @@ import { Payment } from '../../core/models/payment.model';
         <h1>Caja y Facturación</h1>
       </div>
 
+      <mat-tab-group animationDuration="200ms">
+
+        <!-- TAB 1: Pagos Generales -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">payments</mat-icon>
+            Pagos Generales
+          </ng-template>
+          <div style="padding:24px 0">
       <div class="payments-layout">
         <!-- Búsqueda de Paciente -->
         <mat-card>
@@ -175,6 +187,118 @@ import { Payment } from '../../core/models/payment.model';
           </mat-card-content>
         </mat-card>
       </div>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 2: Pago de Cita -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">event_available</mat-icon>
+            Pago de Cita
+          </ng-template>
+          <div style="padding:24px 0">
+
+            <!-- Success screen -->
+            <mat-card *ngIf="apptPaid" class="appt-success-card">
+              <mat-card-content>
+                <div class="appt-success">
+                  <mat-icon>check_circle</mat-icon>
+                  <div>
+                    <h3>Pago Confirmado</h3>
+                    <p>La cita ha entrado al sistema de cola de atención.</p>
+                    <div class="appt-detail-row"><strong>Paciente:</strong> {{ apptDetails?.patientName }}</div>
+                    <div class="appt-detail-row"><strong>Clínica:</strong> {{ apptDetails?.clinicName }}</div>
+                    <div class="appt-detail-row"><strong>Fecha / Hora:</strong> {{ apptDetails?.scheduledDate }} {{ apptDetails?.scheduledTime }}</div>
+                  </div>
+                </div>
+                <button mat-stroked-button color="primary" style="margin-top:16px" (click)="resetApptPayment()">
+                  <mat-icon>add</mat-icon> Procesar Otro Pago
+                </button>
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Voucher lookup -->
+            <mat-card *ngIf="!apptPaid">
+              <mat-card-header><mat-card-title>Buscar Cita por Voucher</mat-card-title></mat-card-header>
+              <mat-card-content>
+                <form [formGroup]="voucherForm" class="search-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Código de Voucher</mat-label>
+                    <mat-icon matPrefix>confirmation_number</mat-icon>
+                    <input matInput formControlName="code" placeholder="A3X9K2" maxlength="10"
+                           style="text-transform:uppercase">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary"
+                          (click)="lookupVoucher()" [disabled]="voucherForm.invalid || apptLooking">
+                    <mat-spinner *ngIf="apptLooking" diameter="20" style="display:inline-block;margin-right:6px"></mat-spinner>
+                    Buscar
+                  </button>
+                </form>
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Appointment details -->
+            <mat-card *ngIf="apptDetails && !apptPaid" style="margin-top:16px">
+              <mat-card-header><mat-card-title>Detalles de la Cita</mat-card-title></mat-card-header>
+              <mat-card-content>
+                <div class="appt-details-grid">
+                  <div class="appt-detail-row"><mat-icon>person</mat-icon><span><strong>Paciente:</strong> {{ apptDetails.patientName }} ({{ apptDetails.patientCode }})</span></div>
+                  <div class="appt-detail-row"><mat-icon>local_hospital</mat-icon><span><strong>Clínica:</strong> {{ apptDetails.clinicName }}</span></div>
+                  <div class="appt-detail-row"><mat-icon>medical_services</mat-icon><span><strong>Tipo:</strong> {{ apptDetails.type }}</span></div>
+                  <div class="appt-detail-row"><mat-icon>event</mat-icon><span><strong>Fecha / Hora:</strong> {{ apptDetails.scheduledDate }} {{ apptDetails.scheduledTime }}</span></div>
+                  <div class="appt-detail-row appt-amount"><mat-icon>payments</mat-icon><span><strong>Monto:</strong> Q{{ apptDetails.amount }}</span></div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Payment form -->
+            <mat-card *ngIf="apptDetails && !apptPaid" style="margin-top:16px">
+              <mat-card-header><mat-card-title>Datos de Pago con Tarjeta</mat-card-title></mat-card-header>
+              <mat-card-content>
+                <form [formGroup]="cardForm" class="card-form-grid">
+                  <mat-form-field appearance="outline" class="card-full">
+                    <mat-label>Nombre en la Tarjeta *</mat-label>
+                    <mat-icon matPrefix>credit_card</mat-icon>
+                    <input matInput formControlName="cardName" placeholder="JUAN PEREZ">
+                    <mat-error>Campo requerido</mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="card-full">
+                    <mat-label>Número de Tarjeta *</mat-label>
+                    <input matInput formControlName="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19">
+                    <mat-error>Ingrese los 16 dígitos</mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Vencimiento (MM/AA) *</mat-label>
+                    <input matInput formControlName="expiry" placeholder="12/28" maxlength="5">
+                    <mat-error>Formato MM/AA</mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>CVV *</mat-label>
+                    <input matInput formControlName="cvv" placeholder="123" maxlength="4" type="password">
+                    <mat-error>Campo requerido</mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Método</mat-label>
+                    <mat-select formControlName="paymentMethod">
+                      <mat-option value="DEBIT_CARD">Débito</mat-option>
+                      <mat-option value="CREDIT_CARD">Crédito</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </form>
+                <button mat-raised-button color="primary" style="margin-top:8px"
+                        [disabled]="cardForm.invalid || apptConfirming"
+                        (click)="confirmApptPayment()">
+                  <mat-spinner *ngIf="apptConfirming" diameter="20" style="display:inline-block;margin-right:6px"></mat-spinner>
+                  <mat-icon *ngIf="!apptConfirming">lock</mat-icon>
+                  {{ apptConfirming ? 'Procesando...' : 'Confirmar Pago — Q' + apptDetails.amount }}
+                </button>
+              </mat-card-content>
+            </mat-card>
+
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
     </div>
   `,
   styles: [`
@@ -194,6 +318,17 @@ import { Payment } from '../../core/models/payment.model';
     .payment-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9ff; border-radius: 8px; margin-bottom: 8px; }
     .payment-actions { display: flex; align-items: center; gap: 8px; }
     .payment-meta { font-size: 0.85rem; color: #555; }
+    .appt-details-grid { display:flex;flex-direction:column;gap:10px; }
+    .appt-detail-row { display:flex;align-items:center;gap:10px;font-size:0.93rem; }
+    .appt-detail-row mat-icon { font-size:20px;width:20px;height:20px;color:#1565c0; }
+    .appt-amount { font-size:1.1rem; }
+    .card-form-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px; }
+    .card-full { grid-column:1/-1; }
+    .appt-success-card { border-left:4px solid #2e7d32; }
+    .appt-success { display:flex;gap:16px;align-items:flex-start; }
+    .appt-success mat-icon { font-size:48px;width:48px;height:48px;color:#2e7d32; }
+    .appt-success h3 { margin:0 0 6px;color:#1b5e20; }
+    .appt-success p { color:#555;margin:0 0 12px; }
   `]
 })
 export class PaymentsComponent {
@@ -205,16 +340,35 @@ export class PaymentsComponent {
   selectedMethods: Record<number, string> = {};
   columns = ['invoice', 'type', 'amount', 'method', 'date'];
 
+  // Pago de Cita tab
+  voucherForm: FormGroup;
+  cardForm: FormGroup;
+  apptDetails: any = null;
+  apptLooking = false;
+  apptConfirming = false;
+  apptPaid = false;
+
   constructor(
     private fb: FormBuilder,
     private patientService: PatientService,
     private paymentService: PaymentService,
+    private appointmentService: AppointmentService,
     private notification: NotificationService
   ) {
     this.searchForm = this.fb.group({ query: ['', Validators.required] });
     this.paymentForm = this.fb.group({
       type: ['CONSULTATION', Validators.required],
       amount: [null, [Validators.required, Validators.min(0.01)]]
+    });
+    this.voucherForm = this.fb.group({
+      code: ['', [Validators.required, Validators.minLength(6)]]
+    });
+    this.cardForm = this.fb.group({
+      cardName: ['', Validators.required],
+      cardNumber: ['', [Validators.required, Validators.pattern(/^\d{4} ?\d{4} ?\d{4} ?\d{4}$/)]],
+      expiry: ['', [Validators.required, Validators.pattern(/^\d{2}\/\d{2}$/)]],
+      cvv: ['', [Validators.required, Validators.pattern(/^\d{3,4}$/)]],
+      paymentMethod: ['DEBIT_CARD', Validators.required]
     });
   }
 
@@ -288,5 +442,57 @@ export class PaymentsComponent {
         }
       }
     });
+  }
+
+  lookupVoucher(): void {
+    const code = this.voucherForm.value.code?.toUpperCase();
+    this.apptLooking = true;
+    this.apptDetails = null;
+    this.appointmentService.getByVoucherCode(code).subscribe({
+      next: res => {
+        if (res.success) {
+          this.apptDetails = res.data;
+          if (res.data.status === 'CONFIRMED') {
+            this.notification.error('Esta cita ya fue pagada.');
+            this.apptDetails = null;
+          }
+        } else {
+          this.notification.error('Voucher no encontrado');
+        }
+        this.apptLooking = false;
+      },
+      error: () => {
+        this.notification.error('Voucher no encontrado');
+        this.apptLooking = false;
+      }
+    });
+  }
+
+  confirmApptPayment(): void {
+    this.apptConfirming = true;
+    this.appointmentService.confirmPayment(this.apptDetails.id, {
+      paymentMethod: this.cardForm.value.paymentMethod
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.apptPaid = true;
+          this.notification.success('Pago confirmado. La cita entró a la cola.');
+        } else {
+          this.notification.error(res.message || 'Error al confirmar pago');
+        }
+        this.apptConfirming = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al procesar el pago');
+        this.apptConfirming = false;
+      }
+    });
+  }
+
+  resetApptPayment(): void {
+    this.apptPaid = false;
+    this.apptDetails = null;
+    this.voucherForm.reset();
+    this.cardForm.reset({ paymentMethod: 'DEBIT_CARD' });
   }
 }

@@ -9,11 +9,12 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    /** Returns all booked (non-cancelled) slots for a given clinic + date */
+    /** Returns booked (non-cancelled) time slots for a given clinic + date */
     @Query("SELECT a.scheduledTime FROM Appointment a " +
            "WHERE a.clinic.id = :clinicId AND a.scheduledDate = :date " +
            "AND a.status <> :cancelled")
@@ -22,4 +23,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                  @Param("cancelled") AppointmentStatus cancelled);
 
     List<Appointment> findByPatientIdOrderByScheduledDateDescScheduledTimeDesc(Long patientId);
+
+    Optional<Appointment> findByVoucherCode(String voucherCode);
 }

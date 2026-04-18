@@ -38,7 +38,12 @@ public class PatientService {
     public PatientDTO getById(Long id) {
         Patient p = patientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + id));
-        return PatientDTO.from(p);
+        PatientDTO dto = PatientDTO.from(p);
+        if (p.getUserId() != null) {
+            userRepository.findById(p.getUserId())
+                    .ifPresent(u -> dto.setUsername(u.getUsername()));
+        }
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +87,7 @@ public class PatientService {
                 .email(req.getEmail())
                 .birthDate(req.getBirthDate())
                 .insurance(insurance)
+                .insuranceNumber(req.getInsuranceNumber())
                 .build();
 
         // ── Crear cuenta de portal ──────────────────────────────────────────────
@@ -157,6 +163,7 @@ public class PatientService {
         } else {
             patient.setInsurance(null);
         }
+        patient.setInsuranceNumber(req.getInsuranceNumber());
 
         return PatientDTO.from(patientRepository.save(patient));
     }

@@ -18,18 +18,12 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
-    /**
-     * Returns available (not yet booked) time slots for a given clinic and date.
-     * Used by the patient portal calendar to disable already-taken slots.
-     */
     @GetMapping("/available-slots")
     public ResponseEntity<ApiResponse<List<String>>> getAvailableSlots(
-            @RequestParam Long clinicId,
-            @RequestParam String date) {
+            @RequestParam Long clinicId, @RequestParam String date) {
         try {
-            LocalDate localDate = LocalDate.parse(date);
-            List<String> slots = appointmentService.getAvailableSlots(clinicId, localDate);
-            return ResponseEntity.ok(ApiResponse.ok(slots));
+            return ResponseEntity.ok(ApiResponse.ok(
+                    appointmentService.getAvailableSlots(clinicId, LocalDate.parse(date))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -38,24 +32,34 @@ public class AppointmentController {
     @PostMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> book(@RequestBody BookRequest req) {
         try {
-            LocalDate date = LocalDate.parse(req.getScheduledDate());
-            Map<String, Object> result = appointmentService.book(
+            LocalDate date = (req.getScheduledDate() != null && !req.getScheduledDate().isBlank())
+                    ? LocalDate.parse(req.getScheduledDate()) : LocalDate.now();
+        Map<String, Object> result = appointmentService.book(
                     req.getPatientId(), req.getClinicId(), req.getType(),
                     date, req.getScheduledTime(), req.getNotes());
-            return ResponseEntity.status(201).body(ApiResponse.ok("Cita agendada", result));
+            return ResponseEntity.status(201).body(ApiResponse.ok("Cita agendada. Presente el voucher en Caja.", result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
+    /** Cashier looks up appointment by voucher code before payment */
+    @GetMapping("/voucher/{code}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getByVoucher(@PathVariable String code) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(appointmentService.getByVoucherCode(code)));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Cashier confirms payment → ticket enters queue */
     @PostMapping("/{id}/confirm-payment")
     public ResponseEntity<ApiResponse<Map<String, Object>>> confirmPayment(
-            @PathVariable Long id,
-            @RequestBody ConfirmPaymentRequest req) {
+            @PathVariable Long id, @RequestBody ConfirmPaymentRequest req) {
         try {
-            Map<String, Object> result = appointmentService.confirmPayment(
-                    id, req.getPaymentMethod(), req.getAmount());
-            return ResponseEntity.ok(ApiResponse.ok("Pago confirmado", result));
+            return ResponseEntity.ok(ApiResponse.ok("Pago confirmado. El turno ha sido generado.",
+                    appointmentService.confirmPayment(id, req.getPaymentMethod())));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -67,8 +71,7 @@ public class AppointmentController {
         return ResponseEntity.ok(ApiResponse.ok(appointmentService.getByPatient(patientId)));
     }
 
-    @Data
-    static class BookRequest {
+    @Data static class BookRequest {
         private Long patientId;
         private Long clinicId;
         private String type;
@@ -77,8 +80,7 @@ public class AppointmentController {
         private String notes;
     }
 
-    @Data
-    static class ConfirmPaymentRequest {
+    @Data static class ConfirmPaymentRequest {
         private String paymentMethod;
         private String amount;
     }

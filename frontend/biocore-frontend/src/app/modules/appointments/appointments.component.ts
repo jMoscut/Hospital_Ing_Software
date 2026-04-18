@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,12 +11,10 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { PatientService } from '../../shared/services/patient.service';
 import { ClinicService, TicketService } from '../../shared/services/ticket.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Clinic, Ticket } from '../../core/models/ticket.model';
-import { Patient } from '../../core/models/patient.model';
 
 const NOTIF_KEY = 'biocore_notification_settings';
 
@@ -32,7 +30,7 @@ const NOTIF_KEY = 'biocore_notification_settings';
   template: `
     <div class="page-container">
       <div class="page-header">
-        <h1><mat-icon style="vertical-align:middle;margin-right:8px">calendar_month</mat-icon>Agendación de Citas</h1>
+        <h1><mat-icon style="vertical-align:middle;margin-right:8px">queue</mat-icon>Monitoreo de Cola</h1>
         <div class="header-actions">
           <button mat-stroked-button color="primary" (click)="openCallScreen()" matTooltip="Abrir pantalla de sala de espera en nueva ventana">
             <mat-icon>tv</mat-icon> Pantalla de Sala
@@ -144,107 +142,7 @@ const NOTIF_KEY = 'biocore_notification_settings';
           </div>
         </mat-tab>
 
-        <!-- TAB 2: Agendar nueva cita -->
-        <mat-tab *ngIf="canManage()">
-          <ng-template mat-tab-label>
-            <mat-icon class="tab-icon">add_circle</mat-icon>
-            Agendar Cita
-          </ng-template>
-          <div class="tab-content">
-            <mat-card>
-              <mat-card-header>
-                <mat-icon mat-card-avatar>confirmation_number</mat-icon>
-                <mat-card-title>Nueva Cita Presencial</mat-card-title>
-                <mat-card-subtitle>CU 03 · RN-CT01: selección obligatoria de clínica</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-
-                <h3>1. Buscar Paciente</h3>
-                <div class="search-row">
-                  <mat-form-field appearance="outline" class="search-field">
-                    <mat-label>Nombre, DPI o código de paciente</mat-label>
-                    <mat-icon matPrefix>search</mat-icon>
-                    <input matInput [(ngModel)]="searchQuery" (keyup.enter)="searchPatient()"
-                           placeholder="Ej: Juan García / 1234567890123 / PAT-0001"
-                           [ngModelOptions]="{standalone: true}">
-                  </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="searchPatient()" [disabled]="searching">
-                    <mat-spinner *ngIf="searching" diameter="20"></mat-spinner>
-                    <mat-icon *ngIf="!searching">search</mat-icon>
-                    Buscar
-                  </button>
-                </div>
-
-                <div class="search-results" *ngIf="searchResults.length > 0">
-                  <div class="result-item" *ngFor="let p of searchResults"
-                       [class.selected]="selectedPatient?.id === p.id"
-                       (click)="selectPatient(p)">
-                    <mat-icon>person</mat-icon>
-                    <div>
-                      <div class="result-name">{{ p.firstName }} {{ p.lastName }}</div>
-                      <div class="result-meta">{{ p.patientCode }} · {{ p.phone || 'Sin teléfono' }}</div>
-                    </div>
-                    <mat-icon *ngIf="selectedPatient?.id === p.id" class="check-icon">check_circle</mat-icon>
-                  </div>
-                </div>
-                <div class="no-results" *ngIf="searchResults.length === 0 && searchQuery && !searching">
-                  <mat-icon>search_off</mat-icon>
-                  <span>Sin resultados. <strong>Registre al paciente primero</strong> en Recepción (módulo Personal de Salud).</span>
-                </div>
-
-                <ng-container *ngIf="selectedPatient">
-                  <div class="selected-patient-box">
-                    <mat-icon>account_circle</mat-icon>
-                    <div>
-                      <strong>{{ selectedPatient.firstName }} {{ selectedPatient.lastName }}</strong>
-                      <br><small>{{ selectedPatient.patientCode }}</small>
-                    </div>
-                    <button mat-icon-button (click)="selectedPatient = null; searchResults = []"
-                            matTooltip="Cambiar paciente">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-
-                  <h3 style="margin-top:20px">2. Configurar Cita</h3>
-                  <form [formGroup]="appointmentForm" class="appt-form">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Clínica de Destino * [RN-CT01]</mat-label>
-                      <mat-icon matPrefix>local_hospital</mat-icon>
-                      <mat-select formControlName="clinicId">
-                        <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
-                      </mat-select>
-                      <mat-error>Selección de clínica obligatoria</mat-error>
-                    </mat-form-field>
-                    <mat-form-field appearance="outline">
-                      <mat-label>Tipo de Consulta</mat-label>
-                      <mat-select formControlName="type">
-                        <mat-option value="CONSULTA">Consulta General</mat-option>
-                        <mat-option value="CONTROL">Control</mat-option>
-                        <mat-option value="ESPECIALIDAD">Especialidad</mat-option>
-                        <mat-option value="EMERGENCIA">Emergencia</mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Notas adicionales</mat-label>
-                      <textarea matInput formControlName="notes" rows="2"></textarea>
-                    </mat-form-field>
-                    <div class="full-width">
-                      <button mat-raised-button color="primary"
-                              [disabled]="appointmentForm.invalid || submitting"
-                              (click)="createAppointment()">
-                        <mat-spinner *ngIf="submitting" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="!submitting">confirmation_number</mat-icon>
-                        {{ submitting ? 'Agendando...' : 'Generar Turno' }}
-                      </button>
-                    </div>
-                  </form>
-                </ng-container>
-              </mat-card-content>
-            </mat-card>
-          </div>
-        </mat-tab>
-
-        <!-- TAB 3: Completados del día -->
+        <!-- TAB 2: Completados del día -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">task_alt</mat-icon>
@@ -353,7 +251,6 @@ const NOTIF_KEY = 'biocore_notification_settings';
   `]
 })
 export class AppointmentsComponent implements OnInit, OnDestroy {
-  appointmentForm!: FormGroup;
   clinics: Clinic[] = [];
   activeTickets: Ticket[] = [];
   filteredActive: Ticket[] = [];
@@ -363,11 +260,6 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   callClinicId = 0;
   calling = false;
 
-  searchQuery = '';
-  searchResults: Patient[] = [];
-  selectedPatient: Patient | null = null;
-  searching = false;
-  submitting = false;
 
   private refreshInterval: any;
   private lastCalledIds = new Set<number>();
@@ -376,18 +268,11 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private ticketService: TicketService,
     private clinicService: ClinicService,
-    private patientService: PatientService,
     private authService: AuthService,
     private notification: NotificationService
   ) {}
 
   ngOnInit(): void {
-    this.appointmentForm = this.fb.group({
-      clinicId: [null, Validators.required],
-      type:     ['CONSULTA'],
-      notes:    ['']
-    });
-
     this.clinicService.getAll().subscribe(res => { if (res.success) this.clinics = res.data; });
     this.loadAll();
     // Auto-refresh every 20 seconds
@@ -498,41 +383,6 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
 
   openCallScreen(): void {
     window.open('/call-screen', '_blank', 'width=1280,height=720');
-  }
-
-  searchPatient(): void {
-    if (!this.searchQuery.trim()) return;
-    this.searching = true;
-    this.patientService.search(this.searchQuery).subscribe({
-      next: res => { if (res.success) this.searchResults = res.data; this.searching = false; },
-      error: () => { this.searching = false; }
-    });
-  }
-
-  selectPatient(p: Patient): void {
-    this.selectedPatient = p;
-    this.searchResults = [];
-  }
-
-  createAppointment(): void {
-    if (!this.selectedPatient) return;
-    this.submitting = true;
-    const { clinicId, type, notes } = this.appointmentForm.value;
-    this.ticketService.create({ patientId: this.selectedPatient.id, clinicId, type, notes }).subscribe({
-      next: res => {
-        if (res.success) {
-          this.notification.success(`Turno ${res.data.ticketNumber} generado para ${res.data.patientName}`);
-          this.selectedPatient = null;
-          this.searchQuery = '';
-          this.appointmentForm.reset({ type: 'CONSULTA' });
-          this.loadAll();
-        } else {
-          this.notification.error(res.message || 'Error al generar turno');
-        }
-        this.submitting = false;
-      },
-      error: err => { this.notification.error(err.error?.message || 'Error al crear turno'); this.submitting = false; }
-    });
   }
 
   markAbsent(ticketId: number): void {

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -36,14 +37,23 @@ public class Appointment {
     @Column(name = "scheduled_date", nullable = false)
     private LocalDate scheduledDate;
 
-    /** HH:mm — one of the 11 available hour slots */
-    @Column(name = "scheduled_time", nullable = false, length = 5)
+    /** HH:mm for scheduled appointments; null for walk-in (immediate) */
+    @Column(name = "scheduled_time", nullable = true, length = 10)
     private String scheduledTime;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private AppointmentStatus status = AppointmentStatus.PENDING_PAYMENT;
+
+    /** Short unique code shown on the physical voucher, e.g. "A3X9K2" */
+    @Column(name = "voucher_code", unique = true, length = 10)
+    private String voucherCode;
+
+    /** Fee charged for this appointment */
+    @Column(precision = 8, scale = 2)
+    @Builder.Default
+    private BigDecimal amount = BigDecimal.valueOf(150.00);
 
     @Column(columnDefinition = "TEXT")
     private String notes;

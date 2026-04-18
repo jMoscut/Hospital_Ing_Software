@@ -37,7 +37,7 @@ import {
   AppointmentService,
   ClinicService,
   TicketService
-} from "./chunk-VSICXZFN.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   PatientService
 } from "./chunk-SM4IRFQU.js";
@@ -1777,4 +1777,4 @@ var MisCitasComponent = class _MisCitasComponent {
 export {
   MisCitasComponent
 };
-//# sourceMappingURL=chunk-S2LHI3WU.js.map
+//# sourceMappingURL=chunk-Z6VUBYEH.js.map

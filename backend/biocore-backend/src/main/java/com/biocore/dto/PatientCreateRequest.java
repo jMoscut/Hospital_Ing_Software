@@ -21,6 +21,7 @@ public class PatientCreateRequest {
     private String emergencyPhone;
     private String email;
     private Long insuranceId;
+    private String insuranceNumber;
 
     /** FA02 CU 00 / FA01 CU 01: Fecha de nacimiento */
     private LocalDate birthDate;

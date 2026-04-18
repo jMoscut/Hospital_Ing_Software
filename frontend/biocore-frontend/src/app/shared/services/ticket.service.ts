@@ -80,6 +80,10 @@ export class AppointmentService {
   getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(`${this.url}/patient/${patientId}`);
   }
+
+  getByVoucherCode(code: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/voucher/${code}`);
+  }
 }
 
 @Injectable({ providedIn: 'root' })

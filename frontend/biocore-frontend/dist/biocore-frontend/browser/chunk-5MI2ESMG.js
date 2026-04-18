@@ -34,7 +34,7 @@ import {
 } from "./chunk-PA55PL57.js";
 import {
   ClinicService
-} from "./chunk-VSICXZFN.js";
+} from "./chunk-ELYEA2RZ.js";
 import {
   UserService
 } from "./chunk-LDLLK6DA.js";
@@ -1729,4 +1729,4 @@ var UserManagementComponent = class _UserManagementComponent {
 export {
   UserManagementComponent
 };
-//# sourceMappingURL=chunk-HYRJCGQ6.js.map
+//# sourceMappingURL=chunk-5MI2ESMG.js.map

@@ -326,40 +326,41 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   loadQueue(): void {
-    if (!this.assignedClinicId) {
-      this.ticketService.getAll().subscribe(res => {
-        if (res.success && res.data.length > 0) {
-          const myTicket = res.data.find((t: Ticket) =>
-            (t.status === 'IN_CONSULTATION' || t.status === 'BEING_CALLED') &&
-            t.doctorId === this.authService.getUserId()
-          );
-          if (myTicket) {
-            this.assignedClinicId = myTicket.clinicId;
-            this.assignedClinicName = myTicket.clinicName;
-            if (!this.currentTicket || this.currentTicket.id !== myTicket.id) {
-              this.currentTicket = myTicket;
-              this.loadCurrentVitals();
-            } else if (this.currentTicket.status !== myTicket.status) {
-              // Status changed (e.g. health staff set IN_CONSULTATION)
-              this.currentTicket = myTicket;
-              this.loadCurrentVitals();
-            }
-          }
-          const firstClinic = res.data[0]?.clinicId;
-          if (!this.assignedClinicId && firstClinic) {
-            this.assignedClinicId = firstClinic;
-            this.assignedClinicName = res.data[0]?.clinicName;
-          }
-          if (this.assignedClinicId) this.loadClinicQueue();
+    this.ticketService.getAll().subscribe(res => {
+      if (!res.success) return;
+
+      const myId = this.authService.getUserId();
+      const myTicket = res.data.find((t: Ticket) =>
+        (t.status === 'IN_CONSULTATION' || t.status === 'BEING_CALLED') &&
+        t.doctorId === myId
+      );
+
+      if (myTicket) {
+        if (!this.assignedClinicId) {
+          this.assignedClinicId = myTicket.clinicId;
+          this.assignedClinicName = myTicket.clinicName;
         }
-      });
-    } else {
-      this.loadClinicQueue();
-      // Refresh vitals when ticket transitions to IN_CONSULTATION
+
+        const isNew     = !this.currentTicket || this.currentTicket.id !== myTicket.id;
+        const changed   = this.currentTicket && this.currentTicket.status !== myTicket.status;
+
+        if (isNew || changed) {
+          this.currentTicket = myTicket;
+          this.currentVitals = null;
+          this.loadCurrentVitals();
+        }
+      } else if (!this.assignedClinicId && res.data.length > 0) {
+        this.assignedClinicId = res.data[0]?.clinicId;
+        this.assignedClinicName = res.data[0]?.clinicName;
+      }
+
+      if (this.assignedClinicId) this.loadClinicQueue();
+
+      // Keep retrying vitals until they arrive
       if (this.currentTicket && !this.currentVitals) {
         this.loadCurrentVitals();
       }
-    }
+    });
   }
 
   loadClinicQueue(): void {

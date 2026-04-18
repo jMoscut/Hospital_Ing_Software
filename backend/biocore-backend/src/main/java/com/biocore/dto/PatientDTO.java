@@ -28,11 +28,13 @@ public class PatientDTO {
     private Long insuranceId;
     private String insuranceName;
     private Double discountPercentage;
+    private String insuranceNumber;
     private boolean active;
     private LocalDateTime createdAt;
     /** true si el paciente tiene cuenta de portal (rol PATIENT) */
     private boolean hasAccount;
     private Long userId;
+    private String username;
     /**
      * Solo se popula al crear una cuenta nueva con contraseña temporal (CU 01 FA01).
      * No se persiste — solo para mostrar al personal en el momento del registro.
@@ -57,6 +59,7 @@ public class PatientDTO {
                 .hasAccount(p.getUserId() != null)
                 .userId(p.getUserId())
                 .build();
+        dto.setInsuranceNumber(p.getInsuranceNumber());
         if (p.getInsurance() != null) {
             dto.setInsuranceId(p.getInsurance().getId());
             dto.setInsuranceName(p.getInsurance().getName().name());
