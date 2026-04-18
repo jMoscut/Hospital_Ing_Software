@@ -92,4 +92,8 @@ export class InsuranceService {
   getAll(): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/insurances`);
   }
+
+  getAllPublic(): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/public/insurances`);
+  }
 }

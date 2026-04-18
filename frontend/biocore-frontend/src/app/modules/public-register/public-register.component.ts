@@ -13,6 +13,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSelectModule } from '@angular/material/select';
 import { environment } from '../../../environments/environment';
+import { InsuranceService } from '../../shared/services/payment.service';
 
 @Component({
   selector: 'app-public-register',
@@ -24,7 +25,6 @@ import { environment } from '../../../environments/environment';
     MatProgressSpinnerModule, MatToolbarModule, MatSelectModule
   ],
   template: `
-    <!-- Header público -->
     <mat-toolbar class="pub-header">
       <mat-icon>local_hospital</mat-icon>
       <span class="brand">BioCore Medical</span>
@@ -54,9 +54,8 @@ import { environment } from '../../../environments/environment';
           <div class="credentials-box">
             <p><strong>Sus credenciales de acceso al portal:</strong></p>
             <p>Usuario: <code>{{ registeredUsername }}</code></p>
-            <p style="font-size:0.85rem;color:#757575">Se enviaron también a su correo electrónico.</p>
+            <p style="font-size:0.85rem;color:#757575">Al llegar al hospital, presente su código en recepción para recibir su turno.</p>
           </div>
-          <p class="hint">Al llegar al hospital, presente su código en recepción para que le asignen su turno.</p>
           <div class="success-actions">
             <button mat-raised-button color="primary" routerLink="/login">
               <mat-icon>login</mat-icon> Iniciar Sesión
@@ -67,48 +66,15 @@ import { environment } from '../../../environments/environment';
           </div>
         </mat-card>
 
-        <!-- Formulario FA02 -->
+        <!-- Stepper de registro -->
         <mat-card *ngIf="!registered">
           <mat-card-content>
             <mat-stepper [linear]="true" #stepper>
 
-              <!-- Paso 1: Verificar DPI -->
-              <mat-step [stepControl]="dpiForm" label="Verificación">
-                <form [formGroup]="dpiForm">
-                  <h3>Paso 1: Ingrese su DPI</h3>
-                  <p class="hint-text">Verificaremos si ya tiene un registro. El DPI debe tener exactamente 13 dígitos.</p>
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>DPI (13 dígitos numéricos)</mat-label>
-                    <mat-icon matPrefix>badge</mat-icon>
-                    <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
-                    <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
-                  </mat-form-field>
-
-                  <div class="step-actions">
-                    <button mat-raised-button color="primary"
-                            [disabled]="dpiForm.invalid || checking"
-                            (click)="checkDpi(stepper)">
-                      <mat-spinner *ngIf="checking" diameter="20"></mat-spinner>
-                      <mat-icon *ngIf="!checking">search</mat-icon>
-                      {{ checking ? 'Verificando...' : 'Verificar DPI' }}
-                    </button>
-                  </div>
-
-                  <div class="already-registered" *ngIf="alreadyRegistered">
-                    <mat-icon>check_circle</mat-icon>
-                    <div>
-                      <strong>Ya tiene registro en nuestro sistema</strong>
-                      <br><small>Código: {{ patientCode }}</small>
-                    </div>
-                    <button mat-raised-button color="accent" routerLink="/login">Iniciar sesión</button>
-                  </div>
-                </form>
-              </mat-step>
-
-              <!-- Paso 2: Datos personales -->
+              <!-- Paso 1: Datos Personales -->
               <mat-step [stepControl]="dataForm" label="Datos Personales">
                 <form [formGroup]="dataForm">
-                  <h3>Paso 2: Datos Personales</h3>
+                  <h3>Paso 1: Datos Personales</h3>
                   <div class="form-grid">
                     <mat-form-field appearance="outline">
                       <mat-label>Nombres *</mat-label>
@@ -134,35 +100,48 @@ import { environment } from '../../../environments/environment';
                       <mat-label>Correo Electrónico *</mat-label>
                       <mat-icon matPrefix>email</mat-icon>
                       <input matInput formControlName="email" type="email">
-                      <mat-hint>Se usará para notificaciones de resultados de laboratorio</mat-hint>
-                      <mat-error>Correo inválido</mat-error>
+                      <mat-hint>Recibirá notificaciones de su cita aquí</mat-hint>
+                      <mat-error>Correo inválido o requerido</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline" class="full-width">
                       <mat-label>Dirección</mat-label>
+                      <mat-icon matPrefix>home</mat-icon>
                       <input matInput formControlName="address">
                     </mat-form-field>
                     <mat-form-field appearance="outline">
-                      <mat-label>Contacto de Emergencia</mat-label>
-                      <input matInput formControlName="emergencyContact">
+                      <mat-label>DPI (13 dígitos) *</mat-label>
+                      <mat-icon matPrefix>badge</mat-icon>
+                      <input matInput formControlName="dpi" maxlength="13" placeholder="0000000000000">
+                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
-                      <mat-label>Teléfono de Emergencia</mat-label>
-                      <input matInput formControlName="emergencyPhone">
+                      <mat-label>Número de Seguro (opcional)</mat-label>
+                      <mat-icon matPrefix>health_and_safety</mat-icon>
+                      <input matInput formControlName="insuranceNumber">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Aseguradora (opcional)</mat-label>
+                      <mat-icon matPrefix>business</mat-icon>
+                      <mat-select formControlName="insuranceId">
+                        <mat-option [value]="null">Sin aseguradora</mat-option>
+                        <mat-option *ngFor="let ins of insurances" [value]="ins.id">
+                          {{ ins.name }}
+                        </mat-option>
+                      </mat-select>
                     </mat-form-field>
                   </div>
                   <div class="step-actions">
-                    <button mat-button matStepperPrevious>← Anterior</button>
                     <button mat-raised-button color="primary" matStepperNext
                             [disabled]="dataForm.invalid">Continuar →</button>
                   </div>
                 </form>
               </mat-step>
 
-              <!-- Paso 3: Credenciales de acceso (RN-P001) -->
+              <!-- Paso 2: Credenciales -->
               <mat-step [stepControl]="credentialsForm" label="Credenciales">
                 <form [formGroup]="credentialsForm">
-                  <h3>Paso 3: Crear Credenciales de Acceso al Portal</h3>
-                  <p class="hint-text">Con estas credenciales podrá ingresar al portal para ver sus citas, recetas y resultados de laboratorio.</p>
+                  <h3>Paso 2: Crear Credenciales de Acceso</h3>
+                  <p class="hint-text">Con estas credenciales podrá ingresar al portal para ver sus citas, recetas y resultados de laboratorio, y también para agendar citas en línea.</p>
                   <div class="form-grid">
                     <mat-form-field appearance="outline">
                       <mat-label>Nombre de Usuario *</mat-label>
@@ -190,17 +169,26 @@ import { environment } from '../../../environments/environment';
                 </form>
               </mat-step>
 
-              <!-- Paso 4: Confirmar -->
+              <!-- Paso 3: Confirmar -->
               <mat-step label="Confirmar">
-                <h3>Paso 4: Confirme su registro</h3>
+                <h3>Paso 3: Confirme su registro</h3>
                 <div class="confirm-data">
-                  <div class="confirm-row"><span class="label">DPI:</span><span>{{ dpiForm.value.dpi }}</span></div>
                   <div class="confirm-row">
                     <span class="label">Nombre:</span>
                     <span>{{ dataForm.value.firstName }} {{ dataForm.value.lastName }}</span>
                   </div>
+                  <div class="confirm-row"><span class="label">DPI:</span><span>{{ dataForm.value.dpi }}</span></div>
                   <div class="confirm-row"><span class="label">Correo:</span><span>{{ dataForm.value.email }}</span></div>
                   <div class="confirm-row"><span class="label">Teléfono:</span><span>{{ dataForm.value.phone || '—' }}</span></div>
+                  <div class="confirm-row" *ngIf="dataForm.value.birthDate">
+                    <span class="label">Nacimiento:</span><span>{{ dataForm.value.birthDate }}</span>
+                  </div>
+                  <div class="confirm-row" *ngIf="dataForm.value.insuranceId">
+                    <span class="label">Aseguradora:</span>
+                    <span>{{ getInsuranceName(dataForm.value.insuranceId) }}
+                      <span *ngIf="dataForm.value.insuranceNumber"> — {{ dataForm.value.insuranceNumber }}</span>
+                    </span>
+                  </div>
                   <div class="confirm-row"><span class="label">Usuario:</span><span>{{ credentialsForm.value.username }}</span></div>
                 </div>
 
@@ -248,15 +236,10 @@ import { environment } from '../../../environments/environment';
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
     .step-actions { display: flex; gap: 12px; margin-top: 16px; }
 
-    .already-registered {
-      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-      background: #e3f2fd; padding: 16px; border-radius: 8px; color: #1565c0; margin-top: 16px;
-    }
-
     .confirm-data { background: #f8f9ff; padding: 20px; border-radius: 8px; margin-bottom: 16px; }
     .confirm-row { display: flex; gap: 16px; padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
     .confirm-row:last-child { border-bottom: none; }
-    .label { font-weight: 600; min-width: 100px; color: #555; }
+    .label { font-weight: 600; min-width: 110px; color: #555; }
 
     .success-card { text-align: center; padding: 48px 32px; }
     .success-icon { font-size: 80px; width: 80px; height: 80px; color: #2e7d32; margin-bottom: 16px; }
@@ -271,41 +254,39 @@ import { environment } from '../../../environments/environment';
       padding: 16px; margin: 16px 0; text-align: left;
     }
     .credentials-box code { background: #e8f5f3; color: #1D6C61; padding: 2px 8px; border-radius: 4px; font-size: 1rem; }
-    .hint { color: #757575; font-size: 0.9rem; max-width: 440px; margin: 12px auto 24px; }
-    .success-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-
+    .success-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
     .error-msg { display: flex; align-items: center; gap: 8px; color: #c62828; margin-top: 16px; }
   `]
 })
 export class PublicRegisterComponent implements OnInit {
-  dpiForm!: FormGroup;
   dataForm!: FormGroup;
   credentialsForm!: FormGroup;
 
-  checking = false;
   submitting = false;
   registered = false;
-  alreadyRegistered = false;
   patientCode = '';
   registeredUsername = '';
   errorMsg = '';
   hidePassword = true;
+  insurances: any[] = [];
 
-  constructor(private fb: FormBuilder, private http: HttpClient) {}
+  constructor(private fb: FormBuilder, private http: HttpClient, private insuranceService: InsuranceService) {}
 
   ngOnInit(): void {
-    this.dpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+    this.insuranceService.getAllPublic().subscribe({
+      next: res => { if (res.success) this.insurances = res.data; },
+      error: () => {}
     });
     this.dataForm = this.fb.group({
-      firstName: ['', Validators.required],
-      lastName: ['', Validators.required],
-      birthDate: [''],
-      phone: [''],
-      email: ['', [Validators.required, Validators.email]],
-      address: [''],
-      emergencyContact: [''],
-      emergencyPhone: ['']
+      firstName:       ['', Validators.required],
+      lastName:        ['', Validators.required],
+      birthDate:       [''],
+      phone:           [''],
+      email:           ['', [Validators.required, Validators.email]],
+      address:         [''],
+      dpi:             ['', [Validators.required, Validators.pattern(/^\d{13}$/)]],
+      insuranceNumber: [''],
+      insuranceId:     [null]
     });
     this.credentialsForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^\S+$/)]],
@@ -317,34 +298,14 @@ export class PublicRegisterComponent implements OnInit {
     });
   }
 
-  checkDpi(stepper: any): void {
-    const dpi = this.dpiForm.value.dpi;
-    this.checking = true;
-    this.alreadyRegistered = false;
-    this.http.get<any>(`${environment.apiUrl}/public/patients/dpi/${dpi}`).subscribe({
-      next: res => {
-        if (res.success && res.data) {
-          this.alreadyRegistered = true;
-          this.patientCode = res.data.patientCode;
-        } else {
-          stepper.next();
-        }
-        this.checking = false;
-      },
-      error: () => {
-        // 404 = paciente no existe → continuar con registro
-        this.alreadyRegistered = false;
-        this.checking = false;
-        stepper.next();
-      }
-    });
+  getInsuranceName(id: number): string {
+    return this.insurances.find(i => i.id === id)?.name ?? '—';
   }
 
   submit(): void {
     this.submitting = true;
     this.errorMsg = '';
     const payload = {
-      dpi: this.dpiForm.value.dpi,
       ...this.dataForm.value,
       username: this.credentialsForm.value.username,
       password: this.credentialsForm.value.password

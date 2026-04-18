@@ -2,6 +2,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\config\DataInitializer.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\config\SchemaMigrationRunner.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\config\SecurityConfig.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\AppointmentController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\AuthController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\ClinicController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\EmergencyController.java
@@ -34,6 +35,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\UserCreateRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\UserDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\VitalSignsRequest.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Appointment.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Clinic.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\DoctorClinicAssignment.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Document.java
@@ -49,6 +51,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Ticket.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\User.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\VitalSigns.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\AppointmentStatus.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\ClinicType.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\InsuranceName.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\LabOrderStatus.java
@@ -60,6 +63,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\SampleType.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\TicketPriority.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\TicketStatus.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\AppointmentRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\ClinicRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\DoctorClinicAssignmentRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\DocumentRepository.java
@@ -79,6 +83,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\security\JwtFilter.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\security\JwtUtil.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\security\UserDetailsServiceImpl.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\AppointmentService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\AuthService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\EmailService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\EmergencyService.java

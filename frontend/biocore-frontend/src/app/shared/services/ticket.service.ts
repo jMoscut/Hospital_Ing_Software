@@ -60,6 +60,29 @@ export class ClinicService {
 }
 
 @Injectable({ providedIn: 'root' })
+export class AppointmentService {
+  private url = `${environment.apiUrl}/appointments`;
+
+  constructor(private http: HttpClient) {}
+
+  getAvailableSlots(date: string, clinicId: number): Observable<ApiResponse<string[]>> {
+    return this.http.get<ApiResponse<string[]>>(`${this.url}/available-slots?date=${date}&clinicId=${clinicId}`);
+  }
+
+  book(data: any): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(this.url, data);
+  }
+
+  confirmPayment(appointmentId: number, data: any): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.url}/${appointmentId}/confirm-payment`, data);
+  }
+
+  getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/patient/${patientId}`);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
 export class VitalSignsService {
   private url = `${environment.apiUrl}/vital-signs`;
 

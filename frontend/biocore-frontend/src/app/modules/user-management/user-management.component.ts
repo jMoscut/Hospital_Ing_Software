@@ -96,20 +96,24 @@ function defaultSettings(): NotifSettings {
                     <mat-select formControlName="role">
                       <mat-option value="ADMIN">Administrador</mat-option>
                       <mat-option value="DOCTOR">Médico</mat-option>
-                      <mat-option value="NURSE">Enfermero/a</mat-option>
+                      <mat-option value="HEALTH_STAFF">Personal de Salud / Enfermería</mat-option>
                       <mat-option value="LAB_TECHNICIAN">Técnico de Laboratorio</mat-option>
                       <mat-option value="PHARMACIST">Farmacéutico/a</mat-option>
                       <mat-option value="CASHIER">Cajero/a</mat-option>
-                      <mat-option value="HEALTH_STAFF">Personal de Salud</mat-option>
                     </mat-select>
                     <mat-error>Requerido</mat-error>
                   </mat-form-field>
+                  <!-- Auto-assignment info for non-doctor roles -->
+                  <div class="auto-area-info" *ngIf="getAutoArea(userForm.value.role) as area">
+                    <mat-icon>info_outline</mat-icon>
+                    Este rol se asigna automáticamente a: <strong>{{ area }}</strong>
+                  </div>
                   <mat-form-field appearance="outline" *ngIf="userForm.value.role === 'DOCTOR'">
                     <mat-label>Especialidad</mat-label>
                     <input matInput formControlName="specialty">
                   </mat-form-field>
                   <mat-form-field appearance="outline"
-                    *ngIf="['DOCTOR','NURSE','LAB_TECHNICIAN','HEALTH_STAFF'].includes(userForm.value.role)">
+                    *ngIf="['DOCTOR','LAB_TECHNICIAN','HEALTH_STAFF'].includes(userForm.value.role)">
                     <mat-label>N° Colegiado {{ isCollegiateRequired() ? '*' : '(opcional)' }}</mat-label>
                     <input matInput formControlName="collegiateNumber">
                     <mat-error>Requerido para este rol (RN-M05: debe ser único)</mat-error>
@@ -159,14 +163,20 @@ function defaultSettings(): NotifSettings {
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="clinic">
-                    <th mat-header-cell *matHeaderCellDef>Clínica Asignada</th>
+                    <th mat-header-cell *matHeaderCellDef>Área / Clínica</th>
                     <td mat-cell *matCellDef="let u">
-                      <span *ngIf="u.assignedClinic" class="clinic-badge">
+                      <!-- Doctor with assigned clinic -->
+                      <span *ngIf="u.role === 'DOCTOR' && u.assignedClinic" class="clinic-badge">
                         <mat-icon style="font-size:14px;vertical-align:middle">local_hospital</mat-icon>
                         {{ u.assignedClinic }}
                       </span>
-                      <span *ngIf="!u.assignedClinic && u.role !== 'DOCTOR'" style="color:#bbb">—</span>
-                      <span *ngIf="!u.assignedClinic && u.role === 'DOCTOR'" class="unassigned-badge">Sin asignar</span>
+                      <!-- Doctor without clinic -->
+                      <span *ngIf="u.role === 'DOCTOR' && !u.assignedClinic" class="unassigned-badge">Sin asignar</span>
+                      <!-- Non-doctor: auto area -->
+                      <span *ngIf="u.role !== 'DOCTOR'" class="area-badge">
+                        <mat-icon style="font-size:13px;vertical-align:middle">place</mat-icon>
+                        {{ getAutoArea(u.role) }}
+                      </span>
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="actions">
@@ -322,11 +332,18 @@ function defaultSettings(): NotifSettings {
             </mat-select>
           </mat-form-field>
         </mat-card-content>
-        <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="assignClinic()" [disabled]="!selectedClinicId">
-            <mat-icon>check</mat-icon> Confirmar
+        <mat-card-actions style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:8px">
+            <button mat-raised-button color="primary" (click)="assignClinic()" [disabled]="!selectedClinicId || assigning">
+              <mat-icon>check</mat-icon> {{ assigning ? 'Guardando...' : 'Confirmar' }}
+            </button>
+            <button mat-button (click)="assignDialogOpen = false">Cancelar</button>
+          </div>
+          <button mat-stroked-button color="warn" *ngIf="selectedUser?.assignedClinic"
+                  (click)="unassignClinic()" [disabled]="assigning"
+                  title="Quitar al médico de su clínica actual">
+            <mat-icon>location_off</mat-icon> Desasignar
           </button>
-          <button mat-button (click)="assignDialogOpen = false">Cancelar</button>
         </mat-card-actions>
       </mat-card>
     </div>
@@ -353,6 +370,8 @@ function defaultSettings(): NotifSettings {
     .clinic-badge { background: #d0f4ef; color: #1D6C61; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; }
     .unassigned-badge { background: #fff3e0; color: #e65100; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; }
     .collegiate-badge { background: #e8eaf6; color: #3949ab; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-left: 6px; }
+    .area-badge { background: #e8f5e9; color: #2e7d32; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; display:inline-flex;align-items:center;gap:4px; }
+    .auto-area-info { display:flex;align-items:center;gap:6px;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:8px 12px;font-size:0.82rem;margin-top:-4px; }
     .error-msg { display: flex; align-items: center; gap: 8px; color: #c62828; font-size: 0.88rem; margin-top: 4px; }
 
     .empty-state { text-align: center; padding: 32px; color: #9e9e9e; }
@@ -382,6 +401,7 @@ export class UserManagementComponent implements OnInit {
   assignDialogOpen = false;
   selectedUser: any = null;
   selectedClinicId: number | null = null;
+  assigning = false;
   userForm!: FormGroup;
   createError = '';
   creating = false;
@@ -410,7 +430,7 @@ export class UserManagementComponent implements OnInit {
       collegiateNumber: ['']
     });
 
-    // Collegiate required for clinical roles (RN-M05)
+    // Collegiate required for DOCTOR, HEALTH_STAFF, LAB_TECHNICIAN (RN-M05)
     this.userForm.get('role')?.valueChanges.subscribe(role => {
       const ctrl = this.userForm.get('collegiateNumber')!;
       if (this.isCollegiateRequired(role)) {
@@ -422,17 +442,32 @@ export class UserManagementComponent implements OnInit {
     });
 
     this.load();
-    this.clinicService.getAll().subscribe(res => { if (res.success) this.clinics = res.data; });
+    // Only the 3 consultation clinics are valid for doctor assignment
+    const allowedClinics = ['Consulta Externa', 'Medicina General', 'Emergencias'];
+    this.clinicService.getAll().subscribe(res => {
+      if (res.success) this.clinics = res.data.filter((c: Clinic) => allowedClinics.includes(c.name));
+    });
   }
 
   isCollegiateRequired(role?: string): boolean {
     const r = role ?? this.userForm?.value?.role;
-    return ['DOCTOR', 'NURSE', 'LAB_TECHNICIAN', 'HEALTH_STAFF'].includes(r);
+    return ['DOCTOR', 'LAB_TECHNICIAN', 'HEALTH_STAFF'].includes(r);
+  }
+
+  getAutoArea(role: string): string {
+    const m: Record<string, string> = {
+      HEALTH_STAFF: 'Signos Vitales / Recepción',
+      LAB_TECHNICIAN: 'Laboratorio Clínico',
+      PHARMACIST: 'Farmacia',
+      CASHIER: 'Caja / Pagos',
+      ADMIN: 'Administración'
+    };
+    return m[role] ?? '';
   }
 
   load(): void {
     this.userService.getAll().subscribe({
-      next: res => { if (res.success) this.users = res.data.filter((u: any) => u.active); },
+      next: res => { if (res.success) this.users = res.data.filter((u: any) => u.active && u.role !== 'PATIENT'); },
       error: () => this.notification.error('Error al cargar usuarios')
     });
   }
@@ -466,17 +501,47 @@ export class UserManagementComponent implements OnInit {
 
   assignClinic(): void {
     if (!this.selectedUser || !this.selectedClinicId) return;
-    this.userService.assignClinic(this.selectedUser.id, this.selectedClinicId).subscribe({
-      next: res => {
-        if (res.success) {
-          this.notification.success(`Dr. ${this.selectedUser.firstName} asignado a ${res.data.assignedClinic}`);
-          this.assignDialogOpen = false;
-          this.load();
-        } else {
-          this.notification.error(res.message || 'Error en la asignación');
-        }
+    this.assigning = true;
+
+    const doAssign = () => {
+      this.userService.assignClinic(this.selectedUser.id, this.selectedClinicId!).subscribe({
+        next: res => {
+          if (res.success) {
+            this.notification.success(`Dr. ${this.selectedUser.firstName} asignado a ${res.data.assignedClinic}`);
+            this.assignDialogOpen = false;
+            this.load();
+          } else {
+            this.notification.error(res.message || 'Error en la asignación');
+          }
+          this.assigning = false;
+        },
+        error: err => { this.notification.error(err.error?.message || 'Error: Verifique capacidad (RN-M01)'); this.assigning = false; }
+      });
+    };
+
+    // Si ya tiene clínica, primero desasignar y luego reasignar
+    if (this.selectedUser.assignedClinic) {
+      this.userService.unassignClinic(this.selectedUser.id).subscribe({
+        next: () => doAssign(),
+        error: () => doAssign()  // continuar aunque falle el unassign
+      });
+    } else {
+      doAssign();
+    }
+  }
+
+  unassignClinic(): void {
+    if (!this.selectedUser) return;
+    if (!confirm(`¿Quitar a Dr. ${this.selectedUser.firstName} de ${this.selectedUser.assignedClinic}?`)) return;
+    this.assigning = true;
+    this.userService.unassignClinic(this.selectedUser.id).subscribe({
+      next: () => {
+        this.notification.info(`Dr. ${this.selectedUser.firstName} desasignado`);
+        this.assignDialogOpen = false;
+        this.load();
+        this.assigning = false;
       },
-      error: err => this.notification.error(err.error?.message || 'Error: Verifique capacidad (RN-M01) y asignación única (RN-M02)')
+      error: err => { this.notification.error(err.error?.message || 'Error al desasignar'); this.assigning = false; }
     });
   }
 
@@ -509,18 +574,20 @@ export class UserManagementComponent implements OnInit {
 
   roleLabel(r: string): string {
     const m: Record<string, string> = {
-      ADMIN: 'Administrador', DOCTOR: 'Médico', NURSE: 'Enfermero/a',
+      ADMIN: 'Administrador', DOCTOR: 'Médico',
+      HEALTH_STAFF: 'Personal Salud / Enf.',
       LAB_TECHNICIAN: 'Lab. Técnico', PHARMACIST: 'Farmacéutico',
-      CASHIER: 'Cajero/a', HEALTH_STAFF: 'Personal Salud', PATIENT: 'Paciente'
+      CASHIER: 'Cajero/a', PATIENT: 'Paciente'
     };
     return m[r] ?? r;
   }
 
   getRoleClass(r: string): string {
     const m: Record<string, string> = {
-      ADMIN: 'role-admin', DOCTOR: 'role-doctor', NURSE: 'role-nurse',
+      ADMIN: 'role-admin', DOCTOR: 'role-doctor',
+      HEALTH_STAFF: 'role-staff',
       LAB_TECHNICIAN: 'role-lab', PHARMACIST: 'role-pharmacy',
-      CASHIER: 'role-cashier', HEALTH_STAFF: 'role-staff'
+      CASHIER: 'role-cashier'
     };
     return m[r] ?? '';
   }

@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,13 +12,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
-import { startWith, switchMap } from 'rxjs/operators';
+import { startWith } from 'rxjs/operators';
 import { TicketService, VitalSignsService } from '../../shared/services/ticket.service';
 import { PrescriptionService, LabService, MedicineService, LabExamService } from '../../shared/services/lab.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../shared/services/notification.service';
-import { Ticket } from '../../core/models/ticket.model';
-import { Medicine, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
+import { Ticket, VitalSigns } from '../../core/models/ticket.model';
+import { Medicine, LabExam } from '../../core/models/lab.model';
 
 @Component({
   selector: 'app-consultation',
@@ -106,46 +106,48 @@ import { Medicine, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.mod
             </mat-card-header>
 
             <mat-card-content>
-              <!-- Botón confirmar llegada -->
-              <button mat-raised-button color="accent" class="mb-16"
-                      *ngIf="currentTicket.status === 'BEING_CALLED'"
-                      (click)="confirmArrival()">
-                <mat-icon>how_to_reg</mat-icon> Confirmar Llegada del Paciente
-              </button>
+              <!-- Esperando vitales de enfermería -->
+              <div class="vitals-waiting" *ngIf="currentTicket.status === 'BEING_CALLED'">
+                <mat-icon class="spin-icon">hourglass_top</mat-icon>
+                <div>
+                  <strong>Paciente en área de Signos Vitales</strong>
+                  <p>El personal de salud está tomando los signos vitales. La consulta habilitará automáticamente al recibir los datos.</p>
+                </div>
+              </div>
 
-              <!-- Signos vitales form (RN-03) -->
-              <div *ngIf="currentTicket.status !== 'COMPLETED'" class="vitals-section">
-                <h4><mat-icon>monitor_heart</mat-icon> Signos Vitales (Obligatorio)</h4>
-                <form [formGroup]="vitalsForm" class="vitals-grid">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Presión Arterial</mat-label>
-                    <input matInput formControlName="bloodPressure" placeholder="120/80">
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Frec. Cardíaca (bpm)</mat-label>
-                    <input matInput type="number" formControlName="heartRate">
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Temperatura (°C)</mat-label>
-                    <input matInput type="number" formControlName="temperature" step="0.1">
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Peso (kg)</mat-label>
-                    <input matInput type="number" formControlName="weight">
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Talla (cm)</mat-label>
-                    <input matInput type="number" formControlName="height">
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>SpO2 (%)</mat-label>
-                    <input matInput type="number" formControlName="oxygenSaturation">
-                  </mat-form-field>
-                </form>
-                <button mat-stroked-button color="primary" (click)="saveVitals()" [disabled]="vitalsForm.invalid">
-                  <mat-icon>save</mat-icon> Guardar Signos Vitales
-                </button>
-                <span class="success-msg" *ngIf="vitalsSaved">✓ Signos guardados</span>
+              <!-- Signos vitales recibidos de enfermería (RN-03: solo lectura para el médico) -->
+              <div class="vitals-received" *ngIf="currentVitals">
+                <div class="vitals-header">
+                  <mat-icon>monitor_heart</mat-icon>
+                  <strong>Signos Vitales</strong>
+                  <span class="vitals-from">Registrado por Personal de Salud</span>
+                </div>
+                <div class="vitals-grid-display">
+                  <div class="vital-item" *ngIf="currentVitals.bloodPressure">
+                    <span class="vital-label">Presión Arterial</span>
+                    <span class="vital-value">{{ currentVitals.bloodPressure }}</span>
+                  </div>
+                  <div class="vital-item" *ngIf="currentVitals.heartRate">
+                    <span class="vital-label">Frec. Cardíaca</span>
+                    <span class="vital-value">{{ currentVitals.heartRate }} <small>bpm</small></span>
+                  </div>
+                  <div class="vital-item" *ngIf="currentVitals.temperature">
+                    <span class="vital-label">Temperatura</span>
+                    <span class="vital-value">{{ currentVitals.temperature }} <small>°C</small></span>
+                  </div>
+                  <div class="vital-item" *ngIf="currentVitals.weight">
+                    <span class="vital-label">Peso</span>
+                    <span class="vital-value">{{ currentVitals.weight }} <small>kg</small></span>
+                  </div>
+                  <div class="vital-item" *ngIf="currentVitals.height">
+                    <span class="vital-label">Talla</span>
+                    <span class="vital-value">{{ currentVitals.height }} <small>cm</small></span>
+                  </div>
+                  <div class="vital-item" *ngIf="currentVitals.oxygenSaturation">
+                    <span class="vital-label">SpO₂</span>
+                    <span class="vital-value">{{ currentVitals.oxygenSaturation }} <small>%</small></span>
+                  </div>
+                </div>
               </div>
 
               <mat-divider class="mt-16 mb-16"></mat-divider>
@@ -247,9 +249,19 @@ import { Medicine, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.mod
     .ticket-number.urgent { color: #c62828; }
     .empty-msg { text-align: center; color: #9e9e9e; padding: 24px 0; }
     .hint { font-size: 0.8rem; color: #9e9e9e; margin: 4px 0; }
-    .vitals-section { background: #f8f9ff; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .vitals-section h4 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--bc-teal, #1D6C61); }
-    .vitals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .vitals-waiting { display:flex;align-items:flex-start;gap:12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:16px;margin-bottom:16px; }
+    .vitals-waiting mat-icon { color:#f57f17;font-size:28px;width:28px;height:28px;flex-shrink:0;margin-top:2px; }
+    .vitals-waiting strong { display:block;color:#e65100;margin-bottom:4px; }
+    .vitals-waiting p { font-size:0.82rem;color:#666;margin:0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin-icon { animation: spin 2s linear infinite; }
+    .vitals-received { background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:16px;margin-bottom:16px; }
+    .vitals-header { display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#2e7d32; }
+    .vitals-from { font-size:0.75rem;color:#66bb6a;margin-left:auto;background:#c8e6c9;padding:2px 8px;border-radius:10px; }
+    .vitals-grid-display { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+    .vital-item { background:white;border-radius:6px;padding:10px 12px; }
+    .vital-label { display:block;font-size:0.72rem;color:#757575;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px; }
+    .vital-value { font-size:1.2rem;font-weight:700;color:#1D6C61; }
     .full-width { width: 100%; }
     .medicine-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
     .lab-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -272,14 +284,13 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   queue: Ticket[] = [];
   currentTicket: Ticket | null = null;
   lastCalledTicket: Ticket | null = null;
+  currentVitals: VitalSigns | null = null;
   medicines: Medicine[] = [];
   labExams: LabExam[] = [];
   labCategories: string[] = [];
   prescriptionItems: any[] = [];
   labOrderItems: any[] = [];
-  vitalsForm!: FormGroup;
   consultationForm!: FormGroup;
-  vitalsSaved = false;
   calling = false;
   assignedClinicId: number | null = null;
   assignedClinicName = '';
@@ -298,14 +309,6 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.vitalsForm = this.fb.group({
-      bloodPressure: [''],
-      heartRate: [null],
-      temperature: [null],
-      weight: [null],
-      height: [null],
-      oxygenSaturation: [null]
-    });
     this.consultationForm = this.fb.group({ notes: [''] });
 
     this.medicineService.getAll().subscribe(res => {
@@ -324,17 +327,23 @@ export class ConsultationComponent implements OnInit, OnDestroy {
 
   loadQueue(): void {
     if (!this.assignedClinicId) {
-      // Try to find from current user's tickets
       this.ticketService.getAll().subscribe(res => {
         if (res.success && res.data.length > 0) {
           const myTicket = res.data.find((t: Ticket) =>
-            t.status === 'IN_CONSULTATION' &&
+            (t.status === 'IN_CONSULTATION' || t.status === 'BEING_CALLED') &&
             t.doctorId === this.authService.getUserId()
           );
           if (myTicket) {
             this.assignedClinicId = myTicket.clinicId;
             this.assignedClinicName = myTicket.clinicName;
-            this.currentTicket = myTicket;
+            if (!this.currentTicket || this.currentTicket.id !== myTicket.id) {
+              this.currentTicket = myTicket;
+              this.loadCurrentVitals();
+            } else if (this.currentTicket.status !== myTicket.status) {
+              // Status changed (e.g. health staff set IN_CONSULTATION)
+              this.currentTicket = myTicket;
+              this.loadCurrentVitals();
+            }
           }
           const firstClinic = res.data[0]?.clinicId;
           if (!this.assignedClinicId && firstClinic) {
@@ -346,6 +355,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       });
     } else {
       this.loadClinicQueue();
+      // Refresh vitals when ticket transitions to IN_CONSULTATION
+      if (this.currentTicket && !this.currentVitals) {
+        this.loadCurrentVitals();
+      }
     }
   }
 
@@ -363,37 +376,23 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         if (res.success) {
           this.lastCalledTicket = res.data;
           this.currentTicket = res.data;
-          this.vitalsSaved = false;
-          this.notification.info(`Llamando: ${res.data.ticketNumber} - ${res.data.patientName}`);
+          this.currentVitals = null;
+          this.notification.info(`Llamando: ${res.data.ticketNumber} — dirija al paciente al área de Signos Vitales`);
         }
         this.calling = false;
       },
-      error: err => {
+      error: () => {
         this.notification.error('Error al llamar paciente');
         this.calling = false;
       }
     });
   }
 
-  confirmArrival(): void {
+  private loadCurrentVitals(): void {
     if (!this.currentTicket) return;
-    this.ticketService.confirmArrival(this.currentTicket.id).subscribe({
-      next: res => {
-        if (res.success) {
-          this.currentTicket = res.data;
-          this.notification.success('Consulta iniciada');
-        }
-      },
-      error: err => this.notification.error('Registre los signos vitales primero (RN-03)')
-    });
-  }
-
-  saveVitals(): void {
-    if (!this.currentTicket) return;
-    const data = { ...this.vitalsForm.value, ticketId: this.currentTicket.id };
-    this.vitalSignsService.register(data).subscribe({
-      next: res => { if (res.success) { this.vitalsSaved = true; this.notification.success('Signos vitales guardados'); } },
-      error: () => this.notification.error('Error al guardar signos vitales')
+    this.vitalSignsService.getByTicket(this.currentTicket.id).subscribe({
+      next: res => { if (res.success) this.currentVitals = res.data; },
+      error: () => {}
     });
   }
 
@@ -416,6 +415,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         next: () => {
           this.notification.success('Consulta completada');
           this.currentTicket = null;
+          this.currentVitals = null;
           this.prescriptionItems = [];
           this.labOrderItems = [];
           this.consultationForm.reset();
@@ -466,6 +466,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       next: () => {
         this.notification.info('Paciente marcado como ausente');
         this.currentTicket = null;
+        this.currentVitals = null;
         this.loadClinicQueue();
       }
     });

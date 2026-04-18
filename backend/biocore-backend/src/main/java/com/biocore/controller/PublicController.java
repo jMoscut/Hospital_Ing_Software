@@ -3,10 +3,13 @@ package com.biocore.controller;
 import com.biocore.dto.ApiResponse;
 import com.biocore.dto.PatientCreateRequest;
 import com.biocore.dto.PatientDTO;
+import com.biocore.entity.Insurance;
 import com.biocore.entity.User;
+import com.biocore.repository.InsuranceRepository;
 import com.biocore.repository.UserRepository;
 import com.biocore.service.PatientService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +30,13 @@ public class PublicController {
     private final PatientService patientService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final InsuranceRepository insuranceRepository;
+
+    /** Listado de aseguradoras para el formulario de registro público */
+    @GetMapping("/insurances")
+    public ResponseEntity<ApiResponse<List<Insurance>>> getInsurances() {
+        return ResponseEntity.ok(ApiResponse.ok(insuranceRepository.findAll()));
+    }
 
     /** Verificar si ya existe un paciente por DPI (para el formulario de registro) */
     @GetMapping("/patients/dpi/{dpi}")

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -212,7 +212,79 @@ import { Patient } from '../../core/models/patient.model';
           </div>
         </mat-tab>
 
-        <!-- TAB 2: Cola del Día -->
+        <!-- TAB 2: Triage — Signos Vitales para pacientes llamados por médico -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">monitor_heart</mat-icon>
+            Signos Vitales
+            <span class="tab-badge" *ngIf="calledTickets.length > 0">{{ calledTickets.length }}</span>
+          </ng-template>
+          <div class="tab-content">
+            <p class="hint-text">Pacientes llamados por el médico que deben pasar por el área de signos vitales antes de la consulta.</p>
+
+            <div *ngIf="calledTickets.length === 0" class="empty-state">
+              <mat-icon>health_and_safety</mat-icon>
+              <p>No hay pacientes pendientes de signos vitales</p>
+            </div>
+
+            <div *ngFor="let t of calledTickets" class="called-card">
+              <div class="called-card-header">
+                <div class="ticket-number">{{ t.ticketNumber }}</div>
+                <div class="ticket-info">
+                  <div class="ticket-patient">{{ t.patientName }}</div>
+                  <div class="ticket-meta">{{ t.clinicName }} · {{ t.type }}</div>
+                </div>
+                <span class="status-chip status-being-called">Llamado por médico</span>
+              </div>
+
+              <!-- Vitals form inline -->
+              <ng-container *ngIf="activeVitalsTicketId === t.id; else showBtn">
+                <form [formGroup]="vitalsFormMap[t.id]" class="form-grid vitals-inline-form">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Presión Arterial</mat-label>
+                    <mat-icon matPrefix>favorite</mat-icon>
+                    <input matInput formControlName="bloodPressure" placeholder="120/80">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Frec. Cardíaca (bpm)</mat-label>
+                    <input matInput type="number" formControlName="heartRate">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Temperatura (°C)</mat-label>
+                    <input matInput type="number" formControlName="temperature" step="0.1">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Peso (kg)</mat-label>
+                    <input matInput type="number" formControlName="weight" step="0.1">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Talla (cm)</mat-label>
+                    <input matInput type="number" formControlName="height">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Saturación O₂ (%)</mat-label>
+                    <input matInput type="number" formControlName="oxygenSaturation">
+                  </mat-form-field>
+                </form>
+                <div class="vitals-actions">
+                  <button mat-raised-button color="primary" (click)="sendToDoctor(t)"
+                          [disabled]="sendingVitals">
+                    <mat-icon>send</mat-icon>
+                    {{ sendingVitals ? 'Enviando...' : 'Registrar Signos Vitales y Enviar a Consultorio' }}
+                  </button>
+                  <button mat-button (click)="activeVitalsTicketId = null">Cancelar</button>
+                </div>
+              </ng-container>
+              <ng-template #showBtn>
+                <button mat-stroked-button color="primary" (click)="openVitalsForm(t)" style="margin-top:12px">
+                  <mat-icon>edit</mat-icon> Tomar Signos Vitales
+                </button>
+              </ng-template>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 3: Cola del Día -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">queue</mat-icon>
@@ -299,9 +371,19 @@ import { Patient } from '../../core/models/patient.model';
     .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
     .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; }
     .reload-btn { text-align: center; margin-top: 24px; }
+    .status-waiting { background:#e3f2fd;color:#1565c0; }
+    .status-being-called { background:#fff3e0;color:#e65100; }
+    .status-in-consultation { background:#e8f5e9;color:#2e7d32; }
+    .status-completed { background:#f5f5f5;color:#616161; }
+    .status-absent { background:#ffebee;color:#c62828; }
+    .tab-badge { background:#e53935;color:white;border-radius:10px;padding:1px 7px;font-size:0.72rem;font-weight:700;margin-left:6px; }
+    .called-card { background:white;border-radius:10px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,0.10); }
+    .called-card-header { display:flex;align-items:center;gap:16px;margin-bottom:8px; }
+    .vitals-inline-form { margin-top:12px;margin-bottom:8px; }
+    .vitals-actions { display:flex;gap:12px;align-items:center;margin-top:4px; }
   `]
 })
-export class HealthStaffComponent implements OnInit {
+export class HealthStaffComponent implements OnInit, OnDestroy {
   dpiForm!: FormGroup;
   patientForm!: FormGroup;
   ticketForm!: FormGroup;
@@ -316,6 +398,13 @@ export class HealthStaffComponent implements OnInit {
   searching = false;
   submitting = false;
   newPatientCredentials: { username: string; tempPassword: string } | null = null;
+
+  // Vitals tab
+  calledTickets: Ticket[] = [];
+  activeVitalsTicketId: number | null = null;
+  vitalsFormMap: Record<number, FormGroup> = {};
+  sendingVitals = false;
+  private pollInterval: any;
 
   constructor(
     private fb: FormBuilder,
@@ -354,6 +443,12 @@ export class HealthStaffComponent implements OnInit {
     this.clinicService.getAll().subscribe(res => { if (res.success) this.clinics = res.data; });
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
     this.loadTickets();
+    this.loadCalledTickets();
+    this.pollInterval = setInterval(() => this.loadCalledTickets(), 8000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.pollInterval);
   }
 
   searchByDpi(): void {
@@ -443,6 +538,69 @@ export class HealthStaffComponent implements OnInit {
         }
       });
     }
+  }
+
+  loadCalledTickets(): void {
+    this.ticketService.getAll().subscribe({
+      next: res => {
+        if (res.success) {
+          this.calledTickets = res.data.filter((t: Ticket) => t.status === 'BEING_CALLED');
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  openVitalsForm(ticket: Ticket): void {
+    this.activeVitalsTicketId = ticket.id;
+    if (!this.vitalsFormMap[ticket.id]) {
+      this.vitalsFormMap[ticket.id] = this.fb.group({
+        bloodPressure: [''],
+        heartRate: [null],
+        temperature: [null],
+        weight: [null],
+        height: [null],
+        oxygenSaturation: [null]
+      });
+    }
+  }
+
+  sendToDoctor(ticket: Ticket): void {
+    this.sendingVitals = true;
+    const form = this.vitalsFormMap[ticket.id];
+    const v = form?.value ?? {};
+    const hasVitals = v.bloodPressure || v.heartRate || v.temperature || v.weight;
+
+    const confirmAndSend = () => {
+      this.ticketService.confirmArrival(ticket.id).subscribe({
+        next: res => {
+          if (res.success) {
+            this.notification.success(`${ticket.patientName} enviado a consultorio`);
+            this.activeVitalsTicketId = null;
+            delete this.vitalsFormMap[ticket.id];
+            this.loadCalledTickets();
+            this.loadTickets();
+          }
+          this.sendingVitals = false;
+        },
+        error: (err) => {
+          const msg = err.error?.message || 'Error al enviar paciente';
+          this.notification.error(msg);
+          this.sendingVitals = false;
+        }
+      });
+    };
+
+    // Always register vitals (upsert on backend); even empty values satisfy RN-03
+    this.vitalSignsService.register({
+      ticketId: ticket.id,
+      bloodPressure: v.bloodPressure || null,
+      heartRate: v.heartRate ? +v.heartRate : null,
+      temperature: v.temperature ? +v.temperature : null,
+      weight: v.weight ? +v.weight : null,
+      height: v.height ? +v.height : null,
+      oxygenSaturation: v.oxygenSaturation ? +v.oxygenSaturation : null
+    }).subscribe({ next: () => confirmAndSend(), error: () => confirmAndSend() });
   }
 
   loadTickets(): void {

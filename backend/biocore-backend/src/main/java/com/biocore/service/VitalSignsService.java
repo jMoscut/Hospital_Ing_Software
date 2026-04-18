@@ -27,23 +27,20 @@ public class VitalSignsService {
         Ticket ticket = ticketRepository.findById(req.getTicketId())
                 .orElseThrow(() -> new RuntimeException("Ticket no encontrado: " + req.getTicketId()));
 
-        if (vitalSignsRepository.existsByTicketId(req.getTicketId())) {
-            throw new RuntimeException("Ya existen signos vitales registrados para este ticket");
-        }
-
         User registeredBy = userRepository.findById(registeredByUserId).orElse(null);
 
-        VitalSigns vs = VitalSigns.builder()
-                .ticket(ticket)
-                .bloodPressure(req.getBloodPressure())
-                .heartRate(req.getHeartRate())
-                .temperature(req.getTemperature())
-                .weight(req.getWeight())
-                .height(req.getHeight())
-                .oxygenSaturation(req.getOxygenSaturation())
-                .registeredBy(registeredBy)
-                .recordedAt(LocalDateTime.now())
-                .build();
+        // Upsert: update existing record if one already exists (e.g. taken at reception)
+        VitalSigns vs = vitalSignsRepository.findByTicketId(req.getTicketId())
+                .orElseGet(() -> VitalSigns.builder().ticket(ticket).build());
+
+        vs.setBloodPressure(req.getBloodPressure());
+        vs.setHeartRate(req.getHeartRate());
+        vs.setTemperature(req.getTemperature());
+        vs.setWeight(req.getWeight());
+        vs.setHeight(req.getHeight());
+        vs.setOxygenSaturation(req.getOxygenSaturation());
+        vs.setRegisteredBy(registeredBy);
+        vs.setRecordedAt(LocalDateTime.now());
 
         return vitalSignsRepository.save(vs);
     }
