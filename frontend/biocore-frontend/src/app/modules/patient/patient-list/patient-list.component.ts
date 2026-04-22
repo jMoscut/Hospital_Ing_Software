@@ -123,6 +123,11 @@ import { Patient } from '../../../core/models/patient.model';
               <input matInput formControlName="dpi">
             </mat-form-field>
             <mat-form-field appearance="outline">
+              <mat-label>Fecha de Nacimiento</mat-label>
+              <mat-icon matPrefix>cake</mat-icon>
+              <input matInput type="date" formControlName="birthDate">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
               <mat-label>Teléfono</mat-label>
               <input matInput formControlName="phone">
             </mat-form-field>
@@ -226,16 +231,17 @@ export class PatientListComponent implements OnInit {
   openEdit(p: Patient): void {
     this.editingPatient = p;
     this.editForm = this.fb.group({
-      firstName:        [p.firstName,            Validators.required],
-      lastName:         [p.lastName,             Validators.required],
-      dpi:              [p.dpi,                  Validators.required],
-      phone:            [p.phone            || ''],
-      email:            [p.email            || ''],
-      address:          [p.address          || ''],
-      emergencyContact: [p.emergencyContact || ''],
-      emergencyPhone:   [p.emergencyPhone   || ''],
-      insuranceId:      [p.insuranceId      ?? null],
-      insuranceNumber:  [p.insuranceNumber  || '']
+      firstName:        [p.firstName,           Validators.required],
+      lastName:         [p.lastName,            Validators.required],
+      dpi:              [p.dpi,                 Validators.required],
+      birthDate:        [p.birthDate            || ''],
+      phone:            [p.phone               || ''],
+      email:            [p.email               || ''],
+      address:          [p.address             || ''],
+      emergencyContact: [p.emergencyContact    || ''],
+      emergencyPhone:   [p.emergencyPhone      || ''],
+      insuranceId:      [p.insuranceId         ?? null],
+      insuranceNumber:  [p.insuranceNumber     || '']
     });
     this.editDialogOpen = true;
   }

@@ -36,9 +36,15 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
           <span class="realtime-badge" *ngIf="assignedClinicId">
             <mat-icon>radio_button_checked</mat-icon> Clínica {{ assignedClinicName }}
           </span>
-          <button mat-raised-button color="warn" *ngIf="currentTicket"
+          <!-- Doctor availability toggle -->
+          <button [class]="doctorAvailable ? 'avail-btn avail-on' : 'avail-btn avail-off'"
+                  (click)="toggleAvailability()">
+            <mat-icon>{{ doctorAvailable ? 'check_circle' : 'cancel' }}</mat-icon>
+            {{ doctorAvailable ? 'Disponible' : 'No disponible' }}
+          </button>
+          <button mat-raised-button color="warn" *ngIf="currentTicket && currentTicket.status === 'IN_CONSULTATION'"
                   (click)="markAbsent()" title="Paciente no se presentó">
-            <mat-icon>person_off</mat-icon> Paciente Ausente
+            <mat-icon>person_off</mat-icon> Ausente
           </button>
         </div>
       </div>
@@ -46,6 +52,34 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
       <div class="consultation-layout">
         <!-- COLA DE PACIENTES -->
         <div class="queue-panel">
+          <!-- Pacientes listos para consulta (READY_FOR_DOCTOR) -->
+          <mat-card style="margin-bottom:16px">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>assignment_turned_in</mat-icon> Listos para Consulta
+              </mat-card-title>
+              <mat-card-subtitle>{{ readyPatients.length }} paciente(s) con signos vitales registrados</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="ready-ticket" *ngFor="let t of readyPatients">
+                <div class="ticket-number">{{ t.ticketNumber }}</div>
+                <div class="ticket-info">
+                  <div class="ticket-patient">{{ t.patientName }}</div>
+                  <div class="ticket-meta">{{ t.type }}</div>
+                </div>
+                <button mat-raised-button color="primary" style="flex-shrink:0"
+                        [disabled]="!!currentTicket"
+                        (click)="callToConsultation(t)">
+                  <mat-icon>campaign</mat-icon> Llamar
+                </button>
+              </div>
+              <p *ngIf="readyPatients.length === 0" class="empty-msg">
+                Sin pacientes listos — esperando signos vitales del personal de salud
+              </p>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Cola de espera general -->
           <mat-card>
             <mat-card-header>
               <mat-card-title>
@@ -54,22 +88,12 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
               <mat-card-subtitle>{{ queue.length }} paciente(s) esperando</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content>
-              <!-- Llamar siguiente (RN-C04) -->
-              <button mat-raised-button color="primary" class="call-btn"
-                      (click)="callNext()" [disabled]="!assignedClinicId || !!currentTicket || queue.length === 0 || calling">
-                <mat-spinner *ngIf="calling" diameter="20"></mat-spinner>
-                <mat-icon *ngIf="!calling">campaign</mat-icon>
-                Llamar Siguiente Paciente
-              </button>
-              <p class="hint" *ngIf="!!currentTicket">Complete la consulta actual primero</p>
+              <p class="hint" *ngIf="!doctorAvailable" style="color:#e65100">
+                <mat-icon style="font-size:14px;vertical-align:middle">info</mat-icon>
+                Márquese disponible para que personal de salud pueda llamar pacientes
+              </p>
 
-              <!-- RN-C03: Último llamado visible -->
-              <div class="last-called" *ngIf="lastCalledTicket">
-                <small>Último llamado:</small>
-                <strong>{{ lastCalledTicket.ticketNumber }}</strong> - {{ lastCalledTicket.patientName }}
-              </div>
-
-              <mat-divider class="mt-16 mb-16"></mat-divider>
+              <mat-divider class="mb-16" *ngIf="queue.length > 0"></mat-divider>
 
               <!-- Lista de cola -->
               <div class="queue-ticket" *ngFor="let t of queue; let i = index">
@@ -89,7 +113,7 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
               <p *ngIf="queue.length === 0" class="empty-msg">Sin pacientes en espera</p>
             </mat-card-content>
           </mat-card>
-        </div>
+        </div> <!-- end queue-panel -->
 
         <!-- PANEL DE CONSULTA ACTIVA -->
         <div class="consultation-panel">
@@ -106,13 +130,38 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
             </mat-card-header>
 
             <mat-card-content>
-              <!-- Esperando vitales de enfermería -->
-              <div class="vitals-waiting" *ngIf="currentTicket.status === 'BEING_CALLED'">
+              <!-- Signos vitales siendo tomados -->
+              <div class="vitals-waiting" *ngIf="currentTicket.status === 'CALLED_TO_VITAL_SIGNS'">
                 <mat-icon class="spin-icon">hourglass_top</mat-icon>
                 <div>
                   <strong>Paciente en área de Signos Vitales</strong>
-                  <p>El personal de salud está tomando los signos vitales. La consulta habilitará automáticamente al recibir los datos.</p>
+                  <p>Personal de salud está tomando los signos vitales.</p>
                 </div>
+              </div>
+
+              <!-- Listo para llamar a consultorio -->
+              <div class="ready-banner" *ngIf="currentTicket.status === 'READY_FOR_DOCTOR'">
+                <mat-icon>assignment_turned_in</mat-icon>
+                <div>
+                  <strong>Signos Vitales registrados — Paciente listo</strong>
+                  <p>Revise los signos vitales y llame al paciente a su consultorio.</p>
+                </div>
+                <button mat-raised-button color="primary" (click)="callToConsultation(currentTicket)">
+                  <mat-icon>campaign</mat-icon> Llamar al Consultorio
+                </button>
+              </div>
+
+              <!-- Paciente en camino al consultorio -->
+              <div class="vitals-waiting" *ngIf="currentTicket.status === 'BEING_CALLED'"
+                   style="background:#e3f2fd;border-color:#90caf9">
+                <mat-icon style="color:#1565c0">directions_walk</mat-icon>
+                <div>
+                  <strong style="color:#1565c0">Paciente en camino al consultorio</strong>
+                  <p>Confirme su llegada para iniciar la consulta.</p>
+                </div>
+                <button mat-raised-button color="accent" (click)="startConsultation()">
+                  <mat-icon>play_circle</mat-icon> Iniciar Consulta
+                </button>
               </div>
 
               <!-- Signos vitales recibidos de enfermería (RN-03: solo lectura para el médico) -->
@@ -269,6 +318,18 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
     .exam-code { font-family: monospace; font-size: 0.75rem; color: #3EB9A8; background: #193A31; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
     .med-stock { font-size: 0.78rem; color: #666; }
     .med-stock.low { color: #c62828; font-weight: 600; }
+    .avail-btn { display:flex; align-items:center; gap:6px; border:none; border-radius:20px; padding:8px 16px; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .avail-on { background:#e8f5e9; color:#2e7d32; }
+    .avail-on:hover { background:#c8e6c9; }
+    .avail-off { background:#fce4ec; color:#c62828; }
+    .avail-off:hover { background:#f8bbd0; }
+    .avail-btn mat-icon { font-size:18px; width:18px; height:18px; }
+    .ready-ticket { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+    .ready-ticket:last-child { border-bottom:none; }
+    .ready-banner { display:flex; align-items:center; gap:12px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:16px; margin-bottom:16px; flex-wrap:wrap; }
+    .ready-banner mat-icon { color:#2e7d32; font-size:28px; width:28px; height:28px; flex-shrink:0; }
+    .ready-banner strong { display:block; color:#2e7d32; margin-bottom:4px; }
+    .ready-banner p { font-size:0.82rem; color:#555; margin:0; }
     .action-buttons { display: flex; gap: 12px; }
     .empty-consultation { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; text-align: center; }
     .big-icon { font-size: 64px; width: 64px; height: 64px; color: #9e9e9e; margin-bottom: 16px; }
@@ -282,6 +343,7 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
 })
 export class ConsultationComponent implements OnInit, OnDestroy {
   queue: Ticket[] = [];
+  readyPatients: Ticket[] = [];
   currentTicket: Ticket | null = null;
   lastCalledTicket: Ticket | null = null;
   currentVitals: VitalSigns | null = null;
@@ -292,6 +354,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   labOrderItems: any[] = [];
   consultationForm!: FormGroup;
   calling = false;
+  doctorAvailable = false;
   assignedClinicId: number | null = null;
   assignedClinicName = '';
   private sub!: Subscription;
@@ -322,7 +385,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
     });
 
     // Poll queue every 5s (RN-M03)
-    this.sub = interval(5000).pipe(startWith(0)).subscribe(() => this.loadQueue());
+    this.sub = interval(5000).pipe(startWith(0)).subscribe(() => {
+      this.loadQueue();
+      this.syncAvailability();
+    });
   }
 
   loadQueue(): void {
@@ -330,9 +396,14 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       if (!res.success) return;
 
       const myId = this.authService.getUserId();
+      const activeStatuses: string[] = ['CALLED_TO_VITAL_SIGNS', 'READY_FOR_DOCTOR', 'BEING_CALLED', 'IN_CONSULTATION'];
       const myTicket = res.data.find((t: Ticket) =>
-        (t.status === 'IN_CONSULTATION' || t.status === 'BEING_CALLED') &&
-        t.doctorId === myId
+        activeStatuses.includes(t.status) && t.doctorId === myId
+      );
+
+      // READY_FOR_DOCTOR patients assigned to me (may include currentTicket)
+      this.readyPatients = res.data.filter((t: Ticket) =>
+        t.status === 'READY_FOR_DOCTOR' && t.doctorId === myId
       );
 
       if (myTicket) {
@@ -366,6 +437,52 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   loadClinicQueue(): void {
     this.ticketService.getQueue(this.assignedClinicId!).subscribe(res => {
       if (res.success) this.queue = res.data;
+    });
+  }
+
+  private syncAvailability(): void {
+    this.ticketService.getMe().subscribe({
+      next: res => { if (res.success) this.doctorAvailable = res.data.available; },
+      error: () => {}
+    });
+  }
+
+  toggleAvailability(): void {
+    this.ticketService.toggleDoctorAvailability().subscribe({
+      next: res => {
+        if (res.success) {
+          this.doctorAvailable = res.data.available;
+          this.notification.info(this.doctorAvailable ? 'Marcado como disponible' : 'Marcado como no disponible');
+        }
+      },
+      error: () => this.notification.error('Error al cambiar disponibilidad')
+    });
+  }
+
+  callToConsultation(ticket: Ticket): void {
+    this.ticketService.callToConsultation(ticket.id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.currentTicket = res.data;
+          this.currentVitals = null;
+          this.loadCurrentVitals();
+          this.notification.info(`${res.data.ticketNumber} llamado al consultorio`);
+        }
+      },
+      error: err => this.notification.error(err.error?.message || 'Error al llamar paciente')
+    });
+  }
+
+  startConsultation(): void {
+    if (!this.currentTicket) return;
+    this.ticketService.confirmArrival(this.currentTicket.id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.currentTicket = res.data;
+          this.notification.success('Consulta iniciada');
+        }
+      },
+      error: err => this.notification.error(err.error?.message || 'Error al iniciar consulta')
     });
   }
 
@@ -415,6 +532,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       this.ticketService.complete(this.currentTicket!.id).subscribe({
         next: () => {
           this.notification.success('Consulta completada');
+          this.doctorAvailable = false;
           this.currentTicket = null;
           this.currentVitals = null;
           this.prescriptionItems = [];

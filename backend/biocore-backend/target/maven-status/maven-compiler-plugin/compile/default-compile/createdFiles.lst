@@ -1,3 +1,4 @@
+com\biocore\controller\DoctorScheduleController.class
 com\biocore\entity\LabExam$LabExamBuilder.class
 com\biocore\dto\LabOrderRequest.class
 com\biocore\repository\MedicineRepository.class
@@ -25,6 +26,7 @@ com\biocore\controller\PrescriptionController.class
 com\biocore\dto\PrescriptionDTO$PrescriptionDTOBuilder.class
 com\biocore\controller\ClinicController.class
 com\biocore\service\PatientService.class
+com\biocore\controller\AppointmentController$ReserveRequest.class
 com\biocore\entity\Ticket.class
 com\biocore\security\CustomUserDetails.class
 com\biocore\repository\PrescriptionRepository.class
@@ -35,6 +37,7 @@ com\biocore\service\UserService.class
 com\biocore\dto\ApiResponse.class
 com\biocore\dto\PrescriptionDTO.class
 com\biocore\controller\PublicController$ChangePasswordRequest.class
+com\biocore\repository\SlotReservationRepository.class
 com\biocore\enums\PaymentType.class
 com\biocore\controller\PublicController.class
 com\biocore\dto\LoginResponse.class
@@ -58,11 +61,15 @@ com\biocore\config\DataInitializer.class
 com\biocore\entity\Prescription$PrescriptionBuilder.class
 com\biocore\repository\PatientRepository.class
 com\biocore\entity\LabExam.class
+com\biocore\entity\SlotReservation$SlotReservationBuilder.class
+com\biocore\dto\DoctorScheduleRequest.class
 com\biocore\entity\User.class
 com\biocore\entity\Document$DocumentBuilder.class
 com\biocore\controller\AuthController.class
 com\biocore\service\PrescriptionService.class
 com\biocore\entity\VitalSigns.class
+com\biocore\entity\SlotReservation.class
+com\biocore\service\DoctorScheduleService.class
 com\biocore\repository\PrescriptionItemRepository.class
 com\biocore\enums\Role.class
 com\biocore\entity\Appointment$AppointmentBuilder.class
@@ -75,6 +82,8 @@ com\biocore\controller\PatientController.class
 com\biocore\dto\ApiResponse$ApiResponseBuilder.class
 com\biocore\entity\Patient.class
 com\biocore\entity\Ticket$TicketBuilder.class
+com\biocore\dto\DoctorScheduleDTO.class
+com\biocore\entity\DoctorSchedule$DoctorScheduleBuilder.class
 com\biocore\service\LabService.class
 com\biocore\entity\Clinic$ClinicBuilder.class
 com\biocore\entity\Prescription.class
@@ -82,6 +91,7 @@ com\biocore\service\EmailService.class
 com\biocore\controller\ReportController.class
 com\biocore\entity\Medicine.class
 com\biocore\dto\PrescriptionRequest.class
+com\biocore\controller\PublicController$ChangeUsernameRequest.class
 com\biocore\service\EmergencyService.class
 com\biocore\enums\InsuranceName.class
 com\biocore\security\JwtUtil.class
@@ -96,6 +106,7 @@ com\biocore\controller\LabController$CompleteLabRequest.class
 com\biocore\service\AuthService.class
 com\biocore\config\SecurityConfig.class
 com\biocore\entity\Appointment.class
+com\biocore\repository\DoctorScheduleRepository.class
 com\biocore\dto\LabOrderDTO.class
 com\biocore\entity\LabResult.class
 com\biocore\repository\DocumentRepository.class
@@ -121,10 +132,12 @@ com\biocore\enums\PaymentMethod.class
 com\biocore\dto\UserDTO$UserDTOBuilder.class
 com\biocore\repository\LabExamRepository.class
 com\biocore\controller\LabExamController.class
+com\biocore\dto\DoctorScheduleDTO$DoctorScheduleDTOBuilder.class
 com\biocore\entity\PrescriptionItem.class
 com\biocore\repository\UserRepository.class
 com\biocore\entity\DoctorClinicAssignment.class
 com\biocore\entity\Insurance$InsuranceBuilder.class
+com\biocore\entity\DoctorSchedule.class
 com\biocore\repository\ClinicRepository.class
 com\biocore\repository\PaymentRepository.class
 com\biocore\dto\TicketDTO.class

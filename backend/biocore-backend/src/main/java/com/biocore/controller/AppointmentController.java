@@ -71,6 +71,37 @@ public class AppointmentController {
         return ResponseEntity.ok(ApiResponse.ok(appointmentService.getByPatient(patientId)));
     }
 
+    /** Reserve a slot for 10 minutes while patient completes payment */
+    @PostMapping("/reserve")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> reserve(@RequestBody ReserveRequest req) {
+        try {
+            LocalDate date = LocalDate.parse(req.getDate());
+            Map<String, Object> result = appointmentService.reserve(
+                    req.getPatientId(), req.getClinicId(), date, req.getTime());
+            return ResponseEntity.ok(ApiResponse.ok("Horario reservado por 10 minutos.", result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Cancel/release a slot reservation */
+    @DeleteMapping("/reserve/{id}")
+    public ResponseEntity<ApiResponse<Void>> cancelReservation(@PathVariable Long id) {
+        try {
+            appointmentService.cancelReservation(id);
+            return ResponseEntity.ok(ApiResponse.ok("Reservación cancelada.", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @Data static class ReserveRequest {
+        private Long patientId;
+        private Long clinicId;
+        private String date;
+        private String time;
+    }
+
     @Data static class BookRequest {
         private Long patientId;
         private Long clinicId;

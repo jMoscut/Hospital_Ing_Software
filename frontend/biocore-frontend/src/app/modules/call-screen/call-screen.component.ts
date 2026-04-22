@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
@@ -8,7 +9,7 @@ const NOTIF_KEY = 'biocore_notification_settings';
 @Component({
   selector: 'app-call-screen',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   template: `
     <div class="screen-root">
 
@@ -31,12 +32,17 @@ const NOTIF_KEY = 'biocore_notification_settings';
             <span class="pulse-dot"></span> LLAMANDO AHORA
           </div>
           <div class="called-cards">
-            <div class="called-card" *ngFor="let t of calledTickets">
+            <div class="called-card" *ngFor="let t of calledTickets"
+                 [class.card-vitals]="t.status === 'CALLED_TO_VITAL_SIGNS'">
               <div class="ticket-number">{{ t.ticketNumber }}</div>
               <div class="patient-name">{{ t.patientName }}</div>
               <div class="clinic-arrow">
                 <span class="arrow">→</span>
-                <span class="clinic-name">{{ t.clinicName }}</span>
+                <span class="clinic-name" *ngIf="t.status === 'CALLED_TO_VITAL_SIGNS'">Área de Signos Vitales</span>
+                <span class="clinic-name" *ngIf="t.status !== 'CALLED_TO_VITAL_SIGNS'">{{ t.clinicName }}{{ t.doctorName ? ' — Dr. ' + t.doctorName : '' }}</span>
+              </div>
+              <div class="destination-badge" *ngIf="t.status === 'CALLED_TO_VITAL_SIGNS'">
+                <mat-icon style="font-size:16px;vertical-align:middle">monitor_heart</mat-icon> Signos Vitales
               </div>
             </div>
           </div>
@@ -132,6 +138,8 @@ const NOTIF_KEY = 'biocore_notification_settings';
     .clinic-arrow { display: flex; align-items: center; justify-content: center; gap: 12px; }
     .arrow { font-size: 2rem; color: rgba(255,255,255,0.7); }
     .clinic-name { font-size: 1.2rem; color: rgba(255,255,255,0.85); font-weight: 500; }
+    .card-vitals { background: linear-gradient(135deg, #1a5c6e, #2ea8c4) !important; box-shadow: 0 0 60px rgba(46,168,196,0.4) !important; }
+    .destination-badge { margin-top: 12px; font-size: 0.85rem; background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 14px; display: inline-flex; align-items: center; gap: 6px; }
 
     .no-call { text-align: center; color: rgba(255,255,255,0.25); }
     .no-call-icon { font-size: 5rem; margin-bottom: 16px; }
@@ -196,10 +204,10 @@ export class CallScreenComponent implements OnInit, OnDestroy {
     this.http.get<any>(`${environment.apiUrl}/tickets`).subscribe({
       next: res => {
         if (!res.success) return;
-        const newCalled = res.data.filter((t: any) => t.status === 'BEING_CALLED');
-        const waiting   = res.data.filter((t: any) => t.status === 'WAITING').slice(0, 8);
+        const newCalled = res.data.filter((t: any) =>
+          t.status === 'BEING_CALLED' || t.status === 'CALLED_TO_VITAL_SIGNS');
+        const waiting = res.data.filter((t: any) => t.status === 'WAITING').slice(0, 8);
 
-        // Announce newly called tickets
         newCalled.forEach((t: any) => {
           if (!this.lastCalledIds.has(t.id)) {
             this.announce(t);
@@ -218,23 +226,40 @@ export class CallScreenComponent implements OnInit, OnDestroy {
     const settings = this.getSettings();
     if (!settings.audioEnabled) return;
 
+    const destination = ticket.status === 'CALLED_TO_VITAL_SIGNS'
+      ? 'el área de signos vitales'
+      : `${ticket.clinicName}${ticket.doctorName ? ', con el doctor ' + ticket.doctorName : ''}`;
+
     if (settings.alertType === 'voice' && 'speechSynthesis' in window) {
-      const text = `Se llama turno ${ticket.ticketNumber.replace(/-/g, ' ')}, `
+      const text = `Se llama turno ${ticket.ticketNumber.split('').join(' ')}, `
         + `${ticket.patientName}, `
-        + `favor dirigirse a ${ticket.clinicName}.`;
+        + `favor dirigirse a ${destination}.`;
 
       window.speechSynthesis.cancel();
+      const repetitions = settings.repetitions ?? 2;
       let count = 0;
-      const go = () => {
-        if (count >= (settings.repetitions ?? 2)) return;
+      const speak = () => {
+        if (count >= repetitions) return;
         const u = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis.getVoices();
+        const spanish = voices.find(v => v.lang.startsWith('es'));
+        if (spanish) u.voice = spanish;
         u.lang = 'es-ES';
         u.volume = (settings.volume ?? 80) / 100;
         u.rate = 0.85;
-        u.onend = () => { count++; if (count < settings.repetitions) setTimeout(go, 800); };
+        u.onend = () => { count++; setTimeout(speak, 800); };
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
         window.speechSynthesis.speak(u);
       };
-      go();
+      const doSpeak = () => {
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; setTimeout(speak, 150); };
+          window.speechSynthesis.getVoices();
+        } else {
+          setTimeout(speak, 150);
+        }
+      };
+      doSpeak();
     } else if (settings.alertType === 'tone') {
       this.playTone(settings.volume ?? 80);
     }
@@ -253,9 +278,10 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   }
 
   private getSettings() {
+    const defaults = { audioEnabled: true, alertType: 'voice', volume: 80, repetitions: 2 };
     try {
       const s = localStorage.getItem(NOTIF_KEY);
-      return s ? JSON.parse(s) : {};
-    } catch { return {}; }
+      return s ? { ...defaults, ...JSON.parse(s) } : defaults;
+    } catch { return defaults; }
   }
 }

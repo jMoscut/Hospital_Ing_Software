@@ -41,7 +41,7 @@ import { Patient } from '../../core/models/patient.model';
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">person_add</mat-icon>
-            Recepción de Pacientes
+            Recepción
           </ng-template>
           <div class="tab-content">
             <mat-card>
@@ -124,6 +124,11 @@ import { Patient } from '../../core/models/patient.model';
                         <mat-form-field appearance="outline">
                           <mat-label>Apellidos *</mat-label>
                           <input matInput formControlName="lastName" [readonly]="!!recepExistingPatient">
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Fecha de Nacimiento</mat-label>
+                          <mat-icon matPrefix>cake</mat-icon>
+                          <input matInput type="date" formControlName="birthDate" [readonly]="!!recepExistingPatient">
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Teléfono</mat-label>
@@ -215,7 +220,7 @@ import { Patient } from '../../core/models/patient.model';
           </div>
         </mat-tab>
 
-        <!-- TAB 2: Triage — Signos Vitales para pacientes llamados por médico -->
+        <!-- TAB 2: Signos Vitales (Triage) -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">monitor_heart</mat-icon>
@@ -223,7 +228,8 @@ import { Patient } from '../../core/models/patient.model';
             <span class="tab-badge" *ngIf="calledTickets.length > 0">{{ calledTickets.length }}</span>
           </ng-template>
           <div class="tab-content">
-            <p class="hint-text">Pacientes llamados por el médico que deben pasar por el área de signos vitales antes de la consulta.</p>
+
+            <p class="hint-text">Pacientes llamados al área de signos vitales. Haga clic en un paciente para registrar sus signos.</p>
 
             <div *ngIf="calledTickets.length === 0" class="empty-state">
               <mat-icon>health_and_safety</mat-icon>
@@ -237,11 +243,11 @@ import { Patient } from '../../core/models/patient.model';
                   <div class="ticket-patient">{{ t.patientName }}</div>
                   <div class="ticket-meta">{{ t.clinicName }} · {{ t.type }}</div>
                 </div>
-                <span class="status-chip status-being-called">Llamado por médico</span>
+                <span class="status-chip status-vitals">En Signos Vitales</span>
               </div>
 
               <!-- Vitals form inline -->
-              <ng-container *ngIf="activeVitalsTicketId === t.id; else showBtn">
+              <ng-container *ngIf="activeVitalsTicketId === t.id; else showVitalsBtn">
                 <form [formGroup]="vitalsFormMap[t.id]" class="form-grid vitals-inline-form">
                   <mat-form-field appearance="outline">
                     <mat-label>Presión Arterial</mat-label>
@@ -273,12 +279,12 @@ import { Patient } from '../../core/models/patient.model';
                   <button mat-raised-button color="primary" (click)="sendToDoctor(t)"
                           [disabled]="sendingVitals">
                     <mat-icon>send</mat-icon>
-                    {{ sendingVitals ? 'Enviando...' : 'Registrar Signos Vitales y Enviar a Consultorio' }}
+                    {{ sendingVitals ? 'Enviando...' : 'Registrar y Enviar a Médico' }}
                   </button>
                   <button mat-button (click)="activeVitalsTicketId = null">Cancelar</button>
                 </div>
               </ng-container>
-              <ng-template #showBtn>
+              <ng-template #showVitalsBtn>
                 <button mat-stroked-button color="primary" (click)="openVitalsForm(t)" style="margin-top:12px">
                   <mat-icon>edit</mat-icon> Tomar Signos Vitales
                 </button>
@@ -287,7 +293,7 @@ import { Patient } from '../../core/models/patient.model';
           </div>
         </mat-tab>
 
-        <!-- TAB 3: Citas Presenciales -->
+        <!-- TAB 4: Citas Presenciales -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">event_available</mat-icon>
@@ -536,10 +542,20 @@ import { Patient } from '../../core/models/patient.model';
     .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; }
     .reload-btn { text-align: center; margin-top: 24px; }
     .status-waiting { background:#e3f2fd;color:#1565c0; }
+    .status-vitals { background:#e0f7fa;color:#00838f; }
+    .status-ready { background:#f3e5f5;color:#7b1fa2; }
     .status-being-called { background:#fff3e0;color:#e65100; }
     .status-in-consultation { background:#e8f5e9;color:#2e7d32; }
     .status-completed { background:#f5f5f5;color:#616161; }
     .status-absent { background:#ffebee;color:#c62828; }
+    .selector-row { display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
+    .doctor-status-grid { display:flex;flex-wrap:wrap;gap:10px;margin-top:8px; }
+    .doctor-chip { display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:20px;font-size:0.85rem; }
+    .doctor-available { background:#e8f5e9;color:#2e7d32; }
+    .doctor-busy { background:#ffebee;color:#c62828; }
+    .doctor-name { font-weight:600; }
+    .doctor-status-label { font-size:0.75rem; }
+    .queue-filter-row { display:flex;align-items:center;gap:12px; }
     .tab-badge { background:#e53935;color:white;border-radius:10px;padding:1px 7px;font-size:0.72rem;font-weight:700;margin-left:6px; }
     .called-card { background:white;border-radius:10px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,0.10); }
     .called-card-header { display:flex;align-items:center;gap:16px;margin-bottom:8px; }
@@ -569,9 +585,6 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
   clinics: Clinic[] = [];
   visitClinics: Clinic[] = [];
   insurances: any[] = [];
-  tickets: Ticket[] = [];
-  filteredTickets: Ticket[] = [];
-  filterClinicId = 0;
 
   // Vitals tab
   calledTickets: Ticket[] = [];
@@ -612,6 +625,7 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     this.recepPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
+      birthDate:       [''],
       phone:           [''],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
@@ -655,7 +669,6 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
       }
     });
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
-    this.loadTickets();
     this.loadCalledTickets();
     this.pollInterval = setInterval(() => this.loadCalledTickets(), 8000);
   }
@@ -757,7 +770,7 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     this.ticketService.getAll().subscribe({
       next: res => {
         if (res.success) {
-          this.calledTickets = res.data.filter((t: Ticket) => t.status === 'BEING_CALLED');
+          this.calledTickets = res.data.filter((t: Ticket) => t.status === 'CALLED_TO_VITAL_SIGNS');
         }
       },
       error: () => {}
@@ -782,8 +795,6 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     this.sendingVitals = true;
     const form = this.vitalsFormMap[ticket.id];
     const v = form?.value ?? {};
-    const hasVitals = v.bloodPressure || v.heartRate || v.temperature || v.weight;
-
     const confirmAndSend = () => {
       this.ticketService.confirmArrival(ticket.id).subscribe({
         next: res => {
@@ -792,7 +803,6 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
             this.activeVitalsTicketId = null;
             delete this.vitalsFormMap[ticket.id];
             this.loadCalledTickets();
-            this.loadTickets();
           }
           this.sendingVitals = false;
         },
@@ -816,42 +826,30 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     }).subscribe({ next: () => confirmAndSend(), error: () => confirmAndSend() });
   }
 
-  loadTickets(): void {
-    this.ticketService.getAll().subscribe({
-      next: res => {
-        if (res.success) {
-          this.tickets = res.data.filter(t =>
-            t.status === 'WAITING' || t.status === 'BEING_CALLED' || t.status === 'IN_CONSULTATION'
-          );
-          this.filterTickets();
-        }
-      },
-      error: () => {}
-    });
-  }
-
-  filterTickets(): void {
-    if (this.filterClinicId === 0) {
-      this.filteredTickets = this.tickets;
-    } else {
-      this.filteredTickets = this.tickets.filter(t => t.clinicId === this.filterClinicId);
-    }
-  }
-
   getStatusClass(status: string): string {
     const m: Record<string, string> = {
-      WAITING: 'status-waiting', BEING_CALLED: 'status-being-called',
-      IN_CONSULTATION: 'status-in-consultation', COMPLETED: 'status-completed',
-      ABSENT: 'status-absent', CANCELLED_NO_PAYMENT: 'status-absent'
+      WAITING: 'status-waiting',
+      CALLED_TO_VITAL_SIGNS: 'status-vitals',
+      READY_FOR_DOCTOR: 'status-ready',
+      BEING_CALLED: 'status-being-called',
+      IN_CONSULTATION: 'status-in-consultation',
+      COMPLETED: 'status-completed',
+      ABSENT: 'status-absent',
+      CANCELLED_NO_PAYMENT: 'status-absent'
     };
     return m[status] ?? '';
   }
 
   statusLabel(status: string): string {
     const m: Record<string, string> = {
-      WAITING: 'En Espera', BEING_CALLED: 'Siendo Llamado',
-      IN_CONSULTATION: 'En Consulta', COMPLETED: 'Completado',
-      ABSENT: 'Ausente', CANCELLED_NO_PAYMENT: 'Cancelado'
+      WAITING: 'En Espera',
+      CALLED_TO_VITAL_SIGNS: 'En Signos Vitales',
+      READY_FOR_DOCTOR: 'Listo para Médico',
+      BEING_CALLED: 'Siendo Llamado',
+      IN_CONSULTATION: 'En Consulta',
+      COMPLETED: 'Completado',
+      ABSENT: 'Ausente',
+      CANCELLED_NO_PAYMENT: 'Cancelado'
     };
     return m[status] ?? status;
   }
@@ -882,7 +880,7 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     });
   }
 
-  onApptClinicChange(clinicId: number): void {
+  onApptClinicChange(_clinicId: number): void {
     this.apptCalendarForm.patchValue({ scheduledTime: '' });
     this.loadApptSlots();
   }

@@ -100,9 +100,42 @@ public class PublicController {
         }
     }
 
+    @PutMapping("/change-username")
+    public ResponseEntity<ApiResponse<Void>> changeUsername(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody ChangeUsernameRequest req) {
+        try {
+            if (userDetails == null) {
+                return ResponseEntity.status(401).body(ApiResponse.error("No autenticado."));
+            }
+            if (req.getNewUsername() == null || req.getNewUsername().isBlank()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("El nombre de usuario no puede estar vacío."));
+            }
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPassword())) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Contraseña incorrecta."));
+            }
+            if (!req.getNewUsername().equals(user.getUsername()) && userRepository.existsByUsername(req.getNewUsername())) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Ese nombre de usuario ya está en uso."));
+            }
+            user.setUsername(req.getNewUsername());
+            userRepository.save(user);
+            return ResponseEntity.ok(ApiResponse.ok("Nombre de usuario actualizado.", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @Data
     static class ChangePasswordRequest {
         private String currentPassword;
         private String newPassword;
+    }
+
+    @Data
+    static class ChangeUsernameRequest {
+        private String newUsername;
+        private String currentPassword;
     }
 }

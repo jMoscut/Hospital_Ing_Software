@@ -89,4 +89,36 @@ public class TicketController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
+
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<ApiResponse<List<TicketDTO>>> getByPatient(@PathVariable Long patientId) {
+        return ResponseEntity.ok(ApiResponse.ok(ticketService.getByPatient(patientId)));
+    }
+
+    /** Health staff calls next WAITING patient to vital signs area */
+    @PutMapping("/clinic/{clinicId}/call-to-vital-signs")
+    @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'NURSE', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketDTO>> callNextToVitalSigns(@PathVariable Long clinicId) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Paciente llamado a signos vitales",
+                    ticketService.callNextToVitalSigns(clinicId)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Doctor calls a READY_FOR_DOCTOR patient to their consultation room */
+    @PutMapping("/{ticketId}/call-to-consultation")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<TicketDTO>> callToConsultation(
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            Long doctorId = userDetails.getUser().getId();
+            return ResponseEntity.ok(ApiResponse.ok("Paciente llamado al consultorio",
+                    ticketService.callToConsultation(ticketId, doctorId)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
 }

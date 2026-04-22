@@ -59,7 +59,7 @@ public class PrescriptionService {
 
     @Transactional(readOnly = true)
     public Prescription getById(Long id) {
-        return prescriptionRepository.findById(id)
+        return prescriptionRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Receta no encontrada: " + id));
     }
 

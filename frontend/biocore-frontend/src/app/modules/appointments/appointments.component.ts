@@ -41,7 +41,7 @@ const NOTIF_KEY = 'biocore_notification_settings';
         </div>
       </div>
 
-      <!-- BANNER: Turno siendo llamado actualmente (RN-CT04) -->
+      <!-- BANNER: Turnos activos siendo llamados -->
       <div class="calling-banner" *ngIf="calledTickets.length > 0">
         <div class="calling-label">
           <mat-icon>campaign</mat-icon> LLAMANDO AHORA
@@ -50,10 +50,9 @@ const NOTIF_KEY = 'biocore_notification_settings';
           <div class="calling-item" *ngFor="let t of calledTickets">
             <span class="calling-num">{{ t.ticketNumber }}</span>
             <span class="calling-name">{{ t.patientName }}</span>
-            <span class="calling-clinic">→ {{ t.clinicName }}</span>
-            <button mat-icon-button color="warn" (click)="markAbsent(t.id)" matTooltip="Marcar ausente">
-              <mat-icon>person_off</mat-icon>
-            </button>
+            <span class="calling-dest" *ngIf="t.status === 'CALLED_TO_VITAL_SIGNS'">→ Signos Vitales</span>
+            <span class="calling-dest" *ngIf="t.status === 'BEING_CALLED'">→ {{ t.clinicName }}</span>
+            <mat-icon class="calling-icon-vs" *ngIf="t.status === 'CALLED_TO_VITAL_SIGNS'" matTooltip="En Signos Vitales">monitor_heart</mat-icon>
           </div>
         </div>
       </div>
@@ -68,35 +67,47 @@ const NOTIF_KEY = 'biocore_notification_settings';
           </ng-template>
           <div class="tab-content">
 
-            <!-- Panel de llamado (RN-CT02, RN-CT03, RN-CT04) -->
+            <!-- Panel de llamado a signos vitales -->
             <mat-card class="call-panel" *ngIf="canManage()">
               <mat-card-header>
-                <mat-icon mat-card-avatar style="color:#1D6C61">campaign</mat-icon>
-                <mat-card-title>Llamar Paciente</mat-card-title>
-                <mat-card-subtitle>RN-CT03: orden cronológico · RN-CT04: visual + audio</mat-card-subtitle>
+                <mat-icon mat-card-avatar style="color:#1D6C61">monitor_heart</mat-icon>
+                <mat-card-title>Llamar a Signos Vitales</mat-card-title>
+                <mat-card-subtitle>Requiere al menos un médico disponible en la clínica seleccionada</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
                 <div class="call-controls">
                   <mat-form-field appearance="outline" class="call-clinic-field">
-                    <mat-label>Clínica a llamar</mat-label>
+                    <mat-label>Clínica</mat-label>
                     <mat-icon matPrefix>local_hospital</mat-icon>
-                    <mat-select [(ngModel)]="callClinicId" [ngModelOptions]="{standalone: true}">
+                    <mat-select [(ngModel)]="callClinicId" [ngModelOptions]="{standalone: true}"
+                                (ngModelChange)="onClinicChange($event)">
                       <mat-option [value]="0" disabled>— Seleccione clínica —</mat-option>
-                      <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
+                      <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
                     </mat-select>
                   </mat-form-field>
                   <button mat-raised-button color="primary"
-                          [disabled]="!callClinicId || calling"
-                          (click)="callNextTicket()">
+                          [disabled]="!callClinicId || !anyDoctorAvailable || calling"
+                          (click)="callNextToVitalSigns()">
                     <mat-spinner *ngIf="calling" diameter="20"></mat-spinner>
                     <mat-icon *ngIf="!calling">campaign</mat-icon>
-                    {{ calling ? 'Llamando...' : 'Llamar Siguiente' }}
+                    {{ calling ? 'Llamando...' : 'Llamar Siguiente Paciente' }}
                   </button>
                 </div>
-                <p class="call-hint">
-                  <mat-icon style="font-size:15px;vertical-align:middle">info</mat-icon>
-                  Llama al primer paciente en espera de la clínica seleccionada. El turno se mostrará en la pantalla de sala de espera.
-                </p>
+                <!-- Doctor availability status -->
+                <div *ngIf="callClinicId">
+                  <p class="call-hint warn-hint" *ngIf="!anyDoctorAvailable">
+                    <mat-icon style="font-size:15px;vertical-align:middle">warning</mat-icon>
+                    Ningún médico disponible — espere a que un médico se marque disponible
+                  </p>
+                  <div class="doctor-chips" *ngIf="doctorStatuses.length > 0">
+                    <div class="doctor-chip" *ngFor="let d of doctorStatuses"
+                         [class.avail]="d.available" [class.busy]="!d.available">
+                      <mat-icon style="font-size:14px">{{ d.available ? 'check_circle' : 'cancel' }}</mat-icon>
+                      Dr. {{ d.firstName }} {{ d.lastName }}
+                      <span class="avail-label">{{ d.available ? 'Disponible' : 'Ocupado' }}</span>
+                    </div>
+                  </div>
+                </div>
               </mat-card-content>
             </mat-card>
 
@@ -110,6 +121,8 @@ const NOTIF_KEY = 'biocore_notification_settings';
               </mat-form-field>
               <div class="queue-stats">
                 <span class="stat-chip waiting">{{ countByStatus('WAITING') }} en espera</span>
+                <span class="stat-chip vitals">{{ countByStatus('CALLED_TO_VITAL_SIGNS') }} signos vitales</span>
+                <span class="stat-chip ready">{{ countByStatus('READY_FOR_DOCTOR') }} listo médico</span>
                 <span class="stat-chip calling">{{ countByStatus('BEING_CALLED') }} siendo llamados</span>
                 <span class="stat-chip consulting">{{ countByStatus('IN_CONSULTATION') }} en consulta</span>
               </div>
@@ -142,7 +155,59 @@ const NOTIF_KEY = 'biocore_notification_settings';
           </div>
         </mat-tab>
 
-        <!-- TAB 2: Completados del día -->
+        <!-- TAB 2: Personal médico -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">badge</mat-icon>
+            Personal ({{ staffList.length }})
+          </ng-template>
+          <div class="tab-content">
+            <div class="staff-toolbar">
+              <mat-form-field appearance="outline" class="staff-filter-field">
+                <mat-label>Filtrar por estado</mat-label>
+                <mat-select [(ngModel)]="staffStatusFilter" (ngModelChange)="applyStaffFilter()" [ngModelOptions]="{standalone: true}">
+                  <mat-option value="">Todos</mat-option>
+                  <mat-option value="ACTIVO">Activo</mat-option>
+                  <mat-option value="INACTIVO">Inactivo</mat-option>
+                  <mat-option value="FUERA_DE_TURNO">Fuera de turno</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="staff-summary">
+                <span class="stat-chip" style="background:#e8f5e9;color:#2e7d32">{{ countStaffByStatus('ACTIVO') }} activos</span>
+                <span class="stat-chip" style="background:#fff8e1;color:#f57f17">{{ countStaffByStatus('INACTIVO') }} inactivos</span>
+                <span class="stat-chip" style="background:#f5f5f5;color:#616161">{{ countStaffByStatus('FUERA_DE_TURNO') }} fuera de turno</span>
+              </div>
+            </div>
+
+            <div class="staff-grid">
+              <div class="staff-card" *ngFor="let s of filteredStaff" [ngClass]="'staff-' + s.status.toLowerCase()">
+                <div class="staff-avatar">
+                  <mat-icon>{{ s.role === 'LAB_TECHNICIAN' ? 'science' : 'stethoscope' }}</mat-icon>
+                </div>
+                <div class="staff-info">
+                  <div class="staff-name">{{ s.firstName }} {{ s.lastName }}</div>
+                  <div class="staff-role">{{ s.role === 'DOCTOR' ? 'Médico' : 'Técnico de Laboratorio' }}</div>
+                  <div class="staff-specialty" *ngIf="s.specialty">{{ s.specialty }}</div>
+                </div>
+                <div class="staff-area">
+                  <mat-icon style="font-size:15px;vertical-align:middle;margin-right:4px">location_on</mat-icon>
+                  {{ s.area }}
+                </div>
+                <div class="staff-status-badge" [ngClass]="'badge-' + s.status.toLowerCase()">
+                  <span class="status-dot"></span>
+                  {{ staffStatusLabel(s.status) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="empty-state" *ngIf="filteredStaff.length === 0">
+              <mat-icon>badge</mat-icon>
+              <p>No hay personal registrado</p>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 3: Completados del día -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">task_alt</mat-icon>
@@ -201,8 +266,18 @@ const NOTIF_KEY = 'biocore_notification_settings';
     .queue-stats { display: flex; gap: 8px; flex-wrap: wrap; }
     .stat-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 500; }
     .waiting { background: #fff8e1; color: #f57f17; }
+    .vitals { background: #e0f7fa; color: #00838f; }
+    .ready { background: #f3e5f5; color: #7b1fa2; }
     .calling { background: #e3f2fd; color: #1565c0; }
     .consulting { background: #e8f5e9; color: #2e7d32; }
+    .calling-dest { font-size: 0.85rem; opacity: 0.9; }
+    .calling-icon-vs { font-size: 16px; opacity: 0.8; }
+    .warn-hint { color: #e65100 !important; }
+    .doctor-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .doctor-chip { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 16px; font-size: 0.82rem; font-weight: 500; }
+    .doctor-chip.avail { background: #e8f5e9; color: #2e7d32; }
+    .doctor-chip.busy { background: #ffebee; color: #c62828; }
+    .avail-label { font-size: 0.72rem; opacity: 0.8; margin-left: 2px; }
 
     /* Ticket cards */
     .ticket-card {
@@ -248,10 +323,58 @@ const NOTIF_KEY = 'biocore_notification_settings';
 
     .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
     .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; }
+    .status-waiting { background:#fff8e1;color:#f57f17; }
+    .status-vitals { background:#e0f7fa;color:#00838f; }
+    .status-ready { background:#f3e5f5;color:#7b1fa2; }
+    .status-being-called { background:#e3f2fd;color:#1565c0; }
+    .status-in-consultation { background:#e8f5e9;color:#2e7d32; }
+    .status-completed { background:#f5f5f5;color:#616161; }
+    .status-absent { background:#ffebee;color:#c62828; }
+
+    /* Staff panel */
+    .staff-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .staff-filter-field { min-width: 200px; }
+    .staff-summary { display: flex; gap: 8px; flex-wrap: wrap; }
+    .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .staff-card {
+      display: flex; align-items: center; gap: 14px;
+      background: white; border-radius: 12px; padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e8e8e8;
+      border-left: 5px solid #e0e0e0;
+      transition: box-shadow 0.2s;
+    }
+    .staff-card.staff-activo { border-left-color: #43a047; }
+    .staff-card.staff-inactivo { border-left-color: #fb8c00; }
+    .staff-card.staff-fuera_de_turno { border-left-color: #9e9e9e; opacity: 0.75; }
+    .staff-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #e8f5e9; display: flex; align-items: center; justify-content: center;
+      color: #1D6C61; flex-shrink: 0;
+    }
+    .staff-card.staff-inactivo .staff-avatar { background: #fff3e0; color: #e65100; }
+    .staff-card.staff-fuera_de_turno .staff-avatar { background: #f5f5f5; color: #9e9e9e; }
+    .staff-info { flex: 1; min-width: 0; }
+    .staff-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .staff-role { font-size: 0.78rem; color: #757575; margin-top: 2px; }
+    .staff-specialty { font-size: 0.75rem; color: #9e9e9e; font-style: italic; }
+    .staff-area { font-size: 0.78rem; color: #1D6C61; white-space: nowrap; }
+    .staff-status-badge {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-activo { background: #e8f5e9; color: #2e7d32; }
+    .badge-inactivo { background: #fff3e0; color: #e65100; }
+    .badge-fuera_de_turno { background: #f5f5f5; color: #757575; }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor; display: inline-block;
+    }
   `]
 })
 export class AppointmentsComponent implements OnInit, OnDestroy {
   clinics: Clinic[] = [];
+  visitClinics: Clinic[] = [];
   activeTickets: Ticket[] = [];
   filteredActive: Ticket[] = [];
   calledTickets: Ticket[] = [];
@@ -259,10 +382,20 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   selectedClinicFilter = 0;
   callClinicId = 0;
   calling = false;
+  doctorStatuses: any[] = [];
 
+  staffList: any[] = [];
+  filteredStaff: any[] = [];
+  staffStatusFilter = '';
 
   private refreshInterval: any;
+  private staffInterval: any;
+  private doctorInterval: any;
   private lastCalledIds = new Set<number>();
+
+  get anyDoctorAvailable(): boolean {
+    return this.doctorStatuses.some(d => d.available);
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -273,14 +406,28 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.clinicService.getAll().subscribe(res => { if (res.success) this.clinics = res.data; });
+    this.clinicService.getAll().subscribe(res => {
+      if (res.success) {
+        this.clinics = res.data;
+        const excluded = ['farmacia', 'emergencia', 'emergencias'];
+        this.visitClinics = res.data.filter((c: Clinic) =>
+          !excluded.some(x => c.name.toLowerCase().includes(x))
+        );
+      }
+    });
     this.loadAll();
-    // Auto-refresh every 20 seconds
-    this.refreshInterval = setInterval(() => this.loadAll(), 20000);
+    this.loadStaff();
+    this.refreshInterval = setInterval(() => this.loadAll(), 5000);
+    this.staffInterval   = setInterval(() => this.loadStaff(), 5000);
+    this.doctorInterval  = setInterval(() => {
+      if (this.callClinicId) this.refreshDoctorChips();
+    }, 5000);
   }
 
   ngOnDestroy(): void {
-    if (this.refreshInterval) clearInterval(this.refreshInterval);
+    clearInterval(this.refreshInterval);
+    clearInterval(this.staffInterval);
+    clearInterval(this.doctorInterval);
     window.speechSynthesis?.cancel();
   }
 
@@ -289,13 +436,57 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
       next: res => {
         if (!res.success) return;
         const all = res.data;
-        this.activeTickets = all.filter(t => ['WAITING', 'BEING_CALLED', 'IN_CONSULTATION'].includes(t.status));
-        this.calledTickets  = all.filter(t => t.status === 'BEING_CALLED');
-        this.completedTickets = all.filter(t => t.status === 'COMPLETED');
+        const activeStatuses = new Set(['WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR','BEING_CALLED','IN_CONSULTATION']);
+        this.activeTickets = all.filter((t: Ticket) => activeStatuses.has(t.status));
+        this.calledTickets = all.filter((t: Ticket) =>
+          t.status === 'CALLED_TO_VITAL_SIGNS' || t.status === 'BEING_CALLED');
+        this.completedTickets = all.filter((t: Ticket) => t.status === 'COMPLETED');
         this.applyFilter();
+        this.announceNewCalls(this.calledTickets);
       },
       error: () => {}
     });
+  }
+
+  onClinicChange(clinicId: number): void {
+    if (!clinicId) { this.doctorStatuses = []; return; }
+    this.refreshDoctorChips();
+  }
+
+  private refreshDoctorChips(): void {
+    this.ticketService.getDoctorAvailability(this.callClinicId).subscribe({
+      next: res => { if (res.success) this.doctorStatuses = res.data; },
+      error: () => {}
+    });
+  }
+
+  callNextToVitalSigns(): void {
+    if (!this.callClinicId) return;
+    this.calling = true;
+    this.ticketService.callToVitalSigns(this.callClinicId).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.info(`Paciente ${res.data.ticketNumber} llamado a Signos Vitales`);
+          this.loadAll();
+          this.refreshDoctorChips();
+        } else {
+          this.notification.error(res.message || 'No hay pacientes en espera');
+        }
+        this.calling = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'No hay médicos disponibles o no hay pacientes en espera');
+        this.calling = false;
+      }
+    });
+  }
+
+  private announceNewCalls(current: Ticket[]): void {
+    const currentIds = new Set(current.map(t => t.id));
+    current.forEach(t => {
+      if (!this.lastCalledIds.has(t.id)) this.announce(t);
+    });
+    this.lastCalledIds = currentIds;
   }
 
   applyFilter(): void {
@@ -308,52 +499,31 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
     return this.activeTickets.filter(t => t.status === status).length;
   }
 
-  callNextTicket(): void {
-    if (!this.callClinicId) return;
-    this.calling = true;
-    this.ticketService.callNext(this.callClinicId).subscribe({
-      next: res => {
-        if (res.success) {
-          const t = res.data;
-          this.announce(t);
-          this.notification.success(`Llamando: ${t.ticketNumber} — ${t.patientName}`);
-          this.loadAll();
-        } else {
-          this.notification.error(res.message || 'No hay pacientes en espera en esta clínica');
-        }
-        this.calling = false;
-      },
-      error: err => {
-        this.notification.error(err.error?.message || 'No hay pacientes en espera');
-        this.calling = false;
-      }
-    });
-  }
-
   private announce(ticket: Ticket): void {
     const settings = this.getSettings();
     if (!settings.audioEnabled) return;
 
+    const destination = ticket.status === 'CALLED_TO_VITAL_SIGNS'
+      ? 'el área de signos vitales'
+      : ticket.clinicName;
+
     if (settings.alertType === 'voice' && 'speechSynthesis' in window) {
-      const text = `Se llama turno ${ticket.ticketNumber.replace(/-/g, ' ')}, `
+      const text = `Se llama turno ${ticket.ticketNumber.split('').join(' ')}, `
         + `${ticket.patientName}, `
-        + `favor dirigirse a ${ticket.clinicName}.`;
+        + `favor dirigirse a ${destination}.`;
 
       window.speechSynthesis.cancel();
       let count = 0;
       const speakOnce = () => {
-        if (count >= settings.repetitions) return;
+        if (count >= (settings.repetitions ?? 2)) return;
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'es-ES';
-        u.volume = settings.volume / 100;
+        u.volume = (settings.volume ?? 80) / 100;
         u.rate = 0.85;
-        u.onend = () => {
-          count++;
-          if (count < settings.repetitions) setTimeout(speakOnce, 800);
-        };
+        u.onend = () => { count++; if (count < settings.repetitions) setTimeout(speakOnce, 800); };
         window.speechSynthesis.speak(u);
       };
-      speakOnce();
+      setTimeout(speakOnce, 150);
     } else if (settings.alertType === 'tone') {
       this.playTone();
     }
@@ -381,6 +551,37 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
       : { visualEnabled: true, audioEnabled: true, volume: 80, alertType: 'voice', displaySeconds: 10, repetitions: 2 };
   }
 
+  loadStaff(): void {
+    this.ticketService.getStaffStatus().subscribe({
+      next: res => {
+        if (res.success) {
+          this.staffList = res.data;
+          this.applyStaffFilter();
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  applyStaffFilter(): void {
+    this.filteredStaff = this.staffStatusFilter
+      ? this.staffList.filter(s => s.status === this.staffStatusFilter)
+      : [...this.staffList];
+  }
+
+  countStaffByStatus(status: string): number {
+    return this.staffList.filter(s => s.status === status).length;
+  }
+
+  staffStatusLabel(status: string): string {
+    const m: Record<string, string> = {
+      ACTIVO: 'Activo',
+      INACTIVO: 'Inactivo',
+      FUERA_DE_TURNO: 'Fuera de turno'
+    };
+    return m[status] ?? status;
+  }
+
   openCallScreen(): void {
     window.open('/call-screen', '_blank', 'width=1280,height=720');
   }
@@ -398,18 +599,28 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
 
   getStatusClass(s: string): string {
     const m: Record<string, string> = {
-      WAITING: 'status-waiting', BEING_CALLED: 'status-being-called',
-      IN_CONSULTATION: 'status-in-consultation', COMPLETED: 'status-completed',
-      ABSENT: 'status-absent', CANCELLED_NO_PAYMENT: 'status-absent'
+      WAITING: 'status-waiting',
+      CALLED_TO_VITAL_SIGNS: 'status-vitals',
+      READY_FOR_DOCTOR: 'status-ready',
+      BEING_CALLED: 'status-being-called',
+      IN_CONSULTATION: 'status-in-consultation',
+      COMPLETED: 'status-completed',
+      ABSENT: 'status-absent',
+      CANCELLED_NO_PAYMENT: 'status-absent'
     };
     return m[s] ?? '';
   }
 
   statusLabel(s: string): string {
     const m: Record<string, string> = {
-      WAITING: 'En Espera', BEING_CALLED: 'Siendo Llamado',
-      IN_CONSULTATION: 'En Consulta', COMPLETED: 'Completado',
-      ABSENT: 'Ausente', CANCELLED_NO_PAYMENT: 'Cancelado'
+      WAITING: 'En Espera',
+      CALLED_TO_VITAL_SIGNS: 'Signos Vitales',
+      READY_FOR_DOCTOR: 'Listo p/ Médico',
+      BEING_CALLED: 'Siendo Llamado',
+      IN_CONSULTATION: 'En Consulta',
+      COMPLETED: 'Completado',
+      ABSENT: 'Ausente',
+      CANCELLED_NO_PAYMENT: 'Cancelado'
     };
     return m[s] ?? s;
   }

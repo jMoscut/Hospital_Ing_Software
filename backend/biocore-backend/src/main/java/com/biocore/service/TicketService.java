@@ -13,6 +13,7 @@ import com.biocore.repository.ClinicRepository;
 import com.biocore.repository.DoctorClinicAssignmentRepository;
 import com.biocore.repository.PatientRepository;
 import com.biocore.repository.TicketRepository;
+import com.biocore.repository.UserRepository;
 import com.biocore.repository.VitalSignsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,10 +33,19 @@ public class TicketService {
     private final ClinicRepository clinicRepository;
     private final DoctorClinicAssignmentRepository assignmentRepository;
     private final VitalSignsRepository vitalSignsRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<TicketDTO> getAll() {
         return ticketRepository.findAll().stream()
+                .map(TicketDTO::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketDTO> getByPatient(Long patientId) {
+        return ticketRepository.findByPatientId(patientId).stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(TicketDTO::from)
                 .collect(Collectors.toList());
     }
@@ -111,17 +121,70 @@ public class TicketService {
         return TicketDTO.from(ticketRepository.save(nextTicket));
     }
 
+    /** Health staff calls next WAITING patient to the vital signs area.
+     *  Requires at least one available doctor assigned to the clinic. */
+    @Transactional
+    public TicketDTO callNextToVitalSigns(Long clinicId) {
+        if (assignmentRepository.countAvailableDoctorsInClinic(clinicId) == 0) {
+            throw new RuntimeException("No hay médicos disponibles en esta clínica. Espere a que un médico se marque disponible.");
+        }
+
+        List<Ticket> waitingTickets = ticketRepository.findQueueByClinic(clinicId,
+                List.of(TicketStatus.WAITING));
+        if (waitingTickets.isEmpty()) {
+            throw new RuntimeException("No hay pacientes en espera para esta clínica");
+        }
+
+        Ticket next = waitingTickets.get(0);
+        next.setStatus(TicketStatus.CALLED_TO_VITAL_SIGNS);
+        next.setCalledAt(LocalDateTime.now());
+        return TicketDTO.from(ticketRepository.save(next));
+    }
+
+    /** Status-aware confirm:
+     *  CALLED_TO_VITAL_SIGNS + vitals present → READY_FOR_DOCTOR
+     *  BEING_CALLED (doctor called to room)   → IN_CONSULTATION */
     @Transactional
     public TicketDTO confirmArrival(Long ticketId) {
         Ticket ticket = getTicketOrThrow(ticketId);
 
-        // RN-03: Verificar signos vitales registrados
-        if (!vitalSignsRepository.existsByTicketId(ticketId)) {
-            throw new RuntimeException("RN-03: Debe registrar los signos vitales del paciente antes de iniciar la consulta");
+        if (ticket.getStatus() == TicketStatus.CALLED_TO_VITAL_SIGNS) {
+            if (!vitalSignsRepository.existsByTicketId(ticketId)) {
+                throw new RuntimeException("RN-03: Debe registrar los signos vitales antes de continuar");
+            }
+            ticket.setStatus(TicketStatus.READY_FOR_DOCTOR);
+        } else if (ticket.getStatus() == TicketStatus.BEING_CALLED) {
+            ticket.setStatus(TicketStatus.IN_CONSULTATION);
+            ticket.setConsultationStartAt(LocalDateTime.now());
+        } else {
+            throw new RuntimeException("Estado inválido para confirmar llegada: " + ticket.getStatus());
         }
 
-        ticket.setStatus(TicketStatus.IN_CONSULTATION);
-        ticket.setConsultationStartAt(LocalDateTime.now());
+        return TicketDTO.from(ticketRepository.save(ticket));
+    }
+
+    /** Doctor calls a READY_FOR_DOCTOR patient to their room (shows on call screen). */
+    @Transactional
+    public TicketDTO callToConsultation(Long ticketId, Long doctorId) {
+        Ticket ticket = getTicketOrThrow(ticketId);
+        if (ticket.getStatus() != TicketStatus.READY_FOR_DOCTOR) {
+            throw new RuntimeException("El paciente no está listo para ser llamado a consulta");
+        }
+
+        // Assign/confirm doctor on ticket
+        if (ticket.getDoctor() == null || !ticket.getDoctor().getId().equals(doctorId)) {
+            userRepository.findById(doctorId).ifPresent(ticket::setDoctor);
+        }
+
+        ticket.setStatus(TicketStatus.BEING_CALLED);
+        ticket.setCalledAt(LocalDateTime.now());
+
+        // Doctor is no longer available while attending a patient
+        userRepository.findById(doctorId).ifPresent(doc -> {
+            doc.setAvailable(false);
+            userRepository.save(doc);
+        });
+
         return TicketDTO.from(ticketRepository.save(ticket));
     }
 
@@ -130,6 +193,15 @@ public class TicketService {
         Ticket ticket = getTicketOrThrow(ticketId);
         ticket.setStatus(TicketStatus.COMPLETED);
         ticket.setCompletedAt(LocalDateTime.now());
+
+        // Doctor becomes not available after completing consultation
+        if (ticket.getDoctor() != null) {
+            userRepository.findById(ticket.getDoctor().getId()).ifPresent(doc -> {
+                doc.setAvailable(false);
+                userRepository.save(doc);
+            });
+        }
+
         return TicketDTO.from(ticketRepository.save(ticket));
     }
 

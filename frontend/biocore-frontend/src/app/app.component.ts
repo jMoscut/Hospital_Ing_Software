@@ -84,27 +84,33 @@ interface NavItem {
   `,
   styles: [`
     .app-container { height: 100vh; }
-    .app-sidenav { width: 240px; background: #193A31; color: white; }
+    .app-sidenav { width: 240px; background: #193A31; color: white; display: flex; flex-direction: column; overflow: hidden; }
     .sidenav-header {
       display: flex; align-items: center; gap: 12px;
-      padding: 24px 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.12);
+      padding: 18px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
     }
-    .logo-icon { font-size: 36px; width: 36px; height: 36px; color: #3EB9A8; }
-    .brand-name { font-size: 1.3rem; font-weight: 700; color: white; }
-    .brand-sub { font-size: 0.7rem; color: rgba(255,255,255,0.55); letter-spacing: 1px; text-transform: uppercase; }
-    mat-nav-list a { color: rgba(255,255,255,0.85) !important; border-radius: 8px; margin: 2px 8px; }
+    .logo-icon { font-size: 32px; width: 32px; height: 32px; color: #3EB9A8; flex-shrink: 0; }
+    .brand-name { font-size: 1.2rem; font-weight: 700; color: white; }
+    .brand-sub { font-size: 0.68rem; color: rgba(255,255,255,0.55); letter-spacing: 1px; text-transform: uppercase; }
+    mat-nav-list { flex: 1; overflow: hidden; padding-top: 6px !important; padding-bottom: 6px !important; }
+    mat-nav-list a {
+      color: rgba(255,255,255,0.85) !important; border-radius: 8px; margin: 2px 8px;
+      height: 44px !important; min-height: 44px !important;
+    }
     mat-nav-list a:hover { background: rgba(62,185,168,0.15) !important; }
     .active-link { background: rgba(62,185,168,0.25) !important; color: #3EB9A8 !important; font-weight: 600; }
-    mat-icon[matListItemIcon] { color: inherit !important; }
+    mat-icon[matListItemIcon] { color: inherit !important; font-size: 22px !important; width: 22px !important; height: 22px !important; }
+    [matListItemTitle] { font-size: 0.88rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sidenav-footer {
-      position: absolute; bottom: 0; left: 0; right: 0;
+      flex-shrink: 0;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.12);
+      padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.12);
       background: rgba(0,0,0,0.25);
     }
-    .user-info { display: flex; align-items: center; gap: 8px; color: white; }
-    .user-name { font-size: 0.85rem; font-weight: 500; }
-    .user-role { font-size: 0.7rem; color: rgba(255,255,255,0.55); }
+    .user-info { display: flex; align-items: center; gap: 8px; color: white; min-width: 0; overflow: hidden; }
+    .user-name { font-size: 0.83rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 0.68rem; color: rgba(255,255,255,0.55); }
     .app-content { display: flex; flex-direction: column; }
     .topbar { position: sticky; top: 0; z-index: 10; background: #193A31 !important; }
     .toolbar-title { font-weight: 500; margin-left: 8px; }

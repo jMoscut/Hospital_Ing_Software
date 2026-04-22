@@ -31,6 +31,14 @@ export class TicketService {
     return this.http.put<ApiResponse<Ticket>>(`${this.url}/clinic/${clinicId}/call-next`, {});
   }
 
+  callToVitalSigns(clinicId: number): Observable<ApiResponse<Ticket>> {
+    return this.http.put<ApiResponse<Ticket>>(`${this.url}/clinic/${clinicId}/call-to-vital-signs`, {});
+  }
+
+  callToConsultation(ticketId: number): Observable<ApiResponse<Ticket>> {
+    return this.http.put<ApiResponse<Ticket>>(`${this.url}/${ticketId}/call-to-consultation`, {});
+  }
+
   confirmArrival(ticketId: number): Observable<ApiResponse<Ticket>> {
     return this.http.put<ApiResponse<Ticket>>(`${this.url}/${ticketId}/confirm-arrival`, {});
   }
@@ -41,6 +49,35 @@ export class TicketService {
 
   markAbsent(ticketId: number): Observable<ApiResponse<Ticket>> {
     return this.http.put<ApiResponse<Ticket>>(`${this.url}/${ticketId}/mark-absent`, {});
+  }
+
+  getDoctorAvailability(clinicId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/users/doctors/availability?clinicId=${clinicId}`);
+  }
+
+  toggleDoctorAvailability(): Observable<ApiResponse<{ available: boolean }>> {
+    return this.http.patch<ApiResponse<{ available: boolean }>>(`${environment.apiUrl}/users/me/toggle-availability`, {});
+  }
+
+  getStaffStatus(): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/users/staff/status`);
+  }
+
+  getMe(): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/users/me`);
+  }
+
+  getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/tickets/patient/${patientId}`);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class PrescriptionService {
+  constructor(private http: HttpClient) {}
+
+  getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/prescriptions/patient/${patientId}`);
   }
 }
 
@@ -77,6 +114,14 @@ export class AppointmentService {
     return this.http.post<ApiResponse<any>>(`${this.url}/${appointmentId}/confirm-payment`, data);
   }
 
+  reserve(data: { patientId: number | null, clinicId: number | null, date: string, time: string }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.url}/reserve`, data);
+  }
+
+  cancelReservation(id: number): Observable<ApiResponse<any>> {
+    return this.http.delete<ApiResponse<any>>(`${this.url}/reserve/${id}`);
+  }
+
   getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(`${this.url}/patient/${patientId}`);
   }
@@ -98,5 +143,32 @@ export class VitalSignsService {
 
   getByTicket(ticketId: number): Observable<ApiResponse<VitalSigns>> {
     return this.http.get<ApiResponse<VitalSigns>>(`${this.url}/ticket/${ticketId}`);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class DoctorScheduleService {
+  private url = `${environment.apiUrl}/schedules`;
+
+  constructor(private http: HttpClient) {}
+
+  getByDoctor(doctorId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/doctor/${doctorId}`);
+  }
+
+  getByClinic(clinicId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/clinic/${clinicId}`);
+  }
+
+  create(data: any): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(this.url, data);
+  }
+
+  update(id: number, data: any): Observable<ApiResponse<any>> {
+    return this.http.put<ApiResponse<any>>(`${this.url}/${id}`, data);
+  }
+
+  delete(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.url}/${id}`);
   }
 }

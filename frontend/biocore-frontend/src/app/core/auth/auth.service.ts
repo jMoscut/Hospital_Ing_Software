@@ -81,4 +81,11 @@ export class AuthService {
       { currentPassword, newPassword }
     );
   }
+
+  changeUsername(newUsername: string, currentPassword: string): Observable<ApiResponse<void>> {
+    return this.http.put<ApiResponse<void>>(
+      `${environment.apiUrl}/public/change-username`,
+      { newUsername, currentPassword }
+    );
+  }
 }

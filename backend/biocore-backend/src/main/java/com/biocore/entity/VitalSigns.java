@@ -1,5 +1,6 @@
 package com.biocore.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,7 @@ public class VitalSigns {
     private Long id;
 
     /** RN-03: Obligatorio antes de asignar a consulta */
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ticket_id", nullable = false, unique = true)
     private Ticket ticket;
@@ -39,6 +41,7 @@ public class VitalSigns {
 
     private Integer oxygenSaturation;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registered_by")
     private User registeredBy;

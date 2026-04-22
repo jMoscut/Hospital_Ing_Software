@@ -78,13 +78,18 @@ import { Patient } from '../../../core/models/patient.model';
 
                 <div class="form-grid">
                   <mat-form-field appearance="outline">
-                    <mat-label>Nombres</mat-label>
+                    <mat-label>Nombres *</mat-label>
                     <input matInput formControlName="firstName" [readonly]="!!existingPatient">
                     <mat-error>Requerido</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
-                    <mat-label>Apellidos</mat-label>
+                    <mat-label>Apellidos *</mat-label>
                     <input matInput formControlName="lastName" [readonly]="!!existingPatient">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Fecha de Nacimiento</mat-label>
+                    <mat-icon matPrefix>cake</mat-icon>
+                    <input matInput type="date" formControlName="birthDate" [readonly]="!!existingPatient">
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Teléfono</mat-label>
@@ -98,18 +103,19 @@ import { Patient } from '../../../core/models/patient.model';
                     <mat-label>Dirección</mat-label>
                     <input matInput formControlName="address">
                   </mat-form-field>
-                  <mat-form-field appearance="outline" *ngIf="!existingPatient">
-                    <mat-label>Contacto de Emergencia</mat-label>
-                    <input matInput formControlName="emergencyContact">
-                  </mat-form-field>
                   <mat-form-field appearance="outline">
-                    <mat-label>Seguro Médico (Opcional)</mat-label>
-                    <mat-select formControlName="insuranceId">
+                    <mat-label>Aseguradora (Opcional)</mat-label>
+                    <mat-select formControlName="insuranceId" [disabled]="!!existingPatient">
                       <mat-option [value]="null">Sin seguro</mat-option>
                       <mat-option *ngFor="let ins of insurances" [value]="ins.id">
                         {{ ins.name }} ({{ ins.discountPercentage }}% descuento)
                       </mat-option>
                     </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" *ngIf="!existingPatient">
+                    <mat-label>No. de Póliza / Carné (Opcional)</mat-label>
+                    <mat-icon matPrefix>confirmation_number</mat-icon>
+                    <input matInput formControlName="insuranceNumber">
                   </mat-form-field>
                 </div>
 
@@ -199,13 +205,14 @@ export class PatientRegisterComponent implements OnInit {
       dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
     });
     this.patientForm = this.fb.group({
-      firstName: ['', Validators.required],
-      lastName: ['', Validators.required],
-      phone: [''],
-      email: ['', Validators.email],
-      address: [''],
-      emergencyContact: [''],
-      insuranceId: [null]
+      firstName:       ['', Validators.required],
+      lastName:        ['', Validators.required],
+      birthDate:       [''],
+      phone:           [''],
+      email:           ['', Validators.email],
+      address:         [''],
+      insuranceId:     [null],
+      insuranceNumber: ['']
     });
     this.ticketForm = this.fb.group({
       clinicId: [null, Validators.required],

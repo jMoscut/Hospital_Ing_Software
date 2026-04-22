@@ -54,6 +54,15 @@ public class User {
     @Builder.Default
     private boolean mustChangePassword = false;
 
+    /** Médico disponible para recibir paciente — toggle manual, auto-off al completar consulta */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean available = false;
+
+    /** Updated by GET /api/users/me polling — used to detect if portal is open */
+    @Column
+    private LocalDateTime onlineAt;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

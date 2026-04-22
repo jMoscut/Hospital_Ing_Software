@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +41,16 @@ public class UserService {
     public UserDTO getById(Long id) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
+        return enrichWithClinic(UserDTO.from(u));
+    }
+
+    /** Touch onlineAt then return profile — called from GET /me so doctor portal keeps heartbeat. */
+    @Transactional
+    public UserDTO touchAndGet(Long id) {
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
+        u.setOnlineAt(java.time.LocalDateTime.now());
+        userRepository.save(u);
         return enrichWithClinic(UserDTO.from(u));
     }
 
@@ -142,6 +154,72 @@ public class UserService {
                     dto.setAssignedClinic(a.getClinic().getName());
                     dto.setAssignedClinicId(a.getClinic().getId());
                     return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public boolean toggleAvailability(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + userId));
+        user.setAvailable(!user.isAvailable());
+        userRepository.save(user);
+        return user.isAvailable();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllStaffStatus() {
+        List<Role> staffRoles = List.of(Role.DOCTOR, Role.LAB_TECHNICIAN);
+        return userRepository.findAll().stream()
+                .filter(u -> staffRoles.contains(u.getRole()))
+                .map(u -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id",        u.getId());
+                    m.put("firstName", u.getFirstName());
+                    m.put("lastName",  u.getLastName());
+                    m.put("role",      u.getRole().name());
+                    m.put("specialty", u.getSpecialty());
+                    // Derive area
+                    String area = "Sin asignación";
+                    if (u.getRole() == Role.LAB_TECHNICIAN) {
+                        area = "Laboratorio";
+                    } else {
+                        var assignment = assignmentRepository.findByDoctorIdAndActiveTrue(u.getId());
+                        if (assignment.isPresent()) {
+                            area = assignment.get().getClinic().getName();
+                        }
+                    }
+                    m.put("area", area);
+                    // Derive status — FUERA_DE_TURNO if portal hasn't polled in 2 min
+                    String status;
+                    java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusMinutes(2);
+                    if (!u.isActive() || u.getOnlineAt() == null || u.getOnlineAt().isBefore(threshold)) {
+                        status = "FUERA_DE_TURNO";
+                    } else if (u.isAvailable()) {
+                        status = "ACTIVO";
+                    } else {
+                        status = "INACTIVO";
+                    }
+                    m.put("status",    status);
+                    m.put("available", u.isAvailable());
+                    m.put("active",    u.isActive());
+                    return m;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getDoctorAvailabilityByClinic(Long clinicId) {
+        return assignmentRepository.findActiveDoctorsByClinic(clinicId).stream()
+                .map(a -> {
+                    User doc = a.getDoctor();
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id",        doc.getId());
+                    m.put("firstName", doc.getFirstName());
+                    m.put("lastName",  doc.getLastName());
+                    m.put("specialty", doc.getSpecialty());
+                    m.put("available", doc.isAvailable());
+                    return m;
                 })
                 .collect(Collectors.toList());
     }

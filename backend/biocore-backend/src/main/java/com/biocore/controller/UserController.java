@@ -4,14 +4,17 @@ import com.biocore.dto.ApiResponse;
 import com.biocore.dto.AssignClinicRequest;
 import com.biocore.dto.UserCreateRequest;
 import com.biocore.dto.UserDTO;
+import com.biocore.security.CustomUserDetails;
 import com.biocore.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -89,5 +92,42 @@ public class UserController {
     @GetMapping("/clinic/{clinicId}")
     public ResponseEntity<ApiResponse<List<UserDTO>>> getByClinic(@PathVariable Long clinicId) {
         return ResponseEntity.ok(ApiResponse.ok(userService.getByClinic(clinicId)));
+    }
+
+    /** Get current user's own profile — also updates onlineAt heartbeat */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserDTO>> getMe(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(userService.touchAndGet(userDetails.getUser().getId())));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Doctor toggles their own availability status */
+    @PatchMapping("/me/toggle-availability")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> toggleAvailability(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            boolean available = userService.toggleAvailability(userDetails.getUser().getId());
+            return ResponseEntity.ok(ApiResponse.ok("Disponibilidad actualizada", Map.of("available", available)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Health staff gets doctor availability for a clinic */
+    @GetMapping("/doctors/availability")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDoctorAvailability(
+            @RequestParam Long clinicId) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getDoctorAvailabilityByClinic(clinicId)));
+    }
+
+    /** All doctors + lab technicians with area and status (for queue monitoring) */
+    @GetMapping("/staff/status")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getStaffStatus() {
+        return ResponseEntity.ok(ApiResponse.ok(userService.getAllStaffStatus()));
     }
 }

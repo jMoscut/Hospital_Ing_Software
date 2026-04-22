@@ -1,6 +1,7 @@
 package com.biocore.entity;
 
 import com.biocore.enums.AppointmentStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -11,7 +12,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "appointments",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"clinic_id", "scheduled_date", "scheduled_time"}))
+       uniqueConstraints = @UniqueConstraint(
+           name = "uq_appt_slot_doctor",
+           columnNames = {"clinic_id", "scheduled_date", "scheduled_time", "doctor_id"}))
 @Data
 @Builder
 @NoArgsConstructor
@@ -29,6 +32,12 @@ public class Appointment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", nullable = false)
     private Clinic clinic;
+
+    /** Assigned doctor based on DoctorSchedule at booking time. Nullable for walk-ins. */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "doctor_id", nullable = true)
+    private User doctor;
 
     /** CONSULTA, LABORATORIO, CONTROL */
     @Column(nullable = false)

@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,10 +11,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/auth/auth.service';
 import { TicketService, AppointmentService, ClinicService } from '../../shared/services/ticket.service';
 import { PrescriptionService, LabService } from '../../shared/services/lab.service';
 import { PatientService } from '../../shared/services/patient.service';
+import { InsuranceService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket, Clinic } from '../../core/models/ticket.model';
 import { Prescription, LabOrder, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
@@ -25,16 +27,17 @@ type BookingStep = 'calendar' | 'payment' | 'confirmed';
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const ALL_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
-const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','general','externa'];
+const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
+const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
 
 @Component({
   selector: 'app-mis-citas',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterLink,
+    CommonModule, FormsModule, ReactiveFormsModule, RouterLink,
     MatCardModule, MatButtonModule, MatIconModule,
     MatTabsModule, MatChipsModule, MatProgressSpinnerModule,
-    MatFormFieldModule, MatInputModule, MatSelectModule
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatDividerModule
   ],
   template: `
     <div class="page-container">
@@ -72,18 +75,22 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
                   <div class="selector-row">
                     <mat-form-field appearance="outline">
                       <mat-label>Tipo de servicio</mat-label>
-                      <mat-select [(ngModel)]="selectedType">
+                      <mat-select [(ngModel)]="selectedType" (ngModelChange)="onTypeChange($event)">
                         <mat-option value="CONSULTA">Consulta Médica</mat-option>
                         <mat-option value="LABORATORIO">Laboratorio</mat-option>
                         <mat-option value="CONTROL">Control / Seguimiento</mat-option>
                       </mat-select>
                     </mat-form-field>
-                    <mat-form-field appearance="outline">
+                    <mat-form-field appearance="outline" *ngIf="selectedType !== 'LABORATORIO'">
                       <mat-label>Clínica / Área</mat-label>
                       <mat-select [(ngModel)]="selectedClinicId" (ngModelChange)="onClinicChange($event)">
                         <mat-option *ngFor="let c of bookingClinics" [value]="c.id">{{ c.name }}</mat-option>
                       </mat-select>
                     </mat-form-field>
+                    <div class="lab-auto-info" *ngIf="selectedType === 'LABORATORIO'">
+                      <mat-icon>science</mat-icon>
+                      <span>Área: <strong>{{ labClinics[0]?.name || 'Laboratorio' }}</strong></span>
+                    </div>
                   </div>
 
                   <!-- Calendar navigation -->
@@ -125,6 +132,10 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
                         No hay horarios disponibles para este día
                       </div>
                     </div>
+                    <div class="reservation-timer" *ngIf="reservationTimeLeft > 0" [class.timer-low]="reservationLow">
+                      <mat-icon>timer</mat-icon>
+                      <span>Horario <strong>{{ selectedSlot }}</strong> reservado — expira en <strong>{{ reservationMinutes }}:{{ reservationSeconds }}</strong></span>
+                    </div>
                   </ng-container>
 
                 </mat-card-content>
@@ -147,6 +158,12 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
                   <mat-card-subtitle>La cita se confirma al completar el pago</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
+
+                  <!-- Reservation countdown -->
+                  <div class="reservation-timer" *ngIf="reservationTimeLeft > 0" [class.timer-low]="reservationLow" style="margin-bottom:16px">
+                    <mat-icon>timer</mat-icon>
+                    <span>Reserva expira en <strong>{{ reservationMinutes }}:{{ reservationSeconds }}</strong> — completa el pago antes</span>
+                  </div>
 
                   <!-- Summary -->
                   <div class="appt-summary">
@@ -380,6 +397,8 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
             <div *ngIf="loadingProfile" class="loading-state"><mat-spinner diameter="40"></mat-spinner></div>
 
             <ng-container *ngIf="!loadingProfile && patientProfile">
+
+              <!-- Info Card -->
               <mat-card class="profile-card">
                 <mat-card-header>
                   <div class="profile-avatar">{{ initials }}</div>
@@ -387,42 +406,188 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
                   <mat-card-subtitle>Código: <strong>{{ patientProfile.patientCode }}</strong></mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
-                  <div class="profile-grid">
-                    <div class="profile-field" *ngIf="patientProfile.dpi">
-                      <span class="pf-label"><mat-icon>badge</mat-icon> DPI</span>
-                      <span class="pf-value">{{ patientProfile.dpi }}</span>
+
+                  <!-- Read-only view -->
+                  <div *ngIf="!profileEditMode">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+                      <button mat-stroked-button color="primary" (click)="startProfileEdit()">
+                        <mat-icon>edit</mat-icon> Editar información
+                      </button>
                     </div>
-                    <div class="profile-field" *ngIf="patientProfile.birthDate">
-                      <span class="pf-label"><mat-icon>cake</mat-icon> Fecha de nacimiento</span>
-                      <span class="pf-value">{{ patientProfile.birthDate | date:'dd/MM/yyyy' }}</span>
-                    </div>
-                    <div class="profile-field" *ngIf="patientProfile.phone">
-                      <span class="pf-label"><mat-icon>phone</mat-icon> Teléfono</span>
-                      <span class="pf-value">{{ patientProfile.phone }}</span>
-                    </div>
-                    <div class="profile-field" *ngIf="patientProfile.email">
-                      <span class="pf-label"><mat-icon>email</mat-icon> Correo</span>
-                      <span class="pf-value">{{ patientProfile.email }}</span>
-                    </div>
-                    <div class="profile-field" *ngIf="patientProfile.address">
-                      <span class="pf-label"><mat-icon>home</mat-icon> Dirección</span>
-                      <span class="pf-value">{{ patientProfile.address }}</span>
-                    </div>
-                    <div class="profile-field" *ngIf="patientProfile.emergencyContact">
-                      <span class="pf-label"><mat-icon>emergency</mat-icon> Contacto emergencia</span>
-                      <span class="pf-value">{{ patientProfile.emergencyContact }} {{ patientProfile.emergencyPhone }}</span>
-                    </div>
-                    <div class="profile-field" *ngIf="patientProfile.insuranceName">
-                      <span class="pf-label"><mat-icon>health_and_safety</mat-icon> Aseguradora</span>
-                      <span class="pf-value">{{ patientProfile.insuranceName }}
-                        <span class="discount-badge" *ngIf="patientProfile.discountPercentage">{{ patientProfile.discountPercentage }}% descuento</span>
-                      </span>
-                    </div>
-                    <div class="profile-field">
-                      <span class="pf-label"><mat-icon>calendar_today</mat-icon> Registrado</span>
-                      <span class="pf-value">{{ patientProfile.createdAt | date:'dd/MM/yyyy' }}</span>
+                    <div class="profile-grid">
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>badge</mat-icon> DPI</span>
+                        <span class="pf-value">{{ patientProfile.dpi }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>cake</mat-icon> Fecha de nacimiento</span>
+                        <span class="pf-value">{{ patientProfile.birthDate ? (patientProfile.birthDate | date:'dd/MM/yyyy') : 'No registrada' }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>phone</mat-icon> Teléfono</span>
+                        <span class="pf-value">{{ patientProfile.phone || 'No registrado' }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>email</mat-icon> Correo</span>
+                        <span class="pf-value">{{ patientProfile.email || 'No registrado' }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>home</mat-icon> Dirección</span>
+                        <span class="pf-value">{{ patientProfile.address || 'No registrada' }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>emergency</mat-icon> Contacto emergencia</span>
+                        <span class="pf-value">{{ patientProfile.emergencyContact || 'No registrado' }}
+                          <span *ngIf="patientProfile.emergencyPhone"> · {{ patientProfile.emergencyPhone }}</span>
+                        </span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>health_and_safety</mat-icon> Aseguradora</span>
+                        <span class="pf-value" *ngIf="patientProfile.insuranceName">
+                          {{ patientProfile.insuranceName }}
+                          <span class="discount-badge" *ngIf="patientProfile.discountPercentage">{{ patientProfile.discountPercentage }}% descuento</span>
+                        </span>
+                        <span class="pf-value" *ngIf="!patientProfile.insuranceName" style="color:#9e9e9e">Sin seguro</span>
+                      </div>
+                      <div class="profile-field" *ngIf="patientProfile.insuranceNumber">
+                        <span class="pf-label"><mat-icon>confirmation_number</mat-icon> No. de Póliza / Carné</span>
+                        <span class="pf-value">{{ patientProfile.insuranceNumber }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>manage_accounts</mat-icon> Usuario del portal</span>
+                        <span class="pf-value">{{ patientProfile.username || 'Sin cuenta vinculada' }}</span>
+                      </div>
+                      <div class="profile-field">
+                        <span class="pf-label"><mat-icon>calendar_today</mat-icon> Registrado</span>
+                        <span class="pf-value">{{ patientProfile.createdAt | date:'dd/MM/yyyy' }}</span>
+                      </div>
                     </div>
                   </div>
+
+                  <!-- Edit form -->
+                  <form [formGroup]="profileForm" class="profile-edit-grid" *ngIf="profileEditMode">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Nombres *</mat-label>
+                      <input matInput formControlName="firstName">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Apellidos *</mat-label>
+                      <input matInput formControlName="lastName">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>DPI *</mat-label>
+                      <input matInput formControlName="dpi">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Fecha de Nacimiento</mat-label>
+                      <mat-icon matPrefix>cake</mat-icon>
+                      <input matInput type="date" formControlName="birthDate">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Teléfono</mat-label>
+                      <input matInput formControlName="phone">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Correo Electrónico</mat-label>
+                      <input matInput formControlName="email">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Dirección</mat-label>
+                      <input matInput formControlName="address">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Contacto de Emergencia</mat-label>
+                      <input matInput formControlName="emergencyContact">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Teléfono de Emergencia</mat-label>
+                      <input matInput formControlName="emergencyPhone">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Seguro Médico</mat-label>
+                      <mat-select formControlName="insuranceId">
+                        <mat-option [value]="null">Sin seguro</mat-option>
+                        <mat-option *ngFor="let ins of insurances" [value]="ins.id">
+                          {{ ins.name }} ({{ ins.discountPercentage }}% descuento)
+                        </mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>No. de Póliza / Carné (Opcional)</mat-label>
+                      <input matInput formControlName="insuranceNumber">
+                    </mat-form-field>
+                  </form>
+                </mat-card-content>
+
+                <mat-card-actions *ngIf="profileEditMode" style="display:flex;gap:8px;padding:16px">
+                  <button mat-raised-button color="primary" type="button" (click)="saveProfile()" [disabled]="profileForm.invalid || profileSaving">
+                    <mat-icon>save</mat-icon> {{ profileSaving ? 'Guardando...' : 'Guardar cambios' }}
+                  </button>
+                  <button mat-button type="button" (click)="cancelProfileEdit()">
+                    <mat-icon>close</mat-icon> Cancelar
+                  </button>
+                </mat-card-actions>
+              </mat-card>
+
+              <!-- Credentials Card -->
+              <mat-card class="profile-card" style="margin-top:16px">
+                <mat-card-header>
+                  <mat-icon mat-card-avatar>lock</mat-icon>
+                  <mat-card-title>Seguridad y Acceso</mat-card-title>
+                  <mat-card-subtitle>Cambiar usuario o contraseña del portal</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+
+                  <!-- Username change -->
+                  <h4 class="cred-section-title"><mat-icon>manage_accounts</mat-icon> Nombre de usuario</h4>
+                  <p style="color:#757575;font-size:0.85rem;margin-bottom:12px">
+                    Usuario actual: <strong>{{ patientProfile.username || '—' }}</strong>
+                  </p>
+                  <form [formGroup]="usernameForm" class="cred-form">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Nuevo nombre de usuario</mat-label>
+                      <mat-icon matPrefix>person</mat-icon>
+                      <input matInput formControlName="newUsername">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Contraseña actual (confirmación)</mat-label>
+                      <mat-icon matPrefix>lock</mat-icon>
+                      <input matInput type="password" formControlName="currentPasswordForUser">
+                    </mat-form-field>
+                    <button mat-stroked-button color="primary" type="button" (click)="saveUsername()"
+                            [disabled]="usernameForm.invalid || usernameSaving">
+                      <mat-icon>save</mat-icon> {{ usernameSaving ? 'Guardando...' : 'Cambiar usuario' }}
+                    </button>
+                  </form>
+
+                  <mat-divider style="margin:24px 0"></mat-divider>
+
+                  <!-- Password change -->
+                  <h4 class="cred-section-title"><mat-icon>key</mat-icon> Contraseña</h4>
+                  <form [formGroup]="passwordForm" class="cred-form">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Contraseña actual</mat-label>
+                      <mat-icon matPrefix>lock</mat-icon>
+                      <input matInput type="password" formControlName="currentPassword">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Nueva contraseña</mat-label>
+                      <mat-icon matPrefix>lock_open</mat-icon>
+                      <input matInput type="password" formControlName="newPassword">
+                      <mat-hint>Mínimo 8 caracteres, una mayúscula y un número</mat-hint>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Confirmar nueva contraseña</mat-label>
+                      <mat-icon matPrefix>lock_open</mat-icon>
+                      <input matInput type="password" formControlName="confirmPassword">
+                      <mat-error *ngIf="passwordForm.errors?.['mismatch']">Las contraseñas no coinciden</mat-error>
+                    </mat-form-field>
+                    <button mat-raised-button color="primary" type="button" (click)="savePassword()"
+                            [disabled]="passwordForm.invalid || passwordSaving">
+                      <mat-icon>key</mat-icon> {{ passwordSaving ? 'Guardando...' : 'Cambiar contraseña' }}
+                    </button>
+                  </form>
+
                 </mat-card-content>
               </mat-card>
 
@@ -467,7 +632,9 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
 
     /* Booking */
     .booking-card { max-width:700px; }
-    .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+    .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; align-items:center; }
+    .lab-auto-info { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:12px 16px; color:#2e7d32; font-size:0.9rem; }
+    .lab-auto-info mat-icon { color:#2e7d32; }
 
     /* Calendar */
     .calendar-nav {
@@ -590,9 +757,21 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','laboratorio','lab','gene
     .history-clinic { font-weight:500; font-size:0.9rem; }
     .history-date { font-size:0.78rem; color:#9e9e9e; }
     .history-doctor { font-size:0.8rem; color:#1D6C61; }
+    .profile-edit-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:8px; }
+    .cred-section-title { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#1D6C61; margin-bottom:12px; }
+    .cred-section-title mat-icon { font-size:20px; width:20px; height:20px; }
+    .cred-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; align-items:start; }
+    .cred-form button { align-self:center; margin-top:4px; }
+
+    /* Reservation timer */
+    .reservation-timer { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:10px 14px; color:#2e7d32; font-size:0.88rem; margin-top:12px; transition:background 0.3s; }
+    .reservation-timer mat-icon { color:#2e7d32; flex-shrink:0; }
+    .reservation-timer.timer-low { background:#fff3e0; color:#e65100; animation:pulse-timer 1s infinite; }
+    .reservation-timer.timer-low mat-icon { color:#e65100; }
+    @keyframes pulse-timer { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
   `]
 })
-export class MisCitasComponent implements OnInit {
+export class MisCitasComponent implements OnInit, OnDestroy {
   // Patient data
   tickets: Ticket[] = [];
   prescriptions: Prescription[] = [];
@@ -617,6 +796,7 @@ export class MisCitasComponent implements OnInit {
   bookingStep: BookingStep = 'calendar';
   clinics: Clinic[] = [];
   bookingClinics: Clinic[] = [];
+  labClinics: Clinic[] = [];
   selectedDate: Date | null = null;
   selectedSlot: string | null = null;
   selectedClinicId: number | null = null;
@@ -639,6 +819,28 @@ export class MisCitasComponent implements OnInit {
   // Card
   card = { name: '', number: '', expiry: '', cvv: '' };
 
+  // Slot reservation
+  reservationId: number | null = null;
+  reservationTimeLeft = 0;
+  private reservationTimer: any = null;
+  private slotPollTimer: any = null;
+
+  get reservationMinutes(): number { return Math.floor(this.reservationTimeLeft / 60); }
+  get reservationSeconds(): string { return (this.reservationTimeLeft % 60).toString().padStart(2, '0'); }
+  get reservationLow(): boolean { return this.reservationTimeLeft > 0 && this.reservationTimeLeft <= 120; }
+
+  // Profile edit
+  profileEditMode = false;
+  profileSaving = false;
+  profileForm!: FormGroup;
+  insurances: any[] = [];
+
+  // Credentials
+  usernameForm!: FormGroup;
+  usernameSaving = false;
+  passwordForm!: FormGroup;
+  passwordSaving = false;
+
   constructor(
     private authService: AuthService,
     private ticketService: TicketService,
@@ -647,7 +849,9 @@ export class MisCitasComponent implements OnInit {
     private prescriptionService: PrescriptionService,
     private labService: LabService,
     private patientService: PatientService,
-    private notification: NotificationService
+    private insuranceService: InsuranceService,
+    private notification: NotificationService,
+    private fb: FormBuilder
   ) {}
 
   ngOnInit(): void {
@@ -661,13 +865,36 @@ export class MisCitasComponent implements OnInit {
     this.calMonth = now.getMonth();
     this.buildCalendar();
 
+    this.usernameForm = this.fb.group({
+      newUsername: ['', Validators.required],
+      currentPasswordForUser: ['', Validators.required]
+    });
+    this.passwordForm = this.fb.group({
+      currentPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', Validators.required]
+    }, { validators: (g: any) => {
+      const np = g.get('newPassword')?.value;
+      const cp = g.get('confirmPassword')?.value;
+      return np && cp && np !== cp ? { mismatch: true } : null;
+    } });
+
+    this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
+
     this.clinicService.getAll().subscribe(res => {
       if (res.success) {
         this.clinics = res.data;
+        this.labClinics = res.data.filter((c: Clinic) =>
+          LAB_CLINIC_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
+        );
         this.bookingClinics = res.data.filter((c: Clinic) =>
           BOOKING_CLINIC_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
         );
-        if (this.bookingClinics.length === 0) this.bookingClinics = res.data;
+        if (this.bookingClinics.length === 0) {
+          this.bookingClinics = res.data.filter((c: Clinic) =>
+            !LAB_CLINIC_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
+          );
+        }
       }
     });
 
@@ -721,40 +948,139 @@ export class MisCitasComponent implements OnInit {
   }
 
   selectDate(day: Date): void {
+    if (this.reservationId) {
+      this.appointmentService.cancelReservation(this.reservationId).subscribe({ error: () => {} });
+      this.clearReservationTimer();
+    }
     this.selectedDate = day;
     this.selectedSlot = null;
     this.loadSlots();
+    this.startSlotPolling();
   }
 
   onClinicChange(clinicId: number): void {
     this.selectedClinicId = clinicId;
     this.selectedSlot = null;
-    if (this.selectedDate) this.loadSlots();
+    if (this.selectedDate) {
+      this.loadSlots();
+      this.startSlotPolling();
+    }
   }
 
-  loadSlots(): void {
+  loadSlots(silent = false): void {
     if (!this.selectedDate || !this.selectedClinicId) {
       this.availableSlots = ALL_SLOTS;
       return;
     }
-    this.loadingSlots = true;
+    if (!silent) this.loadingSlots = true;
     const dateStr = this.selectedDate.toISOString().split('T')[0];
     this.appointmentService.getAvailableSlots(dateStr, this.selectedClinicId).subscribe({
       next: res => {
-        this.availableSlots = res.success ? res.data : ALL_SLOTS;
-        if (this.selectedSlot && !this.availableSlots.includes(this.selectedSlot)) {
-          this.selectedSlot = null;
+        if (res.success) {
+          this.availableSlots = res.data;
+          if (this.selectedSlot && !this.availableSlots.includes(this.selectedSlot)) {
+            this.selectedSlot = null;
+            this.notification.error('El horario seleccionado ya no está disponible.');
+          }
         }
         this.loadingSlots = false;
       },
       error: () => {
-        this.availableSlots = ALL_SLOTS;
         this.loadingSlots = false;
       }
     });
   }
 
-  selectSlot(slot: string): void { this.selectedSlot = slot; }
+  selectSlot(slot: string): void {
+    if (this.selectedSlot === slot) return;
+    if (this.reservationId) {
+      this.appointmentService.cancelReservation(this.reservationId).subscribe({ error: () => {} });
+      this.clearReservationTimer();
+    }
+    this.selectedSlot = slot;
+    this.reserveSlot(slot);
+  }
+
+  reserveSlot(slot: string): void {
+    if (!this.selectedDate || !this.selectedClinicId || !this.patientId) return;
+    const dateStr = this.selectedDate.toISOString().split('T')[0];
+    this.appointmentService.reserve({
+      patientId: this.patientId,
+      clinicId: this.selectedClinicId,
+      date: dateStr,
+      time: slot
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.reservationId = res.data.id;
+          const expiresAt = new Date(res.data.expiresAt);
+          const secondsLeft = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+          this.startReservationTimer(secondsLeft);
+        }
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'No se pudo reservar el horario');
+        this.selectedSlot = null;
+        this.loadSlots();
+      }
+    });
+  }
+
+  startReservationTimer(seconds: number): void {
+    this.reservationTimeLeft = seconds;
+    this.reservationTimer = setInterval(() => {
+      this.reservationTimeLeft--;
+      if (this.reservationTimeLeft <= 0) {
+        this.clearReservationTimer();
+        this.onReservationExpired();
+      }
+    }, 1000);
+  }
+
+  clearReservationTimer(): void {
+    if (this.reservationTimer) {
+      clearInterval(this.reservationTimer);
+      this.reservationTimer = null;
+    }
+    this.reservationTimeLeft = 0;
+    this.reservationId = null;
+  }
+
+  startSlotPolling(): void {
+    this.stopSlotPolling();
+    this.slotPollTimer = setInterval(() => {
+      if (this.bookingStep === 'calendar' && this.selectedDate && this.selectedClinicId) {
+        this.loadSlots(true); // silent — no spinner
+      } else {
+        this.stopSlotPolling();
+      }
+    }, 5000);
+  }
+
+  stopSlotPolling(): void {
+    if (this.slotPollTimer) {
+      clearInterval(this.slotPollTimer);
+      this.slotPollTimer = null;
+    }
+  }
+
+  onReservationExpired(): void {
+    this.notification.error('La reserva del horario expiró. Selecciona nuevamente.');
+    this.selectedSlot = null;
+    this.bookingStep = 'calendar';
+    if (this.selectedDate) {
+      this.loadSlots();
+      this.startSlotPolling();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.reservationId) {
+      this.appointmentService.cancelReservation(this.reservationId).subscribe({ error: () => {} });
+    }
+    this.clearReservationTimer();
+    this.stopSlotPolling();
+  }
 
   formatDate(d: Date | null): string {
     if (!d) return '';
@@ -824,6 +1150,10 @@ export class MisCitasComponent implements OnInit {
   }
 
   resetBooking(): void {
+    if (this.reservationId) {
+      this.appointmentService.cancelReservation(this.reservationId).subscribe({ error: () => {} });
+    }
+    this.clearReservationTimer();
     this.bookingStep = 'calendar';
     this.selectedDate = null;
     this.selectedSlot = null;
@@ -845,6 +1175,16 @@ export class MisCitasComponent implements OnInit {
   typeLabel(t: string): string {
     const m: Record<string, string> = { CONSULTA: 'Consulta Médica', LABORATORIO: 'Laboratorio', CONTROL: 'Control' };
     return m[t] ?? t;
+  }
+
+  onTypeChange(type: string): void {
+    this.selectedType = type;
+    this.selectedClinicId = null;
+    this.selectedSlot = null;
+    if (type === 'LABORATORIO' && this.labClinics.length > 0) {
+      this.selectedClinicId = this.labClinics[0].id;
+      if (this.selectedDate) this.loadSlots();
+    }
   }
 
   // --- Patient data ---
@@ -883,6 +1223,94 @@ export class MisCitasComponent implements OnInit {
     this.patientService.getById(patientId).subscribe({
       next: res => { if (res.success) this.patientProfile = res.data; this.loadingProfile = false; },
       error: () => { this.loadingProfile = false; }
+    });
+  }
+
+  // --- Profile edit ---
+  startProfileEdit(): void {
+    if (!this.patientProfile) return;
+    const p = this.patientProfile;
+    this.profileForm = this.fb.group({
+      firstName:        [p.firstName,         Validators.required],
+      lastName:         [p.lastName,          Validators.required],
+      dpi:              [p.dpi,               Validators.required],
+      birthDate:        [p.birthDate          || ''],
+      phone:            [p.phone             || ''],
+      email:            [p.email             || ''],
+      address:          [p.address           || ''],
+      emergencyContact: [p.emergencyContact  || ''],
+      emergencyPhone:   [p.emergencyPhone    || ''],
+      insuranceId:      [p.insuranceId       ?? null],
+      insuranceNumber:  [p.insuranceNumber   || '']
+    });
+    this.profileEditMode = true;
+  }
+
+  cancelProfileEdit(): void {
+    this.profileEditMode = false;
+  }
+
+  saveProfile(): void {
+    if (!this.patientId || this.profileForm.invalid) return;
+    this.profileSaving = true;
+    this.patientService.update(this.patientId, this.profileForm.value).subscribe({
+      next: res => {
+        if (res.success) {
+          this.patientProfile = res.data;
+          this.notification.success('Perfil actualizado exitosamente');
+          this.profileEditMode = false;
+        } else {
+          this.notification.error(res.message || 'Error al actualizar');
+        }
+        this.profileSaving = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al actualizar perfil');
+        this.profileSaving = false;
+      }
+    });
+  }
+
+  saveUsername(): void {
+    if (this.usernameForm.invalid) return;
+    this.usernameSaving = true;
+    const { newUsername, currentPasswordForUser } = this.usernameForm.value;
+    this.authService.changeUsername(newUsername, currentPasswordForUser).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Usuario actualizado. Por favor inicia sesión nuevamente.');
+          this.usernameForm.reset();
+          setTimeout(() => this.authService.logout(), 2000);
+        } else {
+          this.notification.error(res.message || 'Error al cambiar usuario');
+        }
+        this.usernameSaving = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al cambiar usuario');
+        this.usernameSaving = false;
+      }
+    });
+  }
+
+  savePassword(): void {
+    if (this.passwordForm.invalid) return;
+    const { currentPassword, newPassword } = this.passwordForm.value;
+    this.passwordSaving = true;
+    this.authService.changePassword(currentPassword, newPassword).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Contraseña actualizada exitosamente');
+          this.passwordForm.reset();
+        } else {
+          this.notification.error(res.message || 'Error al cambiar contraseña');
+        }
+        this.passwordSaving = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al cambiar contraseña');
+        this.passwordSaving = false;
+      }
     });
   }
 

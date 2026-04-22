@@ -22,7 +22,33 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                  @Param("date") LocalDate date,
                                  @Param("cancelled") AppointmentStatus cancelled);
 
+    /** Returns [scheduledTime, count] pairs for all booked slots in a clinic+date */
+    @Query("SELECT a.scheduledTime, COUNT(a) FROM Appointment a " +
+           "WHERE a.clinic.id = :clinicId AND a.scheduledDate = :date " +
+           "AND a.status <> :cancelled GROUP BY a.scheduledTime")
+    List<Object[]> findBookedCountsPerSlot(@Param("clinicId") Long clinicId,
+                                            @Param("date") LocalDate date,
+                                            @Param("cancelled") AppointmentStatus cancelled);
+
+    /** Returns doctor IDs already booked for a specific slot */
+    @Query("SELECT a.doctor.id FROM Appointment a " +
+           "WHERE a.clinic.id = :clinicId AND a.scheduledDate = :date " +
+           "AND a.scheduledTime = :time AND a.status <> :cancelled AND a.doctor IS NOT NULL")
+    List<Long> findBookedDoctorIds(@Param("clinicId") Long clinicId,
+                                    @Param("date") LocalDate date,
+                                    @Param("time") String time,
+                                    @Param("cancelled") AppointmentStatus cancelled);
+
     List<Appointment> findByPatientIdOrderByScheduledDateDescScheduledTimeDesc(Long patientId);
 
     Optional<Appointment> findByVoucherCode(String voucherCode);
+
+    /** Count active (non-cancelled) appointments a patient already has at a given date+time. */
+    @Query("SELECT COUNT(a) FROM Appointment a " +
+           "WHERE a.patient.id = :patientId AND a.scheduledDate = :date " +
+           "AND a.scheduledTime = :time AND a.status <> :cancelled")
+    long countPatientBookingsAtSlot(@Param("patientId") Long patientId,
+                                     @Param("date") LocalDate date,
+                                     @Param("time") String time,
+                                     @Param("cancelled") AppointmentStatus cancelled);
 }

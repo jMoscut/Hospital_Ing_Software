@@ -23,6 +23,7 @@ public class UserDTO {
     private String collegiateNumber;
     private Role role;
     private boolean active;
+    private boolean available;
     private LocalDateTime createdAt;
     private String assignedClinic;
     private Long assignedClinicId;
@@ -38,6 +39,7 @@ public class UserDTO {
                 .collegiateNumber(u.getCollegiateNumber())
                 .role(u.getRole())
                 .active(u.isActive())
+                .available(u.isAvailable())
                 .createdAt(u.getCreatedAt())
                 .build();
     }

@@ -1,4 +1,4 @@
-export type TicketStatus = 'WAITING' | 'BEING_CALLED' | 'IN_CONSULTATION' | 'COMPLETED' | 'ABSENT' | 'CANCELLED_NO_PAYMENT';
+export type TicketStatus = 'WAITING' | 'CALLED_TO_VITAL_SIGNS' | 'READY_FOR_DOCTOR' | 'BEING_CALLED' | 'IN_CONSULTATION' | 'COMPLETED' | 'ABSENT' | 'CANCELLED_NO_PAYMENT';
 export type TicketPriority = 'NORMAL' | 'URGENT';
 
 export interface Ticket {
