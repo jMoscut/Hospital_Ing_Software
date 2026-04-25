@@ -15,6 +15,8 @@ export interface Ticket {
   priority: TicketPriority;
   type: string;
   notes?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
   createdAt: string;
   calledAt?: string;
   consultationStartAt?: string;

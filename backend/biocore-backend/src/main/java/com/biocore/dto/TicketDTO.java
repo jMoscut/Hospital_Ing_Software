@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -28,6 +29,8 @@ public class TicketDTO {
     private TicketPriority priority;
     private String type;
     private String notes;
+    private LocalDate scheduledDate;
+    private String scheduledTime;
     private LocalDateTime createdAt;
     private LocalDateTime calledAt;
     private LocalDateTime consultationStartAt;
@@ -48,6 +51,8 @@ public class TicketDTO {
                 .priority(t.getPriority())
                 .type(t.getType())
                 .notes(t.getNotes())
+                .scheduledDate(t.getScheduledDate())
+                .scheduledTime(t.getScheduledTime())
                 .createdAt(t.getCreatedAt())
                 .calledAt(t.getCalledAt())
                 .consultationStartAt(t.getConsultationStartAt())

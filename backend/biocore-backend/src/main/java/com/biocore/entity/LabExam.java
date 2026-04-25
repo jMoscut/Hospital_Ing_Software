@@ -3,6 +3,7 @@ package com.biocore.entity;
 import com.biocore.enums.SampleType;
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 
 /**
  * Catálogo de exámenes de laboratorio (LAB-001 … LAB-040).
@@ -35,6 +36,10 @@ public class LabExam {
     /** Categoría clínica: Hematología, Química Clínica, Serología, etc. */
     @Column(nullable = false)
     private String category;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal price = BigDecimal.ZERO;
 
     @Column(nullable = false)
     @Builder.Default

@@ -95,6 +95,17 @@ public class DoctorScheduleService {
         return capacity;
     }
 
+    /** Distinct doctor count scheduled at this exact slot (for capacity calc). */
+    @Transactional(readOnly = true)
+    public long getDistinctDoctorCountForSlot(Long clinicId, LocalDate date, String slot) {
+        return scheduleRepository.findForClinicAndDate(clinicId, date, date.getDayOfWeek()).stream()
+                .filter(s -> s.getStartTime().compareTo(slot) <= 0
+                          && s.getEndTime().compareTo(slot) > 0)
+                .map(s -> s.getDoctor().getId())
+                .distinct()
+                .count();
+    }
+
     /**
      * Returns doctors scheduled for clinic+date+time, excluding already-booked doctor IDs.
      */

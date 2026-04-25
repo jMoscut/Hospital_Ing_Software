@@ -14,12 +14,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/auth/auth.service';
 import { TicketService, AppointmentService, ClinicService } from '../../shared/services/ticket.service';
-import { PrescriptionService, LabService } from '../../shared/services/lab.service';
+import { PrescriptionService, LabService, LabExamService } from '../../shared/services/lab.service';
 import { PatientService } from '../../shared/services/patient.service';
 import { InsuranceService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket, Clinic } from '../../core/models/ticket.model';
-import { Prescription, LabOrder, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
+import { Prescription, LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
 import { Patient } from '../../core/models/patient.model';
 
 type BookingStep = 'calendar' | 'payment' | 'confirmed';
@@ -29,6 +29,7 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
 const ALL_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
 const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
+const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00' };
 
 @Component({
   selector: 'app-mis-citas',
@@ -76,9 +77,9 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
                     <mat-form-field appearance="outline">
                       <mat-label>Tipo de servicio</mat-label>
                       <mat-select [(ngModel)]="selectedType" (ngModelChange)="onTypeChange($event)">
-                        <mat-option value="CONSULTA">Consulta Médica</mat-option>
+                        <mat-option value="CONSULTA">Consulta Médica — Q150</mat-option>
                         <mat-option value="LABORATORIO">Laboratorio</mat-option>
-                        <mat-option value="CONTROL">Control / Seguimiento</mat-option>
+                        <mat-option value="CONTROL">Control / Seguimiento — Q100</mat-option>
                       </mat-select>
                     </mat-form-field>
                     <mat-form-field appearance="outline" *ngIf="selectedType !== 'LABORATORIO'">
@@ -87,10 +88,15 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
                         <mat-option *ngFor="let c of bookingClinics" [value]="c.id">{{ c.name }}</mat-option>
                       </mat-select>
                     </mat-form-field>
-                    <div class="lab-auto-info" *ngIf="selectedType === 'LABORATORIO'">
-                      <mat-icon>science</mat-icon>
-                      <span>Área: <strong>{{ labClinics[0]?.name || 'Laboratorio' }}</strong></span>
-                    </div>
+                    <mat-form-field appearance="outline" *ngIf="selectedType === 'LABORATORIO'">
+                      <mat-label>Examen de Laboratorio *</mat-label>
+                      <mat-icon matPrefix>science</mat-icon>
+                      <mat-select [(ngModel)]="selectedLabExamId" (ngModelChange)="onLabExamChange($event)">
+                        <mat-option *ngFor="let e of labExams" [value]="e.id">
+                          {{ e.name }} — Q{{ e.price }}
+                        </mat-option>
+                      </mat-select>
+                    </mat-form-field>
                   </div>
 
                   <!-- Calendar navigation -->
@@ -141,7 +147,7 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
                 </mat-card-content>
                 <mat-card-actions>
                   <button mat-raised-button color="primary"
-                          [disabled]="!selectedDate || !selectedSlot || !selectedClinicId"
+                          [disabled]="!selectedDate || !selectedSlot || !selectedClinicId || (selectedType === 'LABORATORIO' && !selectedLabExamId)"
                           (click)="goToPayment()">
                     <mat-icon>payment</mat-icon> Continuar al pago
                   </button>
@@ -198,7 +204,8 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
                     <div class="card-row-2">
                       <mat-form-field appearance="outline">
                         <mat-label>Vencimiento *</mat-label>
-                        <input matInput [(ngModel)]="card.expiry" maxlength="5" placeholder="MM/AA">
+                        <input matInput [(ngModel)]="card.expiry" maxlength="5" placeholder="MM/AA"
+                               (input)="formatExpiry()">
                       </mat-form-field>
                       <mat-form-field appearance="outline">
                         <mat-label>CVV *</mat-label>
@@ -259,7 +266,51 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
           </div>
         </mat-tab>
 
-        <!-- TAB 2: Mis Turnos -->
+        <!-- TAB 2: Mis Citas -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">event_note</mat-icon>
+            Mis Citas ({{ appointments.length }})
+          </ng-template>
+          <div class="tab-content">
+            <div *ngIf="loadingAppointments" class="loading-state">
+              <mat-spinner diameter="40"></mat-spinner><p>Cargando...</p>
+            </div>
+            <div class="appt-hist-card" *ngFor="let a of appointments">
+              <div class="appt-hist-left">
+                <div class="appt-hist-icon">
+                  <mat-icon>{{ a.scheduledTime ? 'event' : 'walk' }}</mat-icon>
+                </div>
+                <div class="appt-hist-info">
+                  <div class="appt-hist-date">
+                    {{ a.scheduledDate | date:'dd/MM/yyyy' }}
+                    <span *ngIf="a.scheduledTime" class="appt-hist-time">a las {{ a.scheduledTime }}</span>
+                    <span *ngIf="!a.scheduledTime" class="appt-hist-presencial">Presencial</span>
+                  </div>
+                  <div class="appt-hist-clinic">{{ a.clinicName }}</div>
+                  <div class="appt-hist-meta">
+                    <span>{{ apptTypeLabel(a.type) }}</span>
+                    <span *ngIf="a.doctorName"> · Dr. {{ a.doctorName }}</span>
+                  </div>
+                  <div class="appt-hist-voucher" *ngIf="a.voucherCode">
+                    <mat-icon>receipt</mat-icon> {{ a.voucherCode }}
+                  </div>
+                </div>
+              </div>
+              <div class="appt-hist-right">
+                <span [class]="getApptStatusClass(a.status)" class="status-chip">{{ apptStatusLabel(a.status) }}</span>
+                <div class="appt-hist-amount">Q {{ a.amount }}</div>
+              </div>
+            </div>
+            <div class="empty-state" *ngIf="!loadingAppointments && appointments.length === 0">
+              <mat-icon>event_note</mat-icon>
+              <p>No tienes citas registradas</p>
+              <p class="hint">Agenda tu cita desde la pestaña "Agendar Cita".</p>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 3: Mis Turnos -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">confirmation_number</mat-icon>
@@ -275,7 +326,12 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
                 <div>
                   <div class="ticket-clinic">{{ t.clinicName }}</div>
                   <div class="ticket-type">{{ t.type }}</div>
-                  <div class="ticket-date" *ngIf="t.createdAt">{{ t.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                  <div class="ticket-date" *ngIf="t.scheduledDate">
+                    <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">event</mat-icon>
+                    {{ t.scheduledDate | date:'dd/MM/yyyy' }}
+                    <span *ngIf="t.scheduledTime"> a las {{ t.scheduledTime }}</span>
+                  </div>
+                  <div class="ticket-date" *ngIf="!t.scheduledDate && t.createdAt">{{ t.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
                   <div class="ticket-doctor" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
                 </div>
               </div>
@@ -604,7 +660,10 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
                       <span class="history-num">{{ t.ticketNumber }}</span>
                       <div>
                         <div class="history-clinic">{{ t.clinicName }}</div>
-                        <div class="history-date">{{ t.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                        <div class="history-date" *ngIf="t.scheduledDate">
+                          {{ t.scheduledDate | date:'dd/MM/yyyy' }}<span *ngIf="t.scheduledTime"> · {{ t.scheduledTime }}</span>
+                        </div>
+                        <div class="history-date" *ngIf="!t.scheduledDate">{{ t.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
                         <div class="history-doctor" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
                       </div>
                     </div>
@@ -763,6 +822,25 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
     .cred-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; align-items:start; }
     .cred-form button { align-self:center; margin-top:4px; }
 
+    /* Mis Citas history */
+    .appt-hist-card { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 20px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #1D6C61; gap:12px; }
+    .appt-hist-left { display:flex; align-items:flex-start; gap:16px; flex:1; min-width:0; }
+    .appt-hist-icon { background:#e8f5f3; border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .appt-hist-icon mat-icon { color:#1D6C61; }
+    .appt-hist-info { flex:1; min-width:0; }
+    .appt-hist-date { font-weight:700; font-size:0.95rem; color:#333; }
+    .appt-hist-time { color:#1D6C61; margin-left:6px; font-weight:600; }
+    .appt-hist-presencial { margin-left:6px; background:#fff3e0; color:#e65100; padding:1px 8px; border-radius:8px; font-size:0.78rem; font-weight:600; }
+    .appt-hist-clinic { font-size:0.88rem; color:#555; margin-top:2px; }
+    .appt-hist-meta { font-size:0.8rem; color:#9e9e9e; margin-top:2px; }
+    .appt-hist-voucher { display:flex; align-items:center; gap:4px; font-size:0.75rem; color:#9e9e9e; margin-top:4px; font-family:monospace; }
+    .appt-hist-voucher mat-icon { font-size:14px; width:14px; height:14px; }
+    .appt-hist-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
+    .appt-hist-amount { font-size:0.85rem; color:#555; font-weight:600; }
+    .status-appt-pending { background:#fff8e1; color:#f57f17; }
+    .status-appt-confirmed { background:#e8f5e9; color:#2e7d32; }
+    .status-appt-cancelled { background:#ffebee; color:#c62828; }
+
     /* Reservation timer */
     .reservation-timer { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:10px 14px; color:#2e7d32; font-size:0.88rem; margin-top:12px; transition:background 0.3s; }
     .reservation-timer mat-icon { color:#2e7d32; flex-shrink:0; }
@@ -774,11 +852,13 @@ const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
 export class MisCitasComponent implements OnInit, OnDestroy {
   // Patient data
   tickets: Ticket[] = [];
+  appointments: any[] = [];
   prescriptions: Prescription[] = [];
   diagnoses: Prescription[] = [];
   labOrders: LabOrder[] = [];
   patientProfile: Patient | null = null;
   loadingTickets = true;
+  loadingAppointments = true;
   loadingPrescriptions = true;
   loadingLab = true;
   loadingProfile = true;
@@ -797,9 +877,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   clinics: Clinic[] = [];
   bookingClinics: Clinic[] = [];
   labClinics: Clinic[] = [];
+  labExams: LabExam[] = [];
   selectedDate: Date | null = null;
   selectedSlot: string | null = null;
   selectedClinicId: number | null = null;
+  selectedLabExamId: number | null = null;
   selectedType = 'CONSULTA';
   consultationFee = '150.00';
   paying = false;
@@ -807,7 +889,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   readonly allSlots = ALL_SLOTS;
 
   // Slots
-  availableSlots: string[] = ALL_SLOTS;
+  availableSlots: string[] = [];
   loadingSlots = false;
 
   // Calendar
@@ -848,6 +930,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     private clinicService: ClinicService,
     private prescriptionService: PrescriptionService,
     private labService: LabService,
+    private labExamService: LabExamService,
     private patientService: PatientService,
     private insuranceService: InsuranceService,
     private notification: NotificationService,
@@ -880,6 +963,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     } });
 
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
+    this.labExamService.getAll().subscribe(res => { if (res.success) this.labExams = res.data; });
 
     this.clinicService.getAll().subscribe(res => {
       if (res.success) {
@@ -901,6 +985,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     if (this.patientId) this.loadData(this.patientId);
     else {
       this.loadingTickets = false;
+      this.loadingAppointments = false;
       this.loadingPrescriptions = false;
       this.loadingLab = false;
       this.loadingProfile = false;
@@ -933,9 +1018,23 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.buildCalendar();
   }
 
+  private getCATodayStr(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  }
+
+  private getCAMinutesNow(): number {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Guatemala', hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(new Date());
+    const h = parseInt(parts.find(p => p.type === 'hour')!.value);
+    const m = parseInt(parts.find(p => p.type === 'minute')!.value);
+    return h * 60 + m;
+  }
+
   isPastDay(d: Date): boolean {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return d < today;
+    const today = this.getCATodayStr();
+    const dayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return dayStr < today;
   }
 
   getDayClass(day: Date): string {
@@ -967,17 +1066,28 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     }
   }
 
+  private filterSlotsForToday(slots: string[]): string[] {
+    if (!this.selectedDate) return slots;
+    const selectedStr = `${this.selectedDate.getFullYear()}-${String(this.selectedDate.getMonth()+1).padStart(2,'0')}-${String(this.selectedDate.getDate()).padStart(2,'0')}`;
+    if (selectedStr !== this.getCATodayStr()) return slots;
+    const cutoff = this.getCAMinutesNow() + 30; // hide slots within 30min of now
+    return slots.filter(slot => {
+      const [h, m] = slot.split(':').map(Number);
+      return h * 60 + m > cutoff;
+    });
+  }
+
   loadSlots(silent = false): void {
     if (!this.selectedDate || !this.selectedClinicId) {
-      this.availableSlots = ALL_SLOTS;
+      this.availableSlots = [];
       return;
     }
     if (!silent) this.loadingSlots = true;
-    const dateStr = this.selectedDate.toISOString().split('T')[0];
+    const dateStr = `${this.selectedDate.getFullYear()}-${String(this.selectedDate.getMonth()+1).padStart(2,'0')}-${String(this.selectedDate.getDate()).padStart(2,'0')}`;
     this.appointmentService.getAvailableSlots(dateStr, this.selectedClinicId).subscribe({
       next: res => {
         if (res.success) {
-          this.availableSlots = res.data;
+          this.availableSlots = this.filterSlotsForToday(res.data);
           if (this.selectedSlot && !this.availableSlots.includes(this.selectedSlot)) {
             this.selectedSlot = null;
             this.notification.error('El horario seleccionado ya no está disponible.');
@@ -1003,7 +1113,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   reserveSlot(slot: string): void {
     if (!this.selectedDate || !this.selectedClinicId || !this.patientId) return;
-    const dateStr = this.selectedDate.toISOString().split('T')[0];
+    const d = this.selectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     this.appointmentService.reserve({
       patientId: this.patientId,
       clinicId: this.selectedClinicId,
@@ -1095,16 +1206,33 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   // --- Payment ---
   formatCardNumber(): void {
-    const digits = this.card.number.replace(/\D/g, '').slice(0, 16);
+    const digits = this.card.number.replace(/\D/g, '').slice(0, 19);
     this.card.number = digits.replace(/(.{4})/g, '$1 ').trim();
+  }
+
+  formatExpiry(): void {
+    let v = this.card.expiry.replace(/\D/g, '').slice(0, 4);
+    if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
+    this.card.expiry = v;
   }
 
   cardValid(): boolean {
     const digits = this.card.number.replace(/\s/g, '');
-    return this.card.name.trim().length >= 2
-      && digits.length >= 8          // at least 8 digits
-      && this.card.expiry.length >= 3 // any expiry value
-      && this.card.cvv.length >= 1;   // any CVV
+    if (this.card.name.trim().length < 2) return false;
+    if (digits.length < 13 || digits.length > 19) return false;
+    if (!/^\d{3,4}$/.test(this.card.cvv)) return false;
+    // Validate expiry MM/YY
+    const expiryMatch = this.card.expiry.match(/^(\d{2})\/(\d{2})$/);
+    if (!expiryMatch) return false;
+    const mm = parseInt(expiryMatch[1]);
+    const yy = parseInt(expiryMatch[2]);
+    if (mm < 1 || mm > 12) return false;
+    const now = new Date();
+    const curYY = now.getFullYear() % 100;
+    const curMM = now.getMonth() + 1;
+    if (yy < curYY) return false;
+    if (yy === curYY && mm < curMM) return false;
+    return true;
   }
 
   pay(): void {
@@ -1112,41 +1240,59 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.paying = true;
     this.paymentError = '';
 
-    // Simulate payment processing then try backend; show confirmation either way
-    setTimeout(() => {
-      const dateStr = this.selectedDate!.toISOString().split('T')[0];
+    const d = this.selectedDate!;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-      this.appointmentService.book({
-        patientId: this.patientId,
-        clinicId: this.selectedClinicId,
-        type: this.selectedType,
-        scheduledDate: dateStr,
-        scheduledTime: this.selectedSlot,
-        notes: 'Cita agendada en línea'
-      }).subscribe({
-        next: res => {
-          if (res.success) {
-            const apptId = res.data?.id;
-            if (apptId) {
-              this.appointmentService.confirmPayment(apptId, {
-                paymentMethod: 'ONLINE_CARD',
-                amount: this.consultationFee
-              }).subscribe({ error: () => {} });
-            }
+    this.appointmentService.book({
+      patientId: this.patientId,
+      clinicId: this.selectedClinicId,
+      type: this.selectedType,
+      scheduledDate: dateStr,
+      scheduledTime: this.selectedSlot,
+      notes: 'Cita agendada en línea',
+      labExamId: this.selectedLabExamId ?? undefined
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          const apptId = res.data?.id;
+          if (apptId) {
+            this.appointmentService.confirmPayment(apptId, {
+              paymentMethod: 'ONLINE_CARD',
+              amount: this.consultationFee
+            }).subscribe({ error: () => {} });
           }
           this.paying = false;
+          this.clearReservationTimer();
+          this.stopSlotPolling();
           this.bookingStep = 'confirmed';
           this.notification.success('¡Cita confirmada!');
-          if (this.patientId) this.loadData(this.patientId);
-        },
-        error: () => {
-          // Even if backend is not ready, confirm the simulated payment
+          if (this.patientId) {
+            this.appointmentService.getByPatient(this.patientId).subscribe({
+              next: res => { if (res.success) this.appointments = res.data; }
+            });
+            this.loadData(this.patientId);
+          }
+        } else {
           this.paying = false;
-          this.bookingStep = 'confirmed';
-          this.notification.success('¡Cita agendada exitosamente!');
+          this.paymentError = res.message || 'Error al procesar la cita. Intente nuevamente.';
         }
-      });
-    }, 1500);
+      },
+      error: err => {
+        this.paying = false;
+        const msg = err.error?.message || 'El horario ya no está disponible. Selecciona otro horario.';
+        this.paymentError = msg;
+        this.notification.error(msg);
+        // Volver al calendario — el horario ya no está disponible
+        this.bookingStep = 'calendar';
+        this.selectedSlot = null;
+        if (this.reservationId) {
+          this.appointmentService.cancelReservation(this.reservationId).subscribe({ error: () => {} });
+        }
+        this.clearReservationTimer();
+        this.loadSlots();
+        this.startSlotPolling();
+      }
+    });
   }
 
   resetBooking(): void {
@@ -1159,7 +1305,9 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.selectedSlot = null;
     this.selectedClinicId = null;
     this.selectedType = 'CONSULTA';
-    this.availableSlots = ALL_SLOTS;
+    this.consultationFee = '150.00';
+    this.selectedLabExamId = null;
+    this.availableSlots = [];
     this.card = { name: this.userName, number: '', expiry: '', cvv: '' };
     this.paymentError = '';
     const now = new Date();
@@ -1179,16 +1327,46 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   onTypeChange(type: string): void {
     this.selectedType = type;
+    this.consultationFee = TYPE_FEES[type] ?? '150.00';
     this.selectedClinicId = null;
     this.selectedSlot = null;
+    this.selectedLabExamId = null;
     if (type === 'LABORATORIO' && this.labClinics.length > 0) {
       this.selectedClinicId = this.labClinics[0].id;
       if (this.selectedDate) this.loadSlots();
     }
   }
 
+  onLabExamChange(examId: number): void {
+    const exam = this.labExams.find(e => e.id === examId);
+    if (exam) this.consultationFee = exam.price.toFixed(2);
+  }
+
+  apptTypeLabel(t: string): string {
+    const m: Record<string, string> = { CONSULTA: 'Consulta Médica', LABORATORIO: 'Laboratorio', CONTROL: 'Control / Seguimiento' };
+    return m[t] ?? t;
+  }
+
+  apptStatusLabel(s: string): string {
+    const m: Record<string, string> = { PENDING_PAYMENT: 'Pago Pendiente', CONFIRMED: 'Confirmada', CANCELLED: 'Cancelada' };
+    return m[s] ?? s;
+  }
+
+  getApptStatusClass(s: string): string {
+    const m: Record<string, string> = { PENDING_PAYMENT: 'status-appt-pending', CONFIRMED: 'status-appt-confirmed', CANCELLED: 'status-appt-cancelled' };
+    return m[s] ?? '';
+  }
+
   // --- Patient data ---
   loadData(patientId: number): void {
+    this.appointmentService.getByPatient(patientId).subscribe({
+      next: res => {
+        if (res.success) this.appointments = res.data;
+        this.loadingAppointments = false;
+      },
+      error: () => { this.loadingAppointments = false; }
+    });
+
     this.ticketService.getAll().subscribe({
       next: res => {
         if (res.success) {
@@ -1253,7 +1431,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   saveProfile(): void {
     if (!this.patientId || this.profileForm.invalid) return;
     this.profileSaving = true;
-    this.patientService.update(this.patientId, this.profileForm.value).subscribe({
+    const updateData = { ...this.profileForm.value, dpi: this.patientProfile!.dpi };
+    this.patientService.update(this.patientId, updateData).subscribe({
       next: res => {
         if (res.success) {
           this.patientProfile = res.data;

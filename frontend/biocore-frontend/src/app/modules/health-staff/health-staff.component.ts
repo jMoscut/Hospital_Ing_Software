@@ -37,7 +37,7 @@ import { Patient } from '../../core/models/patient.model';
 
       <mat-tab-group animationDuration="200ms">
 
-        <!-- TAB 1: Recepción de Pacientes -->
+        <!-- TAB 1: Recepción Walk-in -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">person_add</mat-icon>
@@ -47,41 +47,41 @@ import { Patient } from '../../core/models/patient.model';
             <mat-card>
               <mat-card-header>
                 <mat-card-title>Recepción Walk-in</mat-card-title>
+                <mat-card-subtitle>Identificar o registrar paciente por DPI</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
 
-                <!-- Voucher generado -->
-                <div class="voucher-box" *ngIf="recepVoucher">
-                  <div class="voucher-header">
-                    <mat-icon>confirmation_number</mat-icon>
-                    <div>
-                      <h3 style="margin:0">Voucher Generado</h3>
-                      <p class="hint-text" style="margin:4px 0 0">Entregue al paciente para que pase a Caja.</p>
-                    </div>
+                <!-- Estado: Guardado con éxito -->
+                <div class="recep-success-box" *ngIf="recepSaved">
+                  <mat-icon>check_circle</mat-icon>
+                  <div>
+                    <strong>{{ recepExistingPatient ? 'Datos actualizados correctamente' : 'Paciente registrado exitosamente' }}</strong>
+                    <p *ngIf="recepNewCredentials">Credenciales enviadas al correo del paciente.</p>
                   </div>
-                  <div class="voucher-code">{{ recepVoucher.voucherCode }}</div>
-                  <div class="voucher-details">
-                    <div><strong>Paciente:</strong> {{ recepVoucher.patientName }}</div>
-                    <div><strong>Clínica:</strong> {{ recepVoucher.clinicName }}</div>
-                    <div><strong>Servicio:</strong> {{ recepVoucher.type }}</div>
-                    <div><strong>Monto a pagar:</strong> Q{{ recepVoucher.amount }}</div>
-                  </div>
-                  <div class="voucher-instruction">
-                    <mat-icon>arrow_forward</mat-icon> Presente el código en Caja para completar el pago e ingresar a la cola.
-                  </div>
-                  <button mat-stroked-button color="primary" style="margin-top:16px" (click)="resetRecepFlow()">
+                  <button mat-stroked-button color="primary" (click)="resetRecepFlow()">
                     <mat-icon>add</mat-icon> Nuevo Paciente
                   </button>
                 </div>
 
-                <!-- Stepper walk-in -->
-                <mat-stepper [linear]="true" #recepStepper *ngIf="!recepVoucher">
+                <!-- Credenciales nuevas -->
+                <div class="credentials-box" *ngIf="recepNewCredentials && recepSaved" style="margin-top:12px">
+                  <mat-icon>key</mat-icon>
+                  <div>
+                    <strong>Credenciales generadas y enviadas al correo</strong>
+                    <p>El paciente podrá cambiar la contraseña en su primer inicio de sesión.</p>
+                    <div class="cred-row"><span>Usuario:</span> <code>{{ recepNewCredentials.username }}</code></div>
+                    <div class="cred-row"><span>Contraseña temporal:</span> <code>{{ recepNewCredentials.tempPassword }}</code></div>
+                  </div>
+                </div>
+
+                <!-- Stepper 2 pasos -->
+                <mat-stepper [linear]="true" #recepStepper *ngIf="!recepSaved">
 
                   <!-- Paso 1: DPI -->
                   <mat-step [stepControl]="recepDpiForm" label="Identificación">
                     <form [formGroup]="recepDpiForm">
                       <h3>Identificar por DPI</h3>
-                      <p class="hint-text">Ingrese el DPI del paciente para buscar su registro o crear uno nuevo.</p>
+                      <p class="hint-text">Ingrese el DPI del paciente. Si tiene registro, se cargarán sus datos. Si no, podrá registrarlo.</p>
                       <mat-form-field appearance="outline" class="wide">
                         <mat-label>DPI del Paciente (13 dígitos)</mat-label>
                         <mat-icon matPrefix>badge</mat-icon>
@@ -102,118 +102,75 @@ import { Patient } from '../../core/models/patient.model';
                           <strong>{{ recepExistingPatient.firstName }} {{ recepExistingPatient.lastName }}</strong>
                           <br><small>{{ recepExistingPatient.patientCode }} · {{ recepExistingPatient.phone }}</small>
                         </div>
-                        <button mat-raised-button color="accent" matStepperNext>Continuar →</button>
+                        <button mat-raised-button color="accent" matStepperNext>Ver y Editar →</button>
                       </div>
                       <div class="new-patient-notice" *ngIf="recepIsNewPatient">
                         <mat-icon>person_add</mat-icon>
-                        <span>DPI no encontrado — complete los datos del nuevo paciente.</span>
-                        <button mat-raised-button color="accent" matStepperNext>Continuar →</button>
+                        <span>DPI no encontrado — complete los datos para registrar al paciente.</span>
+                        <button mat-raised-button color="accent" matStepperNext>Registrar →</button>
                       </div>
                     </form>
                   </mat-step>
 
-                  <!-- Paso 2: Datos del paciente -->
+                  <!-- Paso 2: Datos del paciente (editables) -->
                   <mat-step [stepControl]="recepPatientForm" label="Datos del Paciente">
                     <form [formGroup]="recepPatientForm">
-                      <h3>{{ recepExistingPatient ? 'Paciente Encontrado' : 'Nuevo Paciente' }}</h3>
+                      <h3>{{ recepExistingPatient ? 'Editar datos del paciente' : 'Registrar nuevo paciente' }}</h3>
                       <div class="form-grid">
                         <mat-form-field appearance="outline">
                           <mat-label>Nombres *</mat-label>
-                          <input matInput formControlName="firstName" [readonly]="!!recepExistingPatient">
+                          <input matInput formControlName="firstName">
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Apellidos *</mat-label>
-                          <input matInput formControlName="lastName" [readonly]="!!recepExistingPatient">
+                          <input matInput formControlName="lastName">
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Fecha de Nacimiento</mat-label>
                           <mat-icon matPrefix>cake</mat-icon>
-                          <input matInput type="date" formControlName="birthDate" [readonly]="!!recepExistingPatient">
+                          <input matInput type="date" formControlName="birthDate">
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Teléfono</mat-label>
-                          <input matInput formControlName="phone" [readonly]="!!recepExistingPatient">
+                          <input matInput formControlName="phone">
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Correo Electrónico *</mat-label>
-                          <input matInput formControlName="email" [readonly]="!!recepExistingPatient">
+                          <input matInput formControlName="email">
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Dirección</mat-label>
-                          <input matInput formControlName="address" [readonly]="!!recepExistingPatient">
+                          <input matInput formControlName="address">
                         </mat-form-field>
-                        <mat-form-field appearance="outline" *ngIf="!recepExistingPatient">
+                        <mat-form-field appearance="outline">
                           <mat-label>Seguro Médico</mat-label>
                           <mat-select formControlName="insuranceId">
                             <mat-option [value]="null">Sin seguro</mat-option>
                             <mat-option *ngFor="let ins of insurances" [value]="ins.id">{{ ins.name }}</mat-option>
                           </mat-select>
                         </mat-form-field>
-                        <mat-form-field appearance="outline" *ngIf="!recepExistingPatient">
+                        <mat-form-field appearance="outline">
                           <mat-label>No. de Póliza / Carné (opcional)</mat-label>
                           <input matInput formControlName="insuranceNumber" placeholder="Ej. SEG-12345">
                         </mat-form-field>
                       </div>
-                      <p class="hint-text" *ngIf="!recepExistingPatient">Se generará contraseña temporal y se enviará al correo del paciente.</p>
-                      <div class="step-actions">
-                        <button mat-button matStepperPrevious>← Anterior</button>
-                        <button mat-raised-button color="primary" matStepperNext
-                                [disabled]="recepPatientForm.invalid && !recepExistingPatient">
-                          Continuar →
-                        </button>
-                      </div>
-                    </form>
-                  </mat-step>
-
-                  <!-- Paso 3: Servicio -->
-                  <mat-step [stepControl]="recepServiceForm" label="Servicio">
-                    <form [formGroup]="recepServiceForm">
-                      <h3>Seleccionar Servicio</h3>
-                      <div class="form-grid">
-                        <mat-form-field appearance="outline">
-                          <mat-label>Clínica *</mat-label>
-                          <mat-icon matPrefix>local_hospital</mat-icon>
-                          <mat-select formControlName="clinicId">
-                            <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Tipo de Servicio *</mat-label>
-                          <mat-select formControlName="type">
-                            <mat-option value="CONSULTA">Consulta Externa (Q150)</mat-option>
-                            <mat-option value="LABORATORIO">Laboratorio (Q200)</mat-option>
-                            <mat-option value="CONTROL">Medicina General (Q100)</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline" class="wide">
-                          <mat-label>Notas (opcional)</mat-label>
-                          <textarea matInput formControlName="notes" rows="2"></textarea>
-                        </mat-form-field>
-                      </div>
+                      <p class="hint-text" *ngIf="!recepExistingPatient">
+                        Se generará usuario y contraseña temporales y se enviarán al correo del paciente.
+                      </p>
                       <div class="step-actions">
                         <button mat-button matStepperPrevious>← Anterior</button>
                         <button mat-raised-button color="primary"
-                                [disabled]="recepServiceForm.invalid || recepSubmitting"
-                                (click)="bookWalkIn()">
-                          <mat-spinner *ngIf="recepSubmitting" diameter="20"></mat-spinner>
-                          <mat-icon *ngIf="!recepSubmitting">receipt</mat-icon>
-                          {{ recepSubmitting ? 'Generando...' : 'Generar Voucher de Pago' }}
+                                [disabled]="recepPatientForm.invalid || recepSaving"
+                                (click)="saveRecepPatient()">
+                          <mat-spinner *ngIf="recepSaving" diameter="20"></mat-spinner>
+                          <mat-icon *ngIf="!recepSaving">{{ recepExistingPatient ? 'save' : 'person_add' }}</mat-icon>
+                          {{ recepSaving ? 'Guardando...' : (recepExistingPatient ? 'Guardar cambios' : 'Registrar Paciente') }}
                         </button>
                       </div>
                     </form>
                   </mat-step>
 
                 </mat-stepper>
-
-                <div class="credentials-box" *ngIf="recepNewCredentials" style="margin-top:16px">
-                  <mat-icon>key</mat-icon>
-                  <div>
-                    <strong>Credenciales enviadas al correo del paciente</strong>
-                    <p>El paciente podrá cambiar la contraseña en su primer inicio de sesión.</p>
-                    <div class="cred-row"><span>Usuario:</span> <code>{{ recepNewCredentials.username }}</code></div>
-                    <div class="cred-row"><span>Contraseña temporal:</span> <code>{{ recepNewCredentials.tempPassword }}</code></div>
-                  </div>
-                </div>
 
               </mat-card-content>
             </mat-card>
@@ -293,205 +250,27 @@ import { Patient } from '../../core/models/patient.model';
           </div>
         </mat-tab>
 
-        <!-- TAB 4: Citas Presenciales -->
+        <!-- TAB: Cola del Día -->
         <mat-tab>
           <ng-template mat-tab-label>
-            <mat-icon class="tab-icon">event_available</mat-icon>
-            Citas Presenciales
+            <mat-icon class="tab-icon">queue</mat-icon>
+            Cola del Día
+            <span class="tab-badge" *ngIf="todayQueue.length > 0">{{ todayQueue.length }}</span>
           </ng-template>
           <div class="tab-content">
-            <mat-card>
-              <mat-card-header>
-                <mat-card-title>Agendar Cita Presencial</mat-card-title>
-              </mat-card-header>
-              <mat-card-content>
-
-                <!-- Voucher Result (Step 4) -->
-                <div class="voucher-box" *ngIf="apptVoucher">
-                  <div class="voucher-header">
-                    <mat-icon>confirmation_number</mat-icon>
-                    <div>
-                      <h3 style="margin:0">Cita Agendada</h3>
-                      <p class="hint-text" style="margin:4px 0 0">Entregue este voucher al paciente para que pase a Caja.</p>
-                    </div>
-                  </div>
-                  <div class="voucher-code">{{ apptVoucher.voucherCode }}</div>
-                  <div class="voucher-details">
-                    <div><strong>Paciente:</strong> {{ apptVoucher.patientName }}</div>
-                    <div><strong>Clínica:</strong> {{ apptVoucher.clinicName }}</div>
-                    <div><strong>Tipo:</strong> {{ apptVoucher.type }}</div>
-                    <div><strong>Fecha / Hora:</strong> {{ apptVoucher.scheduledDate }} {{ apptVoucher.scheduledTime }}</div>
-                    <div><strong>Monto a pagar:</strong> Q{{ apptVoucher.amount }}</div>
-                  </div>
-                  <div class="voucher-instruction">
-                    <mat-icon>arrow_forward</mat-icon> El paciente debe presentar este código en Caja para completar el pago.
-                  </div>
-                  <button mat-stroked-button color="primary" style="margin-top:16px" (click)="resetApptFlow()">
-                    <mat-icon>add</mat-icon> Nueva Cita
-                  </button>
-                </div>
-
-                <!-- Stepper (Steps 1–3) -->
-                <mat-stepper [linear]="true" #apptStepper *ngIf="!apptVoucher">
-
-                  <!-- Step 1: DPI -->
-                  <mat-step [stepControl]="apptDpiForm" label="Identificar Paciente">
-                    <form [formGroup]="apptDpiForm">
-                      <h3>Buscar por DPI</h3>
-                      <p class="hint-text">Si el DPI no tiene cuenta activa, se creará un usuario y se enviará la contraseña al correo del paciente.</p>
-                      <mat-form-field appearance="outline" class="wide">
-                        <mat-label>DPI (13 dígitos)</mat-label>
-                        <mat-icon matPrefix>badge</mat-icon>
-                        <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
-                        <mat-error>Ingrese los 13 dígitos del DPI</mat-error>
-                      </mat-form-field>
-                      <div class="step-actions">
-                        <button mat-raised-button color="primary"
-                                (click)="apptSearchByDpi()" [disabled]="apptDpiForm.invalid || apptSearching">
-                          <mat-spinner *ngIf="apptSearching" diameter="20"></mat-spinner>
-                          <mat-icon *ngIf="!apptSearching">search</mat-icon>
-                          {{ apptSearching ? 'Buscando...' : 'Buscar' }}
-                        </button>
-                      </div>
-                      <div class="found-box" *ngIf="apptExistingPatient">
-                        <mat-icon>check_circle</mat-icon>
-                        <div>
-                          <strong>{{ apptExistingPatient.firstName }} {{ apptExistingPatient.lastName }}</strong>
-                          <br><small>{{ apptExistingPatient.patientCode }} · {{ apptExistingPatient.phone }}</small>
-                        </div>
-                        <button mat-raised-button color="accent" matStepperNext>Continuar →</button>
-                      </div>
-                      <div class="new-patient-notice" *ngIf="apptIsNewPatient">
-                        <mat-icon>person_add</mat-icon>
-                        <span>DPI no encontrado — complete los datos del nuevo paciente.</span>
-                        <button mat-raised-button color="accent" matStepperNext>Continuar →</button>
-                      </div>
-                    </form>
-                  </mat-step>
-
-                  <!-- Step 2: Patient Data -->
-                  <mat-step [stepControl]="apptPatientForm" label="Datos del Paciente">
-                    <form [formGroup]="apptPatientForm">
-                      <h3>{{ apptExistingPatient ? 'Paciente Encontrado' : 'Registrar Nuevo Paciente' }}</h3>
-                      <div class="form-grid">
-                        <mat-form-field appearance="outline">
-                          <mat-label>Nombres *</mat-label>
-                          <input matInput formControlName="firstName" [readonly]="!!apptExistingPatient">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Apellidos *</mat-label>
-                          <input matInput formControlName="lastName" [readonly]="!!apptExistingPatient">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Fecha de Nacimiento</mat-label>
-                          <input matInput type="date" formControlName="birthDate" [readonly]="!!apptExistingPatient">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Teléfono</mat-label>
-                          <input matInput formControlName="phone" [readonly]="!!apptExistingPatient">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Correo Electrónico *</mat-label>
-                          <input matInput formControlName="email" [readonly]="!!apptExistingPatient">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Dirección</mat-label>
-                          <input matInput formControlName="address" [readonly]="!!apptExistingPatient">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline" *ngIf="!apptExistingPatient">
-                          <mat-label>Seguro Médico</mat-label>
-                          <mat-select formControlName="insuranceId">
-                            <mat-option [value]="null">Sin seguro</mat-option>
-                            <mat-option *ngFor="let ins of insurances" [value]="ins.id">{{ ins.name }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline" *ngIf="!apptExistingPatient">
-                          <mat-label>No. de Póliza / Carné (opcional)</mat-label>
-                          <input matInput formControlName="insuranceNumber" placeholder="Ej. SEG-12345">
-                        </mat-form-field>
-                      </div>
-                      <p class="hint-text" *ngIf="!apptExistingPatient">
-                        Se generará una contraseña temporal y se enviará al correo del paciente.
-                      </p>
-                      <div class="step-actions">
-                        <button mat-button matStepperPrevious>← Anterior</button>
-                        <button mat-raised-button color="primary" matStepperNext
-                                [disabled]="apptPatientForm.invalid && !apptExistingPatient">
-                          Continuar →
-                        </button>
-                      </div>
-                    </form>
-                  </mat-step>
-
-                  <!-- Step 3: Calendar -->
-                  <mat-step [stepControl]="apptCalendarForm" label="Seleccionar Cita">
-                    <form [formGroup]="apptCalendarForm">
-                      <h3>Seleccionar Fecha y Hora</h3>
-                      <div class="form-grid">
-                        <mat-form-field appearance="outline">
-                          <mat-label>Clínica *</mat-label>
-                          <mat-icon matPrefix>local_hospital</mat-icon>
-                          <mat-select formControlName="clinicId" (selectionChange)="onApptClinicChange($event.value)">
-                            <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Tipo de Cita *</mat-label>
-                          <mat-select formControlName="type">
-                            <mat-option value="CONSULTA">Consulta Externa (Q150)</mat-option>
-                            <mat-option value="LABORATORIO">Laboratorio (Q200)</mat-option>
-                            <mat-option value="CONTROL">Medicina General (Q100)</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Fecha *</mat-label>
-                          <input matInput type="date" formControlName="scheduledDate"
-                                 [min]="apptMinDate"
-                                 (change)="onApptDateChange()">
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
-                          <mat-label>Hora *</mat-label>
-                          <mat-select formControlName="scheduledTime">
-                            <mat-option *ngIf="apptLoadingSlots" disabled>Cargando horarios...</mat-option>
-                            <mat-option *ngIf="!apptLoadingSlots && apptAvailableSlots.length === 0" disabled>
-                              No hay horarios disponibles
-                            </mat-option>
-                            <mat-option *ngFor="let s of apptAvailableSlots" [value]="s">{{ s }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline" class="wide">
-                          <mat-label>Notas (opcional)</mat-label>
-                          <textarea matInput formControlName="notes" rows="2"></textarea>
-                        </mat-form-field>
-                      </div>
-                      <div class="step-actions">
-                        <button mat-button matStepperPrevious>← Anterior</button>
-                        <button mat-raised-button color="primary"
-                                [disabled]="apptCalendarForm.invalid || apptSubmitting"
-                                (click)="bookAppointment()">
-                          <mat-spinner *ngIf="apptSubmitting" diameter="20"></mat-spinner>
-                          <mat-icon *ngIf="!apptSubmitting">event_available</mat-icon>
-                          {{ apptSubmitting ? 'Agendando...' : 'Agendar y Generar Voucher' }}
-                        </button>
-                      </div>
-                    </form>
-                  </mat-step>
-
-                </mat-stepper>
-
-                <!-- Temp credentials shown after new patient created -->
-                <div class="credentials-box" *ngIf="apptNewCredentials" style="margin-top:16px">
-                  <mat-icon>key</mat-icon>
-                  <div>
-                    <strong>Credenciales enviadas al correo del paciente</strong>
-                    <p>El paciente podrá cambiar la contraseña en su primer inicio de sesión.</p>
-                    <div class="cred-row"><span>Usuario:</span> <code>{{ apptNewCredentials.username }}</code></div>
-                    <div class="cred-row"><span>Contraseña temporal:</span> <code>{{ apptNewCredentials.tempPassword }}</code></div>
-                  </div>
-                </div>
-
-              </mat-card-content>
-            </mat-card>
+            <p class="hint-text">Cola completa del día — se actualiza automáticamente cada 8 segundos.</p>
+            <div *ngIf="todayQueue.length === 0" class="empty-state">
+              <mat-icon>event_available</mat-icon>
+              <p>No hay pacientes en cola actualmente</p>
+            </div>
+            <div class="ticket-row" *ngFor="let t of todayQueue">
+              <div class="ticket-number">{{ t.ticketNumber }}</div>
+              <div class="ticket-info">
+                <div class="ticket-patient">{{ t.patientName }}</div>
+                <div class="ticket-meta">{{ t.clinicName }} · {{ t.type }}</div>
+              </div>
+              <span [class]="'status-chip ' + getStatusClass(t.status)">{{ statusLabel(t.status) }}</span>
+            </div>
           </div>
         </mat-tab>
 
@@ -568,18 +347,39 @@ import { Patient } from '../../core/models/patient.model';
     .voucher-details { display:flex;flex-direction:column;gap:6px;font-size:0.92rem;margin-bottom:12px; }
     .voucher-instruction { display:flex;align-items:center;gap:8px;color:#1565c0;font-size:0.9rem;background:#e3f2fd;padding:10px 14px;border-radius:8px; }
     .new-patient-notice { display:flex;align-items:center;gap:12px;background:#fff3e0;padding:14px;border-radius:8px;color:#e65100;margin-top:16px; }
+    .recep-success-box { display:flex;align-items:center;gap:16px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:20px 24px;margin-bottom:16px; }
+    .recep-success-box mat-icon { font-size:40px;width:40px;height:40px;color:#2e7d32;flex-shrink:0; }
+    .recep-success-box strong { color:#1b5e20;font-size:1rem; }
+    .recep-success-box p { color:#555;font-size:0.85rem;margin:4px 0 0; }
+    /* Calendar HS */
+    .calendar-nav { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;background:#f0faf8;border-radius:10px;padding:6px 12px; }
+    .month-label-hs { font-size:1rem;font-weight:700;color:#1D6C61; }
+    .nav-btn { background:none;border:none;cursor:pointer;font-size:2rem;line-height:1;color:#1D6C61;padding:0 8px;border-radius:6px;transition:background 0.15s; }
+    .nav-btn:hover { background:#d0f4ef; }
+    .calendar-grid-hs { display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px; }
+    .cal-weekday-hs { text-align:center;font-size:0.72rem;font-weight:700;color:#9e9e9e;padding:6px 0;text-transform:uppercase; }
+    .cal-day { text-align:center;padding:10px 4px;border-radius:8px;font-size:0.9rem;cursor:pointer;transition:background 0.15s;user-select:none; }
+    .cal-day.empty { cursor:default; }
+    .cal-day.past { color:#ccc;cursor:not-allowed; }
+    .cal-day:not(.past):not(.empty):hover { background:#d0f4ef; }
+    .cal-day.today { border:2px solid #3EB9A8;font-weight:700; }
+    .cal-day.selected { background:#1D6C61 !important;color:white;font-weight:700; }
+    .slots-label-hs { display:flex;align-items:center;gap:8px;font-weight:600;color:#1D6C61;margin-bottom:10px;font-size:0.9rem; }
+    .slots-grid-hs { display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px; }
+    .slot-btn-hs { padding:12px 4px;border-radius:8px;border:2px solid #d0e8e5;background:white;cursor:pointer;font-size:0.9rem;font-weight:600;color:#1D6C61;transition:all 0.15s; }
+    .slot-btn-hs:hover { background:#d0f4ef;border-color:#3EB9A8; }
+    .slot-btn-hs.selected { background:#1D6C61;color:white;border-color:#1D6C61; }
   `]
 })
 export class HealthStaffComponent implements OnInit, OnDestroy {
   // Recepción walk-in (Tab 1)
   recepDpiForm!: FormGroup;
   recepPatientForm!: FormGroup;
-  recepServiceForm!: FormGroup;
   recepExistingPatient: Patient | null = null;
   recepIsNewPatient = false;
   recepSearching = false;
-  recepSubmitting = false;
-  recepVoucher: any = null;
+  recepSaving = false;
+  recepSaved = false;
   recepNewCredentials: { username: string; tempPassword: string } | null = null;
 
   clinics: Clinic[] = [];
@@ -593,19 +393,9 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
   sendingVitals = false;
   private pollInterval: any;
 
-  // Citas Presenciales tab
-  apptDpiForm!: FormGroup;
-  apptPatientForm!: FormGroup;
-  apptCalendarForm!: FormGroup;
-  apptExistingPatient: Patient | null = null;
-  apptIsNewPatient = false;
-  apptSearching = false;
-  apptSubmitting = false;
-  apptAvailableSlots: string[] = [];
-  apptLoadingSlots = false;
-  apptVoucher: any = null;
-  apptNewCredentials: { username: string; tempPassword: string } | null = null;
-  apptMinDate = new Date().toISOString().split('T')[0];
+  // Queue tab
+  todayQueue: Ticket[] = [];
+  loadingQueue = false;
 
   constructor(
     private fb: FormBuilder,
@@ -632,32 +422,6 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
       insuranceId:     [null],
       insuranceNumber: ['']
     });
-    this.recepServiceForm = this.fb.group({
-      clinicId: [null, Validators.required],
-      type:     ['CONSULTA', Validators.required],
-      notes:    ['']
-    });
-
-    this.apptDpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
-    });
-    this.apptPatientForm = this.fb.group({
-      firstName:       ['', Validators.required],
-      lastName:        ['', Validators.required],
-      birthDate:       [''],
-      phone:           [''],
-      email:           ['', [Validators.required, Validators.email]],
-      address:         [''],
-      insuranceId:     [null],
-      insuranceNumber: ['']
-    });
-    this.apptCalendarForm = this.fb.group({
-      clinicId: [null, Validators.required],
-      type: ['CONSULTA', Validators.required],
-      scheduledDate: ['', Validators.required],
-      scheduledTime: ['', Validators.required],
-      notes: ['']
-    });
 
     this.clinicService.getAll().subscribe(res => {
       if (res.success) {
@@ -670,7 +434,12 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     });
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
     this.loadCalledTickets();
-    this.pollInterval = setInterval(() => this.loadCalledTickets(), 8000);
+    this.loadTodayQueue();
+    this.pollInterval = setInterval(() => {
+      this.loadCalledTickets();
+      this.loadTodayQueue();
+    }, 8000);
+
   }
 
   ngOnDestroy(): void {
@@ -701,37 +470,29 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     });
   }
 
-  bookWalkIn(): void {
-    this.recepSubmitting = true;
-    const doBook = (patientId: number) => {
-      const svc = this.recepServiceForm.value;
-      this.appointmentService.book({
-        patientId,
-        clinicId: svc.clinicId,
-        type: svc.type,
-        notes: svc.notes || ''
-        // no scheduledDate / scheduledTime → walk-in
-      }).subscribe({
+  saveRecepPatient(): void {
+    this.recepSaving = true;
+    if (this.recepExistingPatient) {
+      // Update existing patient — include DPI (required by backend validation)
+      const updateData = { ...this.recepPatientForm.value, dpi: this.recepExistingPatient.dpi };
+      this.patientService.update(this.recepExistingPatient.id, updateData).subscribe({
         next: res => {
           if (res.success) {
-            this.recepVoucher = res.data;
-            this.notification.success('Voucher generado. Paciente puede pasar a Caja.');
+            this.recepExistingPatient = res.data;
+            this.recepSaved = true;
+            this.notification.success('Datos del paciente actualizados');
           } else {
-            this.notification.error(res.message || 'Error al generar voucher');
+            this.notification.error(res.message || 'Error al actualizar paciente');
           }
-          this.recepSubmitting = false;
+          this.recepSaving = false;
         },
         error: err => {
-          this.notification.error(err.error?.message || 'Error al generar voucher');
-          this.recepSubmitting = false;
+          this.notification.error(err.error?.message || 'Error al actualizar paciente');
+          this.recepSaving = false;
         }
       });
-    };
-
-    if (this.recepExistingPatient) {
-      this.recepNewCredentials = null;
-      doBook(this.recepExistingPatient.id);
     } else {
+      // Register new patient with account
       const data = { ...this.recepDpiForm.value, ...this.recepPatientForm.value, createAccount: true };
       this.patientService.create(data).subscribe({
         next: res => {
@@ -742,28 +503,28 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
                 tempPassword: (res.data as any).tempPassword
               };
             }
-            doBook(res.data.id);
+            this.recepSaved = true;
+            this.notification.success('Paciente registrado exitosamente');
           } else {
             this.notification.error(res.message || 'Error al registrar paciente');
-            this.recepSubmitting = false;
           }
+          this.recepSaving = false;
         },
         error: err => {
           this.notification.error(err.error?.message || 'Error al registrar paciente');
-          this.recepSubmitting = false;
+          this.recepSaving = false;
         }
       });
     }
   }
 
   resetRecepFlow(): void {
-    this.recepVoucher = null;
+    this.recepSaved = false;
     this.recepNewCredentials = null;
     this.recepExistingPatient = null;
     this.recepIsNewPatient = false;
     this.recepDpiForm.reset();
     this.recepPatientForm.reset();
-    this.recepServiceForm.reset({ type: 'CONSULTA' });
   }
 
   loadCalledTickets(): void {
@@ -854,125 +615,17 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     return m[status] ?? status;
   }
 
-  // ── Citas Presenciales ────────────────────────────────────────────────────
+  // ── Queue ──────────────────────────────────────────────────────────────────
 
-  apptSearchByDpi(): void {
-    const dpi = this.apptDpiForm.value.dpi;
-    this.apptSearching = true;
-    this.apptExistingPatient = null;
-    this.apptIsNewPatient = false;
-    this.patientService.getByDpi(dpi).subscribe({
+  loadTodayQueue(): void {
+    this.ticketService.getAll().subscribe({
       next: res => {
-        if (res.success && res.data) {
-          this.apptExistingPatient = res.data;
-          this.apptPatientForm.patchValue(res.data);
-        } else {
-          this.apptIsNewPatient = true;
-          this.apptPatientForm.reset();
+        if (res.success) {
+          const active = ['WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR','BEING_CALLED','IN_CONSULTATION'];
+          this.todayQueue = res.data.filter((t: Ticket) => active.includes(t.status));
         }
-        this.apptSearching = false;
       },
-      error: () => {
-        this.apptIsNewPatient = true;
-        this.apptPatientForm.reset();
-        this.apptSearching = false;
-      }
+      error: () => {}
     });
-  }
-
-  onApptClinicChange(_clinicId: number): void {
-    this.apptCalendarForm.patchValue({ scheduledTime: '' });
-    this.loadApptSlots();
-  }
-
-  onApptDateChange(): void {
-    this.apptCalendarForm.patchValue({ scheduledTime: '' });
-    this.loadApptSlots();
-  }
-
-  loadApptSlots(): void {
-    const { clinicId, scheduledDate } = this.apptCalendarForm.value;
-    if (!clinicId || !scheduledDate) return;
-    this.apptLoadingSlots = true;
-    this.apptAvailableSlots = [];
-    this.appointmentService.getAvailableSlots(scheduledDate, clinicId).subscribe({
-      next: res => {
-        if (res.success) this.apptAvailableSlots = res.data;
-        this.apptLoadingSlots = false;
-      },
-      error: () => { this.apptLoadingSlots = false; }
-    });
-  }
-
-  bookAppointment(): void {
-    this.apptSubmitting = true;
-    const doBook = (patientId: number) => {
-      const cal = this.apptCalendarForm.value;
-      this.appointmentService.book({
-        patientId,
-        clinicId: cal.clinicId,
-        type: cal.type,
-        scheduledDate: cal.scheduledDate,
-        scheduledTime: cal.scheduledTime,
-        notes: cal.notes || ''
-      }).subscribe({
-        next: res => {
-          console.log('BOOK RESPONSE:', JSON.stringify(res));
-          if (res.success) {
-            this.apptVoucher = res.data;
-            this.notification.success('Cita agendada. Voucher generado.');
-          } else {
-            this.notification.error(res.message || 'Error al agendar');
-          }
-          this.apptSubmitting = false;
-        },
-        error: err => {
-          this.notification.error(err.error?.message || 'Error al agendar la cita');
-          this.apptSubmitting = false;
-        }
-      });
-    };
-
-    if (this.apptExistingPatient) {
-      this.apptNewCredentials = null;
-      doBook(this.apptExistingPatient.id);
-    } else {
-      const data = {
-        ...this.apptDpiForm.value,
-        ...this.apptPatientForm.value,
-        createAccount: true
-      };
-      this.patientService.create(data).subscribe({
-        next: res => {
-          if (res.success) {
-            if ((res.data as any).tempPassword) {
-              this.apptNewCredentials = {
-                username: (res.data as any).username ?? data.dpi,
-                tempPassword: (res.data as any).tempPassword
-              };
-            }
-            doBook(res.data.id);
-          } else {
-            this.notification.error(res.message || 'Error al registrar paciente');
-            this.apptSubmitting = false;
-          }
-        },
-        error: err => {
-          this.notification.error(err.error?.message || 'Error al registrar paciente');
-          this.apptSubmitting = false;
-        }
-      });
-    }
-  }
-
-  resetApptFlow(): void {
-    this.apptVoucher = null;
-    this.apptNewCredentials = null;
-    this.apptExistingPatient = null;
-    this.apptIsNewPatient = false;
-    this.apptAvailableSlots = [];
-    this.apptDpiForm.reset();
-    this.apptPatientForm.reset();
-    this.apptCalendarForm.reset({ type: 'CONSULTA' });
   }
 }

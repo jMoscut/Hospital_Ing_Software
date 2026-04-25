@@ -17,6 +17,7 @@ export interface LabExam {
   name: string;
   sampleType: SampleType;
   category: string;
+  price: number;
   active: boolean;
 }
 

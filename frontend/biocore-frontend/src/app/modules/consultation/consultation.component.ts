@@ -13,7 +13,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { startWith } from 'rxjs/operators';
-import { TicketService, VitalSignsService } from '../../shared/services/ticket.service';
+import { TicketService, VitalSignsService, AppointmentService } from '../../shared/services/ticket.service';
 import { PrescriptionService, LabService, MedicineService, LabExamService } from '../../shared/services/lab.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../shared/services/notification.service';
@@ -113,6 +113,27 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
               <p *ngIf="queue.length === 0" class="empty-msg">Sin pacientes en espera</p>
             </mat-card-content>
           </mat-card>
+          <!-- Citas del día -->
+          <mat-card style="margin-top:16px">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>event_available</mat-icon> Citas del Día
+              </mat-card-title>
+              <mat-card-subtitle>{{ todayAppointments.length }} cita(s) programada(s) para hoy</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div *ngFor="let a of todayAppointments" class="appt-row">
+                <div class="appt-time">{{ a.scheduledTime }}</div>
+                <div class="appt-info">
+                  <div class="appt-patient">{{ a.patientName }}</div>
+                  <div class="appt-type">{{ a.type }}</div>
+                </div>
+                <span [class]="'appt-chip ' + apptStatusClass(a.status)">{{ apptStatusLabel(a.status) }}</span>
+              </div>
+              <p *ngIf="todayAppointments.length === 0" class="empty-msg">Sin citas programadas para hoy</p>
+            </mat-card-content>
+          </mat-card>
+
         </div> <!-- end queue-panel -->
 
         <!-- PANEL DE CONSULTA ACTIVA -->
@@ -339,6 +360,16 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
     .mb-16 { margin-bottom: 16px; }
     h4 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
     h5 { font-size: 0.9rem; font-weight: 600; color: #1D6C61; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .appt-row { display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5; }
+    .appt-row:last-child { border-bottom:none; }
+    .appt-time { font-size:1.1rem;font-weight:700;color:#1D6C61;min-width:52px; }
+    .appt-info { flex:1; }
+    .appt-patient { font-weight:500;font-size:0.9rem; }
+    .appt-type { font-size:0.78rem;color:#757575; }
+    .appt-chip { padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:500;white-space:nowrap; }
+    .appt-pending { background:#fff3e0;color:#e65100; }
+    .appt-confirmed { background:#e8f5e9;color:#2e7d32; }
+    .appt-cancelled { background:#ffebee;color:#c62828; }
   `]
 })
 export class ConsultationComponent implements OnInit, OnDestroy {
@@ -357,6 +388,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   doctorAvailable = false;
   assignedClinicId: number | null = null;
   assignedClinicName = '';
+  todayAppointments: any[] = [];
   private sub!: Subscription;
 
   constructor(
@@ -368,7 +400,8 @@ export class ConsultationComponent implements OnInit, OnDestroy {
     private labExamService: LabExamService,
     private medicineService: MedicineService,
     private authService: AuthService,
-    private notification: NotificationService
+    private notification: NotificationService,
+    private appointmentService: AppointmentService
   ) {}
 
   ngOnInit(): void {
@@ -388,6 +421,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
     this.sub = interval(5000).pipe(startWith(0)).subscribe(() => {
       this.loadQueue();
       this.syncAvailability();
+      this.loadTodayAppointments();
     });
   }
 
@@ -589,6 +623,30 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         this.loadClinicQueue();
       }
     });
+  }
+
+  loadTodayAppointments(): void {
+    const doctorId = this.authService.getUserId();
+    if (!doctorId) return;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+    this.appointmentService.getByDoctor(doctorId, today).subscribe({
+      next: res => { if (res.success) this.todayAppointments = res.data; },
+      error: () => {}
+    });
+  }
+
+  apptStatusLabel(s: string): string {
+    const m: Record<string,string> = {
+      PENDING_PAYMENT: 'Pendiente pago', CONFIRMED: 'Confirmada', CANCELLED: 'Cancelada'
+    };
+    return m[s] ?? s;
+  }
+
+  apptStatusClass(s: string): string {
+    const m: Record<string,string> = {
+      PENDING_PAYMENT: 'appt-pending', CONFIRMED: 'appt-confirmed', CANCELLED: 'appt-cancelled'
+    };
+    return m[s] ?? '';
   }
 
   ngOnDestroy(): void { this.sub?.unsubscribe(); }

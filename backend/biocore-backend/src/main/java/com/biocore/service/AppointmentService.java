@@ -7,11 +7,14 @@ import com.biocore.entity.Patient;
 import com.biocore.entity.SlotReservation;
 import com.biocore.entity.User;
 import com.biocore.enums.AppointmentStatus;
+import com.biocore.enums.ClinicType;
 import com.biocore.repository.AppointmentRepository;
 import com.biocore.repository.ClinicRepository;
+import com.biocore.repository.LabExamRepository;
 import com.biocore.repository.PatientRepository;
 import com.biocore.repository.SlotReservationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
@@ -29,10 +33,17 @@ public class AppointmentService {
             Arrays.asList("08:00","09:00","10:00","11:00","12:00","13:00",
                           "14:00","15:00","16:00","17:00","18:00");
 
+    private static final int LAB_CAPACITY_PER_SLOT = 10;
+
+    private static final List<String> LAB_SLOTS =
+            Arrays.asList("08:00","08:30","09:00","09:30","10:00","10:30",
+                          "11:00","11:30","12:00","12:30","13:00","13:30",
+                          "14:00","14:30","15:00","15:30","16:00","16:30",
+                          "17:00","17:30");
+
     private static final Map<String, BigDecimal> TYPE_FEE = Map.of(
-            "CONSULTA",    BigDecimal.valueOf(150.00),
-            "LABORATORIO", BigDecimal.valueOf(200.00),
-            "CONTROL",     BigDecimal.valueOf(100.00)
+            "CONSULTA", BigDecimal.valueOf(150.00),
+            "CONTROL",  BigDecimal.valueOf(100.00)
     );
 
     private final AppointmentRepository      appointmentRepository;
@@ -41,29 +52,48 @@ public class AppointmentService {
     private final TicketService              ticketService;
     private final SlotReservationRepository  slotReservationRepository;
     private final DoctorScheduleService      doctorScheduleService;
+    private final LabExamRepository          labExamRepository;
 
     /**
      * Returns available time slots for a clinic+date.
-     * Availability = slots where scheduled-doctor capacity > booked + reserved count.
-     * If no schedules configured for the clinic+date, returns empty list.
+     * Lab clinics use half-hour slots with count-based capacity (clinic.maxDoctors per slot).
+     * Regular clinics use doctor-schedule-based capacity.
      */
     @Transactional(readOnly = true)
     public List<String> getAvailableSlots(Long clinicId, LocalDate date) {
-        Map<String, Long> capacity = doctorScheduleService.getCapacityPerSlot(clinicId, date);
-        if (capacity.isEmpty()) return List.of();
+        LocalDateTime now = LocalDateTime.now();
+        Clinic clinic = clinicRepository.findById(clinicId).orElse(null);
+        boolean isLab = isLabClinic(clinic);
 
-        Map<String, Long> booked   = toCountMap(appointmentRepository
-                .findBookedCountsPerSlot(clinicId, date, AppointmentStatus.CANCELLED));
         Map<String, Long> reserved = toCountMap(slotReservationRepository
-                .countActiveReservationsPerSlot(clinicId, date, LocalDateTime.now()));
+                .countActiveReservationsPerSlot(clinicId, date, now));
 
-        return ALL_SLOTS.stream()
-                .filter(slot -> {
-                    long cap  = capacity.getOrDefault(slot, 0L);
-                    long used = booked.getOrDefault(slot, 0L) + reserved.getOrDefault(slot, 0L);
-                    return cap > 0 && used < cap;
-                })
-                .collect(Collectors.toList());
+        List<String> out = new ArrayList<>();
+
+        if (isLab) {
+            long cap = labCap(clinic);
+            Map<String, Long> booked = toCountMap(appointmentRepository
+                    .findBookedCountsPerSlot(clinicId, date, AppointmentStatus.CANCELLED));
+            for (String slot : LAB_SLOTS) {
+                long taken = booked.getOrDefault(slot, 0L) + reserved.getOrDefault(slot, 0L);
+                if (taken < cap) out.add(slot);
+            }
+        } else {
+            log.info("=== getAvailableSlots clinic={} date={} ===", clinicId, date);
+            for (String slot : ALL_SLOTS) {
+                long cap = doctorScheduleService.getDistinctDoctorCountForSlot(clinicId, date, slot);
+                if (cap <= 0) continue;
+                List<Long> bookedIds = appointmentRepository
+                        .findBookedDoctorIds(clinicId, date, slot, AppointmentStatus.CANCELLED);
+                long bookedDoctors = bookedIds.stream().distinct().count();
+                long reservedCount = reserved.getOrDefault(slot, 0L);
+                long free = cap - bookedDoctors - reservedCount;
+                log.info("  slot={} cap={} bookedDoctorIds={} bookedDistinct={} reserved={} free={} → {}",
+                        slot, cap, bookedIds, bookedDoctors, reservedCount, free, (free > 0 ? "SHOW" : "HIDE"));
+                if (free > 0) out.add(slot);
+            }
+        }
+        return out;
     }
 
     /** Temporarily reserve a slot for 10 minutes. */
@@ -71,20 +101,40 @@ public class AppointmentService {
     public Map<String, Object> reserve(Long patientId, Long clinicId, LocalDate date, String time) {
         LocalDateTime now = LocalDateTime.now();
 
-        Map<String, Long> capacity = doctorScheduleService.getCapacityPerSlot(clinicId, date);
-        long cap = capacity.getOrDefault(time, 0L);
-        if (cap <= 0) throw new RuntimeException("El horario " + time + " no está disponible.");
+        // Patient cannot reserve a slot they already have an appointment at
+        long existing = appointmentRepository.countPatientBookingsAtSlot(
+                patientId, date, time, AppointmentStatus.CANCELLED);
+        if (existing > 0) {
+            throw new RuntimeException("Ya tienes una cita agendada para el " +
+                    date + " a las " + time + ".");
+        }
 
-        // Check how many are booked at this slot
-        long booked = appointmentRepository
-                .findBookedCountsPerSlot(clinicId, date, AppointmentStatus.CANCELLED)
-                .stream().filter(r -> time.equals(r[0])).mapToLong(r -> (Long) r[1]).findFirst().orElse(0L);
-
+        Clinic clinic = clinicRepository.findById(clinicId)
+                .orElseThrow(() -> new RuntimeException("Clínica no encontrada"));
+        boolean isLab = isLabClinic(clinic);
         long reservedByOthers = slotReservationRepository
                 .countActiveReservationsByOthersForSlot(clinicId, date, time, now, patientId);
 
-        if (booked + reservedByOthers >= cap) {
-            throw new RuntimeException("El horario " + time + " ya no tiene disponibilidad.");
+        if (isLab) {
+            long cap = labCap(clinic);
+            Map<String, Long> booked = toCountMap(appointmentRepository
+                    .findBookedCountsPerSlot(clinicId, date, AppointmentStatus.CANCELLED));
+            long bookedCount = booked.getOrDefault(time, 0L);
+            if (bookedCount + reservedByOthers >= cap) {
+                throw new RuntimeException("El horario " + time + " ya no tiene disponibilidad.");
+            }
+        } else {
+            Map<String, Long> capacity = doctorScheduleService.getCapacityPerSlot(clinicId, date);
+            long cap = capacity.getOrDefault(time, 0L);
+            if (cap <= 0) throw new RuntimeException("El horario " + time + " no está disponible.");
+
+            Set<Long> bookedDoctorIds = new HashSet<>(appointmentRepository
+                    .findBookedDoctorIds(clinicId, date, time, AppointmentStatus.CANCELLED));
+            long bookedDoctors = bookedDoctorIds.size();
+
+            if (bookedDoctors + reservedByOthers >= cap) {
+                throw new RuntimeException("El horario " + time + " ya no tiene disponibilidad.");
+            }
         }
 
         slotReservationRepository.deleteBySlot(clinicId, date, time, patientId);
@@ -106,7 +156,9 @@ public class AppointmentService {
 
     @Transactional
     public Map<String, Object> book(Long patientId, Long clinicId, String type,
-                                    LocalDate scheduledDate, String scheduledTime, String notes) {
+                                    LocalDate scheduledDate, String scheduledTime, String notes,
+                                    Long labExamId) {
+        log.info(">>> BOOK patient={} clinic={} type={} date={} time={}", patientId, clinicId, type, scheduledDate, scheduledTime);
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
         Clinic clinic = clinicRepository.findById(clinicId)
@@ -116,35 +168,69 @@ public class AppointmentService {
         if (scheduledTime != null) {
             long existing = appointmentRepository.countPatientBookingsAtSlot(
                     patientId, scheduledDate, scheduledTime, AppointmentStatus.CANCELLED);
+            log.info("    patient existing bookings at slot: {}", existing);
             if (existing > 0) {
+                log.warn("    BOOK REJECTED — patient {} already has appointment at {} {}", patientId, scheduledDate, scheduledTime);
                 throw new RuntimeException("Ya tienes una cita agendada para el " +
                         scheduledDate + " a las " + scheduledTime + ".");
             }
         }
 
+        boolean isLab = isLabClinic(clinic);
         User assignedDoctor = null;
         if (scheduledTime != null) {
-            Set<Long> bookedDoctorIds = new HashSet<>(appointmentRepository
-                    .findBookedDoctorIds(clinicId, scheduledDate, scheduledTime, AppointmentStatus.CANCELLED));
-            List<User> available = doctorScheduleService.getAvailableDoctorsForSlot(
-                    clinicId, scheduledDate, scheduledTime, bookedDoctorIds);
-            if (available.isEmpty()) {
-                throw new RuntimeException("El horario " + scheduledTime + " ya no tiene disponibilidad.");
+            if (isLab) {
+                // Lab: capacity is count-based, no doctor assignment
+                long cap = labCap(clinic);
+                Map<String, Long> booked = toCountMap(appointmentRepository
+                        .findBookedCountsPerSlot(clinicId, scheduledDate, AppointmentStatus.CANCELLED));
+                long bookedCount = booked.getOrDefault(scheduledTime, 0L);
+                if (bookedCount >= cap) {
+                    throw new RuntimeException("El horario " + scheduledTime + " ya no tiene disponibilidad.");
+                }
+            } else {
+                Set<Long> bookedDoctorIds = new HashSet<>(appointmentRepository
+                        .findBookedDoctorIds(clinicId, scheduledDate, scheduledTime, AppointmentStatus.CANCELLED));
+                List<User> available = doctorScheduleService.getAvailableDoctorsForSlot(
+                        clinicId, scheduledDate, scheduledTime, bookedDoctorIds);
+                log.info("    bookedDoctorIds={} availableDoctors={}", bookedDoctorIds,
+                        available.stream().map(u -> u.getId()).toList());
+                if (available.isEmpty()) {
+                    log.warn("    BOOK REJECTED — no doctors available at {} {}", scheduledDate, scheduledTime);
+                    throw new RuntimeException("El horario " + scheduledTime + " ya no tiene disponibilidad.");
+                }
+                assignedDoctor = available.get(0);
+                log.info("    assigned doctor: {}", assignedDoctor.getId());
             }
-            assignedDoctor = available.get(0);
         }
 
-        BigDecimal fee = TYPE_FEE.getOrDefault(type, BigDecimal.valueOf(150.00));
+        BigDecimal fee;
+        com.biocore.entity.LabExam labExam = null;
+        if ("LABORATORIO".equals(type) && labExamId != null) {
+            labExam = labExamRepository.findById(labExamId).orElse(null);
+        }
+        if (labExam != null && labExam.getPrice() != null && labExam.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+            fee = labExam.getPrice();
+        } else {
+            fee = TYPE_FEE.getOrDefault(type, BigDecimal.valueOf(150.00));
+        }
         String voucherCode = generateVoucherCode();
 
+        String finalNotes = notes;
+        if (labExam != null) {
+            String examInfo = "[" + labExam.getCode() + "] " + labExam.getName();
+            finalNotes = (notes != null && !notes.isBlank()) ? examInfo + " — " + notes : examInfo;
+        }
         Appointment appt = Appointment.builder()
                 .patient(patient).clinic(clinic).doctor(assignedDoctor)
                 .type(type).scheduledDate(scheduledDate).scheduledTime(scheduledTime)
                 .status(AppointmentStatus.PENDING_PAYMENT)
-                .voucherCode(voucherCode).amount(fee).notes(notes)
+                .voucherCode(voucherCode).amount(fee).notes(finalNotes)
                 .build();
 
         Appointment saved = appointmentRepository.save(appt);
+        log.info("<<< BOOK SAVED id={} doctor={} voucher={}", saved.getId(),
+                saved.getDoctor() != null ? saved.getDoctor().getId() : null, voucherCode);
         if (scheduledTime != null) {
             slotReservationRepository.deleteBySlot(clinicId, scheduledDate, scheduledTime, patientId);
         }
@@ -168,9 +254,13 @@ public class AppointmentService {
         req.setClinicId(appt.getClinic().getId());
         req.setType(appt.getType());
         req.setNotes("Cita agendada " + appt.getScheduledDate() + " " + appt.getScheduledTime());
-        ticketService.create(req);
+        req.setScheduledDate(appt.getScheduledDate());
+        req.setScheduledTime(appt.getScheduledTime());
+        com.biocore.dto.TicketDTO ticket = ticketService.create(req);
 
-        return buildResponse(appt);
+        Map<String, Object> response = buildResponse(appt);
+        response.put("ticketNumber", ticket.getTicketNumber());
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -187,7 +277,26 @@ public class AppointmentService {
                 .stream().map(this::buildResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getByDoctorAndDate(Long doctorId, LocalDate date) {
+        return appointmentRepository
+                .findByDoctorAndDate(doctorId, date, AppointmentStatus.CANCELLED)
+                .stream().map(this::buildResponse).collect(Collectors.toList());
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private boolean isLabClinic(Clinic clinic) {
+        if (clinic == null) return false;
+        if (clinic.getType() == ClinicType.LABORATORY) return true;
+        String name = clinic.getName() == null ? "" : clinic.getName().toLowerCase();
+        return name.contains("laboratorio") || name.contains("lab");
+    }
+
+    private long labCap(Clinic clinic) {
+        int md = clinic.getMaxDoctors();
+        return Math.max(md, LAB_CAPACITY_PER_SLOT);
+    }
 
     private Map<String, Long> toCountMap(List<Object[]> rows) {
         Map<String, Long> m = new HashMap<>();
@@ -230,7 +339,7 @@ public class AppointmentService {
         m.put("doctorName",    a.getDoctor() != null ?
                                a.getDoctor().getFirstName() + " " + a.getDoctor().getLastName() : null);
         m.put("type",          a.getType());
-        m.put("scheduledDate", a.getScheduledDate().toString());
+        m.put("scheduledDate", a.getScheduledDate() != null ? a.getScheduledDate().toString() : null);
         m.put("scheduledTime", a.getScheduledTime());
         m.put("amount",        a.getAmount());
         m.put("status",        a.getStatus().name());

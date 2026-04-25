@@ -51,4 +51,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                      @Param("date") LocalDate date,
                                      @Param("time") String time,
                                      @Param("cancelled") AppointmentStatus cancelled);
+
+    /** All appointments for a specific doctor on a given date (any status except cancelled). */
+    @Query("SELECT a FROM Appointment a " +
+           "LEFT JOIN FETCH a.patient " +
+           "LEFT JOIN FETCH a.clinic " +
+           "WHERE a.doctor.id = :doctorId AND a.scheduledDate = :date " +
+           "AND a.status <> :cancelled ORDER BY a.scheduledTime ASC")
+    List<Appointment> findByDoctorAndDate(@Param("doctorId") Long doctorId,
+                                           @Param("date") LocalDate date,
+                                           @Param("cancelled") AppointmentStatus cancelled);
 }
