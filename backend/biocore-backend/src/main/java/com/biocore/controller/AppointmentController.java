@@ -36,7 +36,7 @@ public class AppointmentController {
                     ? LocalDate.parse(req.getScheduledDate()) : LocalDate.now();
         Map<String, Object> result = appointmentService.book(
                     req.getPatientId(), req.getClinicId(), req.getType(),
-                    date, req.getScheduledTime(), req.getNotes());
+                    date, req.getScheduledTime(), req.getNotes(), req.getLabExamId());
             return ResponseEntity.status(201).body(ApiResponse.ok("Cita agendada. Presente el voucher en Caja.", result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -69,6 +69,18 @@ public class AppointmentController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getByPatient(
             @PathVariable Long patientId) {
         return ResponseEntity.ok(ApiResponse.ok(appointmentService.getByPatient(patientId)));
+    }
+
+    @GetMapping("/doctor/{doctorId}")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getByDoctor(
+            @PathVariable Long doctorId,
+            @RequestParam(defaultValue = "") String date) {
+        try {
+            LocalDate d = date.isBlank() ? LocalDate.now() : LocalDate.parse(date);
+            return ResponseEntity.ok(ApiResponse.ok(appointmentService.getByDoctorAndDate(doctorId, d)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     /** Reserve a slot for 10 minutes while patient completes payment */
@@ -109,6 +121,7 @@ public class AppointmentController {
         private String scheduledDate;
         private String scheduledTime;
         private String notes;
+        private Long labExamId;
     }
 
     @Data static class ConfirmPaymentRequest {

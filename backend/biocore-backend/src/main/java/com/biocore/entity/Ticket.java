@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -55,6 +56,12 @@ public class Ticket {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "scheduled_date")
+    private LocalDate scheduledDate;
+
+    @Column(name = "scheduled_time", length = 10)
+    private String scheduledTime;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

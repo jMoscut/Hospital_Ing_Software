@@ -92,6 +92,8 @@ public class TicketService {
                 .priority(priority)
                 .type(type)
                 .notes(req.getNotes())
+                .scheduledDate(req.getScheduledDate())
+                .scheduledTime(req.getScheduledTime())
                 .build();
 
         return TicketDTO.from(ticketRepository.save(ticket));

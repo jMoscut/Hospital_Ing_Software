@@ -4,6 +4,8 @@ import com.biocore.enums.TicketPriority;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class TicketCreateRequest {
     @NotNull private Long patientId;
@@ -12,4 +14,6 @@ public class TicketCreateRequest {
     private String notes;
     private String type;
     private TicketPriority priority;
+    private LocalDate scheduledDate;
+    private String scheduledTime;
 }

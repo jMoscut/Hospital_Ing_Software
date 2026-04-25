@@ -126,6 +126,10 @@ export class AppointmentService {
     return this.http.get<ApiResponse<any[]>>(`${this.url}/patient/${patientId}`);
   }
 
+  getByDoctor(doctorId: number, date: string): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/doctor/${doctorId}?date=${date}`);
+  }
+
   getByVoucherCode(code: string): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.url}/voucher/${code}`);
   }
