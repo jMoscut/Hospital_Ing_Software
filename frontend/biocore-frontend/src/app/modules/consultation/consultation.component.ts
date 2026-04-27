@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { startWith } from 'rxjs/operators';
@@ -26,7 +27,8 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule, MatCardModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatDividerModule, MatProgressSpinnerModule, MatChipsModule
+    MatDividerModule, MatProgressSpinnerModule, MatChipsModule,
+    MatSlideToggleModule
   ],
   template: `
     <div class="page-container">
@@ -37,11 +39,11 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
             <mat-icon>radio_button_checked</mat-icon> Clínica {{ assignedClinicName }}
           </span>
           <!-- Doctor availability toggle -->
-          <button [class]="doctorAvailable ? 'avail-btn avail-on' : 'avail-btn avail-off'"
-                  (click)="toggleAvailability()">
-            <mat-icon>{{ doctorAvailable ? 'check_circle' : 'cancel' }}</mat-icon>
-            {{ doctorAvailable ? 'Disponible' : 'No disponible' }}
-          </button>
+          <div class="availability-bar" [class.available]="doctorAvailable">
+            <mat-icon>{{ doctorAvailable ? 'check_circle' : 'pause_circle' }}</mat-icon>
+            <span>{{ doctorAvailable ? 'Disponible' : 'No disponible' }}</span>
+            <mat-slide-toggle [checked]="doctorAvailable" (change)="toggleAvailability()" color="primary"></mat-slide-toggle>
+          </div>
           <button mat-raised-button color="warn" *ngIf="currentTicket && currentTicket.status === 'IN_CONSULTATION'"
                   (click)="markAbsent()" title="Paciente no se presentó">
             <mat-icon>person_off</mat-icon> Ausente
@@ -104,7 +106,12 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
                   <div class="ticket-patient">{{ t.patientName }}</div>
                   <div class="ticket-meta">
                     {{ t.type }}
+                    <span *ngIf="t.doctorName"> · Dr. {{ t.doctorName }}</span>
                     <span class="emergency-badge" *ngIf="t.priority === 'URGENT'">URGENTE</span>
+                  </div>
+                  <div class="ticket-time" *ngIf="t.scheduledTime">
+                    <mat-icon style="font-size:12px;width:12px;height:12px;vertical-align:middle">schedule</mat-icon>
+                    {{ t.scheduledTime }}
                   </div>
                 </div>
                 <span class="pos-badge">#{{ i + 1 }}</span>
@@ -131,6 +138,49 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
                 <span [class]="'appt-chip ' + apptStatusClass(a.status)">{{ apptStatusLabel(a.status) }}</span>
               </div>
               <p *ngIf="todayAppointments.length === 0" class="empty-msg">Sin citas programadas para hoy</p>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Calendario de Citas Asignadas -->
+          <mat-card style="margin-top:16px">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>calendar_month</mat-icon> Calendario de Citas
+              </mat-card-title>
+              <mat-card-subtitle>{{ allAppointments.length }} cita(s) asignada(s) en total</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="cal-nav">
+                <button class="cal-nav-btn" type="button" (click)="calPrevMonth()">&#8249;</button>
+                <span class="cal-month-label">{{ calMonthLabel }}</span>
+                <button class="cal-nav-btn" type="button" (click)="calNextMonth()">&#8250;</button>
+              </div>
+              <div class="cal-grid">
+                <div class="cal-wd" *ngFor="let d of calWeekDays">{{ d }}</div>
+                <ng-container *ngFor="let day of calendarDays">
+                  <div *ngIf="!day" class="cal-day"></div>
+                  <div *ngIf="day" [class]="calDayClass(day)" (click)="calSelectDate(day)">
+                    {{ day.getDate() }}
+                    <span class="cal-dot" *ngIf="calDayHasAppt(day)"></span>
+                  </div>
+                </ng-container>
+              </div>
+              <!-- Selected day appointments -->
+              <div *ngIf="selectedCalDate" class="cal-day-detail">
+                <div class="cal-day-title">
+                  <mat-icon>event</mat-icon>
+                  Citas del {{ selectedCalDate.getDate() }} de {{ calMonthNames[selectedCalDate.getMonth()] }}
+                </div>
+                <div *ngFor="let a of selectedDayAppts" class="appt-row">
+                  <div class="appt-time">{{ a.scheduledTime }}</div>
+                  <div class="appt-info">
+                    <div class="appt-patient">{{ a.patientName }}</div>
+                    <div class="appt-type">{{ a.type }}</div>
+                  </div>
+                  <span [class]="'appt-chip ' + apptStatusClass(a.status)">{{ apptStatusLabel(a.status) }}</span>
+                </div>
+                <p *ngIf="selectedDayAppts.length === 0" class="empty-msg">Sin citas este día</p>
+              </div>
             </mat-card-content>
           </mat-card>
 
@@ -339,12 +389,9 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
     .exam-code { font-family: monospace; font-size: 0.75rem; color: #3EB9A8; background: #193A31; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
     .med-stock { font-size: 0.78rem; color: #666; }
     .med-stock.low { color: #c62828; font-weight: 600; }
-    .avail-btn { display:flex; align-items:center; gap:6px; border:none; border-radius:20px; padding:8px 16px; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
-    .avail-on { background:#e8f5e9; color:#2e7d32; }
-    .avail-on:hover { background:#c8e6c9; }
-    .avail-off { background:#fce4ec; color:#c62828; }
-    .avail-off:hover { background:#f8bbd0; }
-    .avail-btn mat-icon { font-size:18px; width:18px; height:18px; }
+    .availability-bar { display:flex; align-items:center; gap:10px; padding:8px 16px; border-radius:20px; background:#fce4ec; color:#c62828; font-size:0.88rem; font-weight:600; transition:all 0.3s; }
+    .availability-bar mat-icon { font-size:20px; width:20px; height:20px; }
+    .availability-bar.available { background:#e8f5e9; color:#2e7d32; }
     .ready-ticket { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
     .ready-ticket:last-child { border-bottom:none; }
     .ready-banner { display:flex; align-items:center; gap:12px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:16px; margin-bottom:16px; flex-wrap:wrap; }
@@ -370,6 +417,24 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
     .appt-pending { background:#fff3e0;color:#e65100; }
     .appt-confirmed { background:#e8f5e9;color:#2e7d32; }
     .appt-cancelled { background:#ffebee;color:#c62828; }
+    /* Appointment calendar */
+    .cal-nav { display:flex;align-items:center;justify-content:space-between;background:#f0faf8;border-radius:8px;padding:4px 10px;margin-bottom:8px; }
+    .cal-month-label { font-size:0.9rem;font-weight:700;color:#1D6C61; }
+    .cal-nav-btn { background:none;border:none;cursor:pointer;font-size:1.6rem;line-height:1;color:#1D6C61;padding:0 6px;border-radius:4px; }
+    .cal-nav-btn:hover { background:#d0f4ef; }
+    .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px; }
+    .cal-wd { text-align:center;font-size:0.65rem;font-weight:700;color:#9e9e9e;padding:4px 0;text-transform:uppercase; }
+    .cal-day { text-align:center;padding:6px 2px;border-radius:6px;font-size:0.82rem;cursor:pointer;position:relative;transition:background 0.15s;user-select:none; }
+    .cal-day:not(:empty):hover { background:#e0f7f4; }
+    .cal-today { border:2px solid #3EB9A8;font-weight:700; }
+    .cal-selected { background:#1D6C61!important;color:white; }
+    .cal-has-appt { font-weight:700;color:#1D6C61; }
+    .cal-selected.cal-has-appt { color:white; }
+    .cal-dot { display:block;width:5px;height:5px;background:#3EB9A8;border-radius:50%;margin:1px auto 0; }
+    .cal-selected .cal-dot { background:white; }
+    .cal-day-detail { background:#f8fffe;border:1px solid #d0ede9;border-radius:8px;padding:12px;margin-top:8px; }
+    .cal-day-title { display:flex;align-items:center;gap:6px;font-weight:600;color:#1D6C61;font-size:0.88rem;margin-bottom:8px; }
+    .cal-day-title mat-icon { font-size:16px;width:16px;height:16px; }
   `]
 })
 export class ConsultationComponent implements OnInit, OnDestroy {
@@ -389,6 +454,14 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   assignedClinicId: number | null = null;
   assignedClinicName = '';
   todayAppointments: any[] = [];
+  allAppointments: any[] = [];
+  calYear = new Date().getFullYear();
+  calMonth = new Date().getMonth();
+  calendarDays: (Date | null)[] = [];
+  selectedCalDate: Date | null = null;
+  selectedDayAppts: any[] = [];
+  readonly calWeekDays = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  readonly calMonthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   private sub!: Subscription;
 
   constructor(
@@ -422,22 +495,26 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       this.loadQueue();
       this.syncAvailability();
       this.loadTodayAppointments();
+      this.loadAllAppointments();
+      this.buildApptCalendar();
     });
   }
 
   loadQueue(): void {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+    const isToday = (t: Ticket) => !t.scheduledDate || t.scheduledDate === today;
     this.ticketService.getAll().subscribe(res => {
       if (!res.success) return;
 
       const myId = this.authService.getUserId();
       const activeStatuses: string[] = ['CALLED_TO_VITAL_SIGNS', 'READY_FOR_DOCTOR', 'BEING_CALLED', 'IN_CONSULTATION'];
       const myTicket = res.data.find((t: Ticket) =>
-        activeStatuses.includes(t.status) && t.doctorId === myId
+        activeStatuses.includes(t.status) && t.doctorId === myId && isToday(t)
       );
 
       // READY_FOR_DOCTOR patients assigned to me (may include currentTicket)
       this.readyPatients = res.data.filter((t: Ticket) =>
-        t.status === 'READY_FOR_DOCTOR' && t.doctorId === myId
+        t.status === 'READY_FOR_DOCTOR' && t.doctorId === myId && isToday(t)
       );
 
       if (myTicket) {
@@ -469,7 +546,9 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   loadClinicQueue(): void {
-    this.ticketService.getQueue(this.assignedClinicId!).subscribe(res => {
+    const myId = this.authService.getUserId();
+    if (!this.assignedClinicId || !myId) return;
+    this.ticketService.getQueueForDoctor(this.assignedClinicId, myId).subscribe(res => {
       if (res.success) this.queue = res.data;
     });
   }
@@ -634,6 +713,67 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       error: () => {}
     });
   }
+
+  loadAllAppointments(): void {
+    const doctorId = this.authService.getUserId();
+    if (!doctorId) return;
+    this.appointmentService.getAllByDoctor(doctorId).subscribe({
+      next: res => {
+        if (res.success) {
+          this.allAppointments = res.data;
+          this.buildApptCalendar();
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  buildApptCalendar(): void {
+    const firstDay = new Date(this.calYear, this.calMonth, 1).getDay();
+    const daysInMonth = new Date(this.calYear, this.calMonth + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(this.calYear, this.calMonth, i));
+    this.calendarDays = days;
+  }
+
+  calPrevMonth(): void {
+    if (this.calMonth === 0) { this.calMonth = 11; this.calYear--; }
+    else { this.calMonth--; }
+    this.buildApptCalendar();
+    this.selectedCalDate = null;
+    this.selectedDayAppts = [];
+  }
+
+  calNextMonth(): void {
+    if (this.calMonth === 11) { this.calMonth = 0; this.calYear++; }
+    else { this.calMonth++; }
+    this.buildApptCalendar();
+    this.selectedCalDate = null;
+    this.selectedDayAppts = [];
+  }
+
+  calSelectDate(day: Date): void {
+    this.selectedCalDate = day;
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    this.selectedDayAppts = this.allAppointments.filter(a => a.scheduledDate === dateStr);
+  }
+
+  calDayHasAppt(day: Date): boolean {
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    return this.allAppointments.some(a => a.scheduledDate === dateStr);
+  }
+
+  calDayClass(day: Date): string {
+    let cls = 'cal-day';
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (day.getTime() === today.getTime()) cls += ' cal-today';
+    if (this.selectedCalDate && day.getTime() === this.selectedCalDate.getTime()) cls += ' cal-selected';
+    if (this.calDayHasAppt(day)) cls += ' cal-has-appt';
+    return cls;
+  }
+
+  get calMonthLabel(): string { return `${this.calMonthNames[this.calMonth]} ${this.calYear}`; }
 
   apptStatusLabel(s: string): string {
     const m: Record<string,string> = {

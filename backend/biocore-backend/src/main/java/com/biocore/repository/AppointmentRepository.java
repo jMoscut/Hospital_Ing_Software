@@ -61,4 +61,21 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByDoctorAndDate(@Param("doctorId") Long doctorId,
                                            @Param("date") LocalDate date,
                                            @Param("cancelled") AppointmentStatus cancelled);
+
+    /** Count of active appointments for a doctor on a given date — used for equitable distribution. */
+    @Query("SELECT COUNT(a) FROM Appointment a " +
+           "WHERE a.doctor.id = :doctorId AND a.scheduledDate = :date " +
+           "AND a.status <> :cancelled")
+    long countByDoctorAndDate(@Param("doctorId") Long doctorId,
+                               @Param("date") LocalDate date,
+                               @Param("cancelled") AppointmentStatus cancelled);
+
+    /** All upcoming + past appointments for a doctor across all dates. */
+    @Query("SELECT a FROM Appointment a " +
+           "LEFT JOIN FETCH a.patient " +
+           "LEFT JOIN FETCH a.clinic " +
+           "WHERE a.doctor.id = :doctorId AND a.status <> :cancelled " +
+           "ORDER BY a.scheduledDate ASC, a.scheduledTime ASC")
+    List<Appointment> findAllByDoctorId(@Param("doctorId") Long doctorId,
+                                         @Param("cancelled") AppointmentStatus cancelled);
 }

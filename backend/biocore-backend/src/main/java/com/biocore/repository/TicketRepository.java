@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -19,11 +20,42 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByPatientId(Long patientId);
     List<Ticket> findByDoctorId(Long doctorId);
 
-    /** RN-C01: Cola ordenada: URGENT primero, luego por creación */
+    /** RN-C01: Cola ordenada: URGENT primero, luego por creación.
+     *  Scheduled tickets: solo scheduledDate = today.
+     *  Walk-in (scheduledDate IS NULL): solo createdAt >= todayStart (Guatemala midnight). */
     @Query("SELECT t FROM Ticket t WHERE t.clinic.id = :clinicId AND t.status IN :statuses " +
+           "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
            "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
     List<Ticket> findQueueByClinic(@Param("clinicId") Long clinicId,
-                                   @Param("statuses") List<TicketStatus> statuses);
+                                   @Param("statuses") List<TicketStatus> statuses,
+                                   @Param("today") LocalDate today,
+                                   @Param("todayStart") LocalDateTime todayStart);
+
+    /** Tickets agendados en fecha pasada O walk-ins de días anteriores que siguen activos → marcar ABSENT */
+    @Query("SELECT t FROM Ticket t WHERE t.status IN :statuses " +
+           "AND (t.scheduledDate < :today OR (t.scheduledDate IS NULL AND t.createdAt < :todayStart))")
+    List<Ticket> findStaleScheduledTickets(@Param("today") LocalDate today,
+                                            @Param("todayStart") LocalDateTime todayStart,
+                                            @Param("statuses") List<TicketStatus> statuses);
+
+    /** Cola filtrada por doctor: solo tickets asignados a ese doctor, de hoy, en espera. */
+    @Query("SELECT t FROM Ticket t WHERE t.clinic.id = :clinicId AND t.doctor.id = :doctorId " +
+           "AND t.status IN :statuses " +
+           "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
+           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
+    List<Ticket> findQueueByClinicAndDoctor(@Param("clinicId") Long clinicId,
+                                             @Param("doctorId") Long doctorId,
+                                             @Param("statuses") List<TicketStatus> statuses,
+                                             @Param("today") LocalDate today,
+                                             @Param("todayStart") LocalDateTime todayStart);
+
+    /** Todos los tickets activos de hoy en todas las clínicas — para monitoreo de personal de salud. */
+    @Query("SELECT t FROM Ticket t WHERE t.status IN :statuses " +
+           "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
+           "ORDER BY t.clinic.id ASC, CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
+    List<Ticket> findTodayAllActive(@Param("statuses") List<TicketStatus> statuses,
+                                     @Param("today") LocalDate today,
+                                     @Param("todayStart") LocalDateTime todayStart);
 
     /** RN-C04: Verificar si el médico tiene consulta activa */
     Optional<Ticket> findByDoctorIdAndStatus(Long doctorId, TicketStatus status);

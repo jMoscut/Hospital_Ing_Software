@@ -15,10 +15,12 @@ import { MatRadioModule } from '@angular/material/radio';
 import { PatientService } from '../../shared/services/patient.service';
 import { PaymentService, InsuranceService } from '../../shared/services/payment.service';
 import { AppointmentService, ClinicService } from '../../shared/services/ticket.service';
+import { LabExamService } from '../../shared/services/lab.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Patient } from '../../core/models/patient.model';
 import { Payment } from '../../core/models/payment.model';
 import { Clinic } from '../../core/models/ticket.model';
+import { LabExam } from '../../core/models/lab.model';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -27,6 +29,7 @@ const LAB_KEYWORDS = ['laboratorio','lab'];
 const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 
 type CitStep = 'dpi' | 'patient' | 'calendar' | 'payment' | 'receipt';
+type LabStep = 'dpi' | 'patient' | 'calendar' | 'payment' | 'receipt';
 type PayMode = 'TARJETA' | 'EFECTIVO';
 
 @Component({
@@ -475,6 +478,312 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
           </div>
         </mat-tab>
 
+        <!-- TAB 3: Laboratorios -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">biotech</mat-icon>
+            Laboratorios
+          </ng-template>
+          <div class="tab-content">
+
+            <!-- RECEIPT -->
+            <ng-container *ngIf="labStep === 'receipt' && labReceipt">
+              <mat-card class="receipt-card">
+                <mat-card-content>
+                  <div class="receipt-header">
+                    <mat-icon class="receipt-icon">check_circle</mat-icon>
+                    <div>
+                      <h2>Cita de Laboratorio Registrada</h2>
+                      <p>El turno ha entrado al sistema de cola.</p>
+                    </div>
+                  </div>
+                  <div class="receipt-body">
+                    <div class="receipt-row"><mat-icon>confirmation_number</mat-icon><span><strong>Turno:</strong> {{ labReceipt.ticketNumber }}</span></div>
+                    <div class="receipt-row"><mat-icon>person</mat-icon><span><strong>Paciente:</strong> {{ labReceipt.patientName }}</span></div>
+                    <div class="receipt-row"><mat-icon>biotech</mat-icon><span><strong>Examen:</strong> {{ labReceipt.examName }}</span></div>
+                    <div class="receipt-row"><mat-icon>event</mat-icon><span><strong>Fecha:</strong> {{ labReceipt.scheduledDate }}</span></div>
+                    <div class="receipt-row"><mat-icon>access_time</mat-icon><span><strong>Hora:</strong> {{ labReceipt.scheduledTime }}</span></div>
+                    <mat-divider style="margin:12px 0"></mat-divider>
+                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>Monto cobrado:</strong> Q{{ labReceipt.amount }}</span></div>
+                    <div class="receipt-row" *ngIf="labReceipt.payMode === 'EFECTIVO'"><mat-icon>money</mat-icon><span><strong>Efectivo recibido:</strong> Q{{ labReceipt.cashReceived }}</span></div>
+                    <div class="receipt-row receipt-change" *ngIf="labReceipt.change > 0"><mat-icon>change_circle</mat-icon><span><strong>Vuelto:</strong> Q{{ labReceipt.change.toFixed(2) }}</span></div>
+                    <div class="receipt-row"><mat-icon>credit_card</mat-icon><span><strong>Método:</strong> {{ labReceipt.payMode === 'TARJETA' ? 'Tarjeta (POS)' : 'Efectivo' }}</span></div>
+                  </div>
+                  <div class="cred-box" *ngIf="labNewCredentials">
+                    <mat-icon>key</mat-icon>
+                    <div>
+                      <strong>Credenciales enviadas al correo del paciente</strong>
+                      <div class="cred-row"><span>Usuario:</span> <code>{{ labNewCredentials.username }}</code></div>
+                      <div class="cred-row"><span>Contraseña temporal:</span> <code>{{ labNewCredentials.tempPassword }}</code></div>
+                    </div>
+                  </div>
+                  <button mat-raised-button color="primary" style="margin-top:24px" (click)="labReset()">
+                    <mat-icon>add</mat-icon> Nueva Cita
+                  </button>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: DPI -->
+            <ng-container *ngIf="labStep === 'dpi'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 1 — Identificar Paciente</mat-card-title>
+                  <mat-card-subtitle>Buscar por DPI</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                  <form [formGroup]="labDpiForm">
+                    <mat-form-field appearance="outline" class="wide">
+                      <mat-label>DPI del Paciente (13 dígitos)</mat-label>
+                      <mat-icon matPrefix>badge</mat-icon>
+                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                    </mat-form-field>
+                    <div class="step-actions">
+                      <button mat-raised-button color="primary"
+                              (click)="labSearchByDpi()" [disabled]="labDpiForm.invalid || labSearching">
+                        <mat-spinner *ngIf="labSearching" diameter="20"></mat-spinner>
+                        <mat-icon *ngIf="!labSearching">search</mat-icon>
+                        {{ labSearching ? 'Buscando...' : 'Buscar' }}
+                      </button>
+                    </div>
+                    <div class="found-box" *ngIf="labExistingPatient">
+                      <mat-icon>check_circle</mat-icon>
+                      <div>
+                        <strong>{{ labExistingPatient.firstName }} {{ labExistingPatient.lastName }}</strong>
+                        <br><small>{{ labExistingPatient.patientCode }} · {{ labExistingPatient.phone }}</small>
+                      </div>
+                      <button mat-raised-button color="accent" (click)="labStep = 'patient'">Ver y Editar →</button>
+                    </div>
+                    <div class="new-patient-notice" *ngIf="labIsNewPatient">
+                      <mat-icon>person_add</mat-icon>
+                      <span>DPI no encontrado — complete los datos para registrar al paciente.</span>
+                      <button mat-raised-button color="accent" (click)="labStep = 'patient'">Registrar →</button>
+                    </div>
+                  </form>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: Patient Data -->
+            <ng-container *ngIf="labStep === 'patient'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 2 — {{ labExistingPatient ? 'Datos del Paciente' : 'Registrar Nuevo Paciente' }}</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <form [formGroup]="labPatientForm">
+                    <div class="form-grid">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Nombres *</mat-label>
+                        <input matInput formControlName="firstName">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Apellidos *</mat-label>
+                        <input matInput formControlName="lastName">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Fecha de Nacimiento</mat-label>
+                        <mat-icon matPrefix>cake</mat-icon>
+                        <input matInput type="date" formControlName="birthDate">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Teléfono</mat-label>
+                        <input matInput formControlName="phone">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Correo Electrónico *</mat-label>
+                        <input matInput formControlName="email">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Dirección</mat-label>
+                        <input matInput formControlName="address">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Seguro Médico</mat-label>
+                        <mat-select formControlName="insuranceId">
+                          <mat-option [value]="null">Sin seguro</mat-option>
+                          <mat-option *ngFor="let ins of insurances" [value]="ins.id">{{ ins.name }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>No. de Póliza / Carné (opcional)</mat-label>
+                        <input matInput formControlName="insuranceNumber">
+                      </mat-form-field>
+                    </div>
+                    <p class="hint-text" *ngIf="!labExistingPatient">
+                      Se generará usuario y contraseña temporales enviados al correo del paciente.
+                    </p>
+                    <div class="step-actions">
+                      <button mat-button (click)="labStep = 'dpi'">← Anterior</button>
+                      <button mat-raised-button color="primary"
+                              [disabled]="labPatientForm.invalid || labSaving"
+                              (click)="labSaveAndContinue()">
+                        <mat-spinner *ngIf="labSaving" diameter="20"></mat-spinner>
+                        <mat-icon *ngIf="!labSaving">arrow_forward</mat-icon>
+                        {{ labSaving ? 'Guardando...' : (labExistingPatient ? 'Guardar y Continuar' : 'Registrar y Continuar') }}
+                      </button>
+                    </div>
+                  </form>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: Calendar -->
+            <ng-container *ngIf="labStep === 'calendar'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 3 — Seleccionar Cita de Laboratorio</mat-card-title>
+                  <mat-card-subtitle>Paciente: {{ labExistingPatient?.firstName }} {{ labExistingPatient?.lastName }}</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="form-grid" style="margin-bottom:16px">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Examen de Laboratorio *</mat-label>
+                      <mat-icon matPrefix>biotech</mat-icon>
+                      <mat-select [(ngModel)]="labSelectedExam" (ngModelChange)="labUpdateFee()" [ngModelOptions]="{standalone:true}">
+                        <mat-option *ngFor="let e of labExams" [value]="e">{{ e.name }} — Q{{ e.price }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Área de Laboratorio *</mat-label>
+                      <mat-icon matPrefix>local_hospital</mat-icon>
+                      <mat-select [(ngModel)]="labSelectedClinicId" (ngModelChange)="labOnClinicChange($event)" [ngModelOptions]="{standalone:true}">
+                        <mat-option *ngFor="let c of labClinics" [value]="c.id">{{ c.name }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="calendar-nav">
+                    <button class="nav-btn" type="button" (click)="labPrevMonth()">&#8249;</button>
+                    <span class="month-label">{{ labMonthLabel }}</span>
+                    <button class="nav-btn" type="button" (click)="labNextMonth()">&#8250;</button>
+                  </div>
+                  <div class="calendar-grid">
+                    <div class="cal-weekday" *ngFor="let d of weekDays">{{ d }}</div>
+                    <ng-container *ngFor="let day of labCalendarDays">
+                      <div *ngIf="!day" class="cal-day empty"></div>
+                      <div *ngIf="day" [class]="labGetDayClass(day)" (click)="!labIsPastDay(day) && labSelectDate(day)">
+                        {{ day.getDate() }}
+                      </div>
+                    </ng-container>
+                  </div>
+
+                  <ng-container *ngIf="labSelectedDate">
+                    <div class="slots-label">
+                      <mat-icon>access_time</mat-icon>
+                      {{ labFormatDate(labSelectedDate) }}
+                      <mat-spinner *ngIf="labLoadingSlots" diameter="16" style="margin-left:8px"></mat-spinner>
+                    </div>
+                    <div class="slots-grid" *ngIf="!labLoadingSlots">
+                      <button *ngFor="let slot of labAvailableSlots"
+                              type="button"
+                              [class]="'slot-btn' + (labSelectedSlot === slot ? ' selected' : '')"
+                              (click)="labSelectSlot(slot)">{{ slot }}</button>
+                      <div *ngIf="labAvailableSlots.length === 0" class="no-slots">
+                        <mat-icon>event_busy</mat-icon> No hay horarios disponibles para este día
+                      </div>
+                    </div>
+                    <div class="reservation-timer" *ngIf="labReservationTimeLeft > 0" [class.timer-low]="labReservationLow">
+                      <mat-icon>timer</mat-icon>
+                      <span>Horario <strong>{{ labSelectedSlot }}</strong> reservado — expira en <strong>{{ labReservationMinutes }}:{{ labReservationSeconds }}</strong></span>
+                    </div>
+                  </ng-container>
+
+                  <div class="step-actions" style="margin-top:16px">
+                    <button mat-button (click)="labStep = 'patient'">← Anterior</button>
+                    <button mat-raised-button color="primary"
+                            [disabled]="!labSelectedDate || !labSelectedSlot || !labSelectedClinicId || !labSelectedExam"
+                            (click)="labStep = 'payment'">
+                      <mat-icon>payments</mat-icon> Continuar al Pago →
+                    </button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: Payment -->
+            <ng-container *ngIf="labStep === 'payment'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 4 — Cobro</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="reservation-timer" *ngIf="labReservationTimeLeft > 0" [class.timer-low]="labReservationLow" style="margin-bottom:16px">
+                    <mat-icon>timer</mat-icon>
+                    <span>Reserva expira en <strong>{{ labReservationMinutes }}:{{ labReservationSeconds }}</strong> — completa el pago antes</span>
+                  </div>
+
+                  <div class="pay-summary">
+                    <div class="pay-summary-row"><mat-icon>person</mat-icon><span>{{ labExistingPatient?.firstName }} {{ labExistingPatient?.lastName }}</span></div>
+                    <div class="pay-summary-row"><mat-icon>local_hospital</mat-icon><span>{{ labClinicName }}</span></div>
+                    <div class="pay-summary-row"><mat-icon>biotech</mat-icon><span>{{ labSelectedExam?.name }}</span></div>
+                    <div class="pay-summary-row"><mat-icon>event</mat-icon><span>{{ labFormatDate(labSelectedDate) }} a las <strong>{{ labSelectedSlot }}</strong></span></div>
+                    <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>Monto a cobrar: <strong>Q{{ labFee }}</strong></span></div>
+                  </div>
+
+                  <h3 style="margin:20px 0 12px">Método de Pago</h3>
+                  <div class="pay-method-grid">
+                    <button type="button" [class]="'pay-method-btn' + (labPayMode === 'TARJETA' ? ' active' : '')"
+                            (click)="labPayMode = 'TARJETA'; labCashReceived = null">
+                      <mat-icon>credit_card</mat-icon>
+                      <span>Tarjeta (POS)</span>
+                    </button>
+                    <button type="button" [class]="'pay-method-btn' + (labPayMode === 'EFECTIVO' ? ' active' : '')"
+                            (click)="labPayMode = 'EFECTIVO'">
+                      <mat-icon>money</mat-icon>
+                      <span>Efectivo</span>
+                    </button>
+                  </div>
+
+                  <div class="pos-area" *ngIf="labPayMode === 'TARJETA'">
+                    <div class="pos-device">
+                      <mat-icon>point_of_sale</mat-icon>
+                      <span>Terminal POS</span>
+                      <small>Presente la tarjeta en el lector y confirme</small>
+                    </div>
+                    <button mat-raised-button color="primary" style="width:100%;font-size:1.05rem;padding:14px"
+                            [disabled]="labBooking" (click)="labBookAndPay()">
+                      <mat-spinner *ngIf="labBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                      <mat-icon *ngIf="!labBooking">point_of_sale</mat-icon>
+                      {{ labBooking ? 'Procesando...' : 'Cobrar Q' + labFee + ' con POS' }}
+                    </button>
+                  </div>
+
+                  <div class="cash-area" *ngIf="labPayMode === 'EFECTIVO'">
+                    <mat-form-field appearance="outline" class="wide">
+                      <mat-label>Efectivo recibido (Q)</mat-label>
+                      <mat-icon matPrefix>money</mat-icon>
+                      <input matInput type="number" [(ngModel)]="labCashReceived" [ngModelOptions]="{standalone:true}"
+                             min="0" step="0.01" (ngModelChange)="labComputeChange()">
+                    </mat-form-field>
+                    <div class="change-display" *ngIf="labCashReceived !== null && labCashReceived >= labFee">
+                      <mat-icon>change_circle</mat-icon>
+                      <span>Vuelto a entregar: <strong>Q{{ labChange.toFixed(2) }}</strong></span>
+                    </div>
+                    <div class="insufficient-notice" *ngIf="labCashReceived !== null && labCashReceived < labFee">
+                      <mat-icon>warning</mat-icon>
+                      <span>Efectivo insuficiente. Faltan Q{{ (labFee - labCashReceived).toFixed(2) }}</span>
+                    </div>
+                    <button mat-raised-button color="primary" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
+                            [disabled]="labBooking || labCashReceived === null || labCashReceived < labFee"
+                            (click)="labBookAndPay()">
+                      <mat-spinner *ngIf="labBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                      <mat-icon *ngIf="!labBooking">payments</mat-icon>
+                      {{ labBooking ? 'Procesando...' : 'Confirmar Pago en Efectivo' }}
+                    </button>
+                  </div>
+
+                  <div class="step-actions" style="margin-top:16px">
+                    <button mat-button (click)="labStep = 'calendar'" [disabled]="labBooking">← Anterior</button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+          </div>
+        </mat-tab>
+
       </mat-tab-group>
     </div>
   `,
@@ -637,6 +946,48 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   citBooking = false;
   citReceipt: any = null;
 
+  // ── Laboratorios ───────────────────────────────────────────────────────────
+  labStep: LabStep = 'dpi';
+  labDpiForm!: FormGroup;
+  labPatientForm!: FormGroup;
+
+  labExistingPatient: Patient | null = null;
+  labIsNewPatient = false;
+  labSearching = false;
+  labSaving = false;
+  labNewCredentials: { username: string; tempPassword: string } | null = null;
+
+  labClinics: Clinic[] = [];
+  labExams: LabExam[] = [];
+  labSelectedExam: LabExam | null = null;
+  labFee = 0;
+
+  labCalYear = 0;
+  labCalMonth = 0;
+  labCalendarDays: (Date | null)[] = [];
+  labSelectedDate: Date | null = null;
+  labSelectedSlot: string | null = null;
+  labSelectedClinicId: number | null = null;
+  labAvailableSlots: string[] = [];
+  labLoadingSlots = false;
+  private labSlotPollTimer: any = null;
+
+  get labMonthLabel(): string { return `${MONTH_NAMES[this.labCalMonth]} ${this.labCalYear}`; }
+  get labClinicName(): string { return this.labClinics.find(c => c.id === this.labSelectedClinicId)?.name ?? '—'; }
+
+  labReservationId: number | null = null;
+  labReservationTimeLeft = 0;
+  private labReservationTimer: any = null;
+  get labReservationMinutes(): number { return Math.floor(this.labReservationTimeLeft / 60); }
+  get labReservationSeconds(): string { return (this.labReservationTimeLeft % 60).toString().padStart(2, '0'); }
+  get labReservationLow(): boolean { return this.labReservationTimeLeft > 0 && this.labReservationTimeLeft <= 120; }
+
+  labPayMode: PayMode | null = null;
+  labCashReceived: number | null = null;
+  labChange = 0;
+  labBooking = false;
+  labReceipt: any = null;
+
   constructor(
     private fb: FormBuilder,
     private patientService: PatientService,
@@ -644,6 +995,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     private appointmentService: AppointmentService,
     private clinicService: ClinicService,
     private insuranceService: InsuranceService,
+    private labExamService: LabExamService,
     private notification: NotificationService
   ) {
     this.searchForm = this.fb.group({ query: ['', Validators.required] });
@@ -668,6 +1020,20 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       insuranceNumber: ['']
     });
 
+    this.labDpiForm = this.fb.group({
+      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+    });
+    this.labPatientForm = this.fb.group({
+      firstName:       ['', Validators.required],
+      lastName:        ['', Validators.required],
+      birthDate:       [''],
+      phone:           [''],
+      email:           ['', [Validators.required, Validators.email]],
+      address:         [''],
+      insuranceId:     [null],
+      insuranceNumber: ['']
+    });
+
     this.clinicService.getAll().subscribe(res => {
       if (res.success) {
         this.citClinics = res.data.filter((c: Clinic) =>
@@ -678,16 +1044,26 @@ export class PaymentsComponent implements OnInit, OnDestroy {
             !LAB_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
           );
         }
+        this.labClinics = res.data.filter((c: Clinic) =>
+          LAB_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
+        );
+        if (this.labClinics.length === 0) this.labClinics = res.data;
       }
     });
     this.insuranceService.getAll().subscribe(res => {
       if (res.success) this.insurances = res.data;
+    });
+    this.labExamService.getAll().subscribe(res => {
+      if (res.success) this.labExams = res.data.filter((e: LabExam) => e.active);
     });
 
     const now = new Date();
     this.citCalYear = now.getFullYear();
     this.citCalMonth = now.getMonth();
     this.citBuildCalendar();
+    this.labCalYear = now.getFullYear();
+    this.labCalMonth = now.getMonth();
+    this.labBuildCalendar();
   }
 
   ngOnDestroy(): void {
@@ -696,6 +1072,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     }
     this.citClearReservationTimer();
     this.citStopSlotPolling();
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+    }
+    this.labClearReservationTimer();
+    this.labStopSlotPolling();
   }
 
   // ── Pagos Generales methods ────────────────────────────────────────────────
@@ -1111,5 +1492,342 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.citCalYear = now.getFullYear();
     this.citCalMonth = now.getMonth();
     this.citBuildCalendar();
+  }
+
+  // ── Laboratorios: DPI ──────────────────────────────────────────────────────
+
+  labSearchByDpi(): void {
+    const dpi = this.labDpiForm.value.dpi;
+    this.labSearching = true;
+    this.labExistingPatient = null;
+    this.labIsNewPatient = false;
+    this.patientService.getByDpi(dpi).subscribe({
+      next: res => {
+        if (res.success && res.data) {
+          this.labExistingPatient = res.data;
+          this.labPatientForm.patchValue(res.data);
+        } else {
+          this.labIsNewPatient = true;
+          this.labPatientForm.reset();
+        }
+        this.labSearching = false;
+      },
+      error: () => {
+        this.labIsNewPatient = true;
+        this.labPatientForm.reset();
+        this.labSearching = false;
+      }
+    });
+  }
+
+  // ── Laboratorios: Patient save ─────────────────────────────────────────────
+
+  labSaveAndContinue(): void {
+    this.labSaving = true;
+    if (this.labExistingPatient) {
+      const data = { ...this.labPatientForm.value, dpi: this.labExistingPatient.dpi };
+      this.patientService.update(this.labExistingPatient.id, data).subscribe({
+        next: res => {
+          if (res.success) { this.labExistingPatient = res.data; this.labStep = 'calendar'; }
+          else this.notification.error(res.message || 'Error al actualizar');
+          this.labSaving = false;
+        },
+        error: err => { this.notification.error(err.error?.message || 'Error'); this.labSaving = false; }
+      });
+    } else {
+      const data = { ...this.labDpiForm.value, ...this.labPatientForm.value, createAccount: true };
+      this.patientService.create(data).subscribe({
+        next: res => {
+          if (res.success) {
+            if ((res.data as any).tempPassword) {
+              this.labNewCredentials = {
+                username: (res.data as any).username ?? data.dpi,
+                tempPassword: (res.data as any).tempPassword
+              };
+            }
+            this.labExistingPatient = res.data;
+            this.labStep = 'calendar';
+          } else {
+            this.notification.error(res.message || 'Error al registrar paciente');
+          }
+          this.labSaving = false;
+        },
+        error: err => { this.notification.error(err.error?.message || 'Error'); this.labSaving = false; }
+      });
+    }
+  }
+
+  // ── Laboratorios: Calendar ─────────────────────────────────────────────────
+
+  labBuildCalendar(): void {
+    const firstDay = new Date(this.labCalYear, this.labCalMonth, 1).getDay();
+    const daysInMonth = new Date(this.labCalYear, this.labCalMonth + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(this.labCalYear, this.labCalMonth, i));
+    this.labCalendarDays = days;
+  }
+
+  labPrevMonth(): void {
+    if (this.labCalMonth === 0) { this.labCalMonth = 11; this.labCalYear--; }
+    else this.labCalMonth--;
+    this.labBuildCalendar();
+  }
+
+  labNextMonth(): void {
+    if (this.labCalMonth === 11) { this.labCalMonth = 0; this.labCalYear++; }
+    else this.labCalMonth++;
+    this.labBuildCalendar();
+  }
+
+  labIsPastDay(d: Date): boolean {
+    const today = this.getCATodayStr();
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return ds < today;
+  }
+
+  labGetDayClass(day: Date): string {
+    let cls = 'cal-day';
+    if (this.labIsPastDay(day)) return cls + ' past';
+    const today = this.getCATodayStr();
+    const ds = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    if (ds === today) cls += ' today';
+    if (this.labSelectedDate && day.getTime() === this.labSelectedDate.getTime()) cls += ' selected';
+    return cls;
+  }
+
+  labSelectDate(day: Date): void {
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+      this.labClearReservationTimer();
+    }
+    this.labSelectedDate = day;
+    this.labSelectedSlot = null;
+    this.labLoadSlots();
+    this.labStartSlotPolling();
+  }
+
+  labSelectSlot(slot: string): void {
+    if (this.labSelectedSlot === slot) return;
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+      this.labClearReservationTimer();
+    }
+    this.labSelectedSlot = slot;
+    this.labReserveSlot(slot);
+  }
+
+  labOnClinicChange(id: number): void {
+    this.labSelectedClinicId = id;
+    this.labSelectedSlot = null;
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+      this.labClearReservationTimer();
+    }
+    if (this.labSelectedDate) { this.labLoadSlots(); this.labStartSlotPolling(); }
+  }
+
+  labUpdateFee(): void {
+    this.labFee = this.labSelectedExam?.price ?? 0;
+  }
+
+  labLoadSlots(silent = false): void {
+    if (!this.labSelectedDate || !this.labSelectedClinicId) return;
+    if (!silent) this.labLoadingSlots = true;
+    const d = this.labSelectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    this.appointmentService.getAvailableSlots(dateStr, this.labSelectedClinicId).subscribe({
+      next: res => {
+        if (res.success) {
+          const allSlots = res.data;
+          const today = this.getCATodayStr();
+          const selStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          if (selStr === today) {
+            const cutoff = this.getCAMinutesNow() + 30;
+            this.labAvailableSlots = allSlots.filter((slot: string) => {
+              const [h, m] = slot.split(':').map(Number);
+              return h * 60 + m > cutoff;
+            });
+          } else {
+            this.labAvailableSlots = allSlots;
+          }
+          if (this.labSelectedSlot && !this.labAvailableSlots.includes(this.labSelectedSlot)) {
+            this.labSelectedSlot = null;
+          }
+        }
+        this.labLoadingSlots = false;
+      },
+      error: () => { this.labLoadingSlots = false; }
+    });
+  }
+
+  labStartSlotPolling(): void {
+    this.labStopSlotPolling();
+    this.labSlotPollTimer = setInterval(() => {
+      if (this.labStep === 'calendar' && this.labSelectedDate && this.labSelectedClinicId) {
+        this.labLoadSlots(true);
+      } else {
+        this.labStopSlotPolling();
+      }
+    }, 5000);
+  }
+
+  labStopSlotPolling(): void {
+    if (this.labSlotPollTimer) { clearInterval(this.labSlotPollTimer); this.labSlotPollTimer = null; }
+  }
+
+  labFormatDate(d: Date | null): string {
+    if (!d) return '';
+    const days = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    return `${days[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // ── Laboratorios: Reservation ─────────────────────────────────────────────
+
+  labReserveSlot(slot: string): void {
+    if (!this.labSelectedDate || !this.labSelectedClinicId || !this.labExistingPatient) return;
+    const d = this.labSelectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    this.appointmentService.reserve({
+      patientId: this.labExistingPatient.id,
+      clinicId: this.labSelectedClinicId,
+      date: dateStr,
+      time: slot
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.labReservationId = res.data.id;
+          const expiresAt = new Date(res.data.expiresAt);
+          const secondsLeft = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+          this.labStartReservationTimer(secondsLeft);
+        }
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'No se pudo reservar el horario');
+        this.labSelectedSlot = null;
+        this.labLoadSlots();
+      }
+    });
+  }
+
+  labStartReservationTimer(seconds: number): void {
+    this.labClearReservationTimer();
+    this.labReservationTimeLeft = seconds;
+    this.labReservationTimer = setInterval(() => {
+      this.labReservationTimeLeft--;
+      if (this.labReservationTimeLeft <= 0) {
+        this.labClearReservationTimer();
+        this.labOnReservationExpired();
+      }
+    }, 1000);
+  }
+
+  labClearReservationTimer(): void {
+    if (this.labReservationTimer) { clearInterval(this.labReservationTimer); this.labReservationTimer = null; }
+    this.labReservationTimeLeft = 0;
+    this.labReservationId = null;
+  }
+
+  labOnReservationExpired(): void {
+    this.notification.error('La reserva del horario expiró. Seleccione nuevamente.');
+    this.labSelectedSlot = null;
+    this.labStep = 'calendar';
+    if (this.labSelectedDate) { this.labLoadSlots(); this.labStartSlotPolling(); }
+  }
+
+  // ── Laboratorios: Payment ──────────────────────────────────────────────────
+
+  labComputeChange(): void {
+    this.labChange = this.labCashReceived !== null ? Math.max(0, this.labCashReceived - this.labFee) : 0;
+  }
+
+  labBookAndPay(): void {
+    if (!this.labExistingPatient || !this.labSelectedClinicId || !this.labSelectedDate || !this.labSelectedSlot || !this.labSelectedExam) return;
+    this.labBooking = true;
+    this.labStopSlotPolling();
+
+    const d = this.labSelectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const paymentMethod = this.labPayMode === 'TARJETA' ? 'POS_CARD' : 'CASH';
+
+    this.appointmentService.book({
+      patientId: this.labExistingPatient.id,
+      clinicId: this.labSelectedClinicId,
+      type: 'LABORATORIO',
+      scheduledDate: dateStr,
+      scheduledTime: this.labSelectedSlot,
+      notes: `Examen: ${this.labSelectedExam.name} — Cita de laboratorio registrada en caja`
+    }).subscribe({
+      next: bookRes => {
+        if (!bookRes.success) {
+          this.notification.error(bookRes.message || 'Error al agendar cita');
+          this.labBooking = false;
+          return;
+        }
+        const apptId = bookRes.data.id;
+        this.appointmentService.confirmPayment(apptId, { paymentMethod }).subscribe({
+          next: confRes => {
+            if (confRes.success) {
+              this.labReceipt = {
+                ticketNumber:  confRes.data.ticketNumber ?? '—',
+                patientName:   bookRes.data.patientName,
+                examName:      this.labSelectedExam!.name,
+                scheduledDate: dateStr,
+                scheduledTime: this.labSelectedSlot,
+                amount:        this.labFee,
+                payMode:       this.labPayMode,
+                cashReceived:  this.labCashReceived,
+                change:        this.labChange
+              };
+              this.labStep = 'receipt';
+              this.notification.success('Cita de laboratorio confirmada y turno asignado.');
+            } else {
+              this.notification.error(confRes.message || 'Error al confirmar pago');
+            }
+            this.labBooking = false;
+          },
+          error: err => {
+            this.notification.error(err.error?.message || 'Error al confirmar pago');
+            this.labBooking = false;
+          }
+        });
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Horario no disponible. Seleccione otro.');
+        this.labSelectedSlot = null;
+        this.labLoadSlots();
+        this.labStartSlotPolling();
+        this.labStep = 'calendar';
+        this.labBooking = false;
+      }
+    });
+  }
+
+  labReset(): void {
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+    }
+    this.labClearReservationTimer();
+    this.labStep = 'dpi';
+    this.labExistingPatient = null;
+    this.labIsNewPatient = false;
+    this.labNewCredentials = null;
+    this.labReceipt = null;
+    this.labSelectedDate = null;
+    this.labSelectedSlot = null;
+    this.labSelectedClinicId = null;
+    this.labAvailableSlots = [];
+    this.labPayMode = null;
+    this.labCashReceived = null;
+    this.labChange = 0;
+    this.labSelectedExam = null;
+    this.labFee = 0;
+    this.labDpiForm.reset();
+    this.labPatientForm.reset();
+    this.labStopSlotPolling();
+    const now = new Date();
+    this.labCalYear = now.getFullYear();
+    this.labCalMonth = now.getMonth();
+    this.labBuildCalendar();
   }
 }

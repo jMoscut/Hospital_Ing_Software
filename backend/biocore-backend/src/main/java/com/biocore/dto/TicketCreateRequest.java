@@ -11,6 +11,7 @@ public class TicketCreateRequest {
     @NotNull private Long patientId;
     /** RN-02: Clínica obligatoria */
     @NotNull private Long clinicId;
+    private Long doctorId;
     private String notes;
     private String type;
     private TicketPriority priority;

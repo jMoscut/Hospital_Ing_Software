@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -76,7 +77,7 @@ public class LabService {
             throw new RuntimeException("Se requiere tipo de muestra o examen del catálogo");
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("America/Guatemala"));
         // RN-L01: Vigencia 30 días calendario
         LocalDate expiration = today.plusDays(30);
 
@@ -143,7 +144,7 @@ public class LabService {
     @Scheduled(cron = "0 0 1 * * *")
     @Transactional
     public void checkExpiredOrders() {
-        List<LabOrder> expired = labOrderRepository.findExpiredOrders(LocalDate.now());
+        List<LabOrder> expired = labOrderRepository.findExpiredOrders(LocalDate.now(ZoneId.of("America/Guatemala")));
         expired.forEach(order -> {
             order.setStatus(LabOrderStatus.EXPIRED);
             labOrderRepository.save(order);

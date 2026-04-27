@@ -164,10 +164,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadActiveTickets(): void {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
     this.ticketService.getAll().subscribe({
       next: res => {
         if (res.success) {
-          this.activeTickets = res.data.filter(t => t.status === 'BEING_CALLED');
+          this.activeTickets = res.data.filter(t =>
+            t.status === 'BEING_CALLED' &&
+            (!t.scheduledDate || t.scheduledDate === today)
+          );
         }
       },
       error: () => { this.activeTickets = []; }

@@ -107,6 +107,7 @@ com\biocore\service\AuthService.class
 com\biocore\config\SecurityConfig.class
 com\biocore\entity\Appointment.class
 com\biocore\repository\DoctorScheduleRepository.class
+com\biocore\service\TicketService$1.class
 com\biocore\dto\LabOrderDTO.class
 com\biocore\entity\LabResult.class
 com\biocore\repository\DocumentRepository.class

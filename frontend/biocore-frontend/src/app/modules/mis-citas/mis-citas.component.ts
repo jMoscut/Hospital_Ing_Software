@@ -157,84 +157,141 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
 
             <!-- STEP: Payment -->
             <ng-container *ngIf="bookingStep === 'payment'">
-              <mat-card class="booking-card">
-                <mat-card-header>
-                  <mat-icon mat-card-avatar>payment</mat-icon>
-                  <mat-card-title>Pago en Línea</mat-card-title>
-                  <mat-card-subtitle>La cita se confirma al completar el pago</mat-card-subtitle>
-                </mat-card-header>
-                <mat-card-content>
+              <div class="payment-layout">
 
-                  <!-- Reservation countdown -->
-                  <div class="reservation-timer" *ngIf="reservationTimeLeft > 0" [class.timer-low]="reservationLow" style="margin-bottom:16px">
-                    <mat-icon>timer</mat-icon>
-                    <span>Reserva expira en <strong>{{ reservationMinutes }}:{{ reservationSeconds }}</strong> — completa el pago antes</span>
-                  </div>
+                <!-- Payment card -->
+                <mat-card class="booking-card payment-card">
+                  <mat-card-header>
+                    <mat-icon mat-card-avatar>payment</mat-icon>
+                    <mat-card-title>Pago en Línea</mat-card-title>
+                    <mat-card-subtitle>La cita se confirma al completar el pago</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
 
-                  <!-- Summary -->
-                  <div class="appt-summary">
-                    <div class="summary-row">
-                      <mat-icon>event</mat-icon>
-                      <span>{{ formatDate(selectedDate) }} a las <strong>{{ selectedSlot }}</strong></span>
+                    <!-- Reservation countdown -->
+                    <div class="reservation-timer" *ngIf="reservationTimeLeft > 0" [class.timer-low]="reservationLow" style="margin-bottom:16px">
+                      <mat-icon>timer</mat-icon>
+                      <span>Reserva expira en <strong>{{ reservationMinutes }}:{{ reservationSeconds }}</strong> — completa el pago antes</span>
                     </div>
-                    <div class="summary-row">
-                      <mat-icon>local_hospital</mat-icon>
-                      <span>{{ getClinicName(selectedClinicId) }} — {{ typeLabel(selectedType) }}</span>
-                    </div>
-                    <div class="summary-row total-row">
-                      <mat-icon>receipt</mat-icon>
-                      <span>Total: <strong>Q {{ consultationFee }}</strong></span>
-                    </div>
-                  </div>
 
-                  <!-- Card form -->
-                  <div class="card-form">
-                    <h4><mat-icon>credit_card</mat-icon> Datos de tarjeta</h4>
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Nombre en la tarjeta *</mat-label>
-                      <input matInput [(ngModel)]="card.name" placeholder="Nombre Apellido">
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Número de tarjeta *</mat-label>
-                      <input matInput [(ngModel)]="card.number" maxlength="19"
-                             placeholder="0000 0000 0000 0000"
-                             (input)="formatCardNumber()">
-                      <mat-hint>Ingrese los números de su tarjeta</mat-hint>
-                    </mat-form-field>
-                    <div class="card-row-2">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Vencimiento *</mat-label>
-                        <input matInput [(ngModel)]="card.expiry" maxlength="5" placeholder="MM/AA"
-                               (input)="formatExpiry()">
+                    <!-- Summary -->
+                    <div class="appt-summary">
+                      <div class="summary-row">
+                        <mat-icon>event</mat-icon>
+                        <span>{{ formatDate(selectedDate) }} a las <strong>{{ selectedSlot }}</strong></span>
+                      </div>
+                      <div class="summary-row">
+                        <mat-icon>local_hospital</mat-icon>
+                        <span>{{ getClinicName(selectedClinicId) }} — {{ typeLabel(selectedType) }}</span>
+                      </div>
+                      <div class="summary-row total-row">
+                        <mat-icon>receipt</mat-icon>
+                        <span>Total: <strong>Q {{ consultationFee }}</strong></span>
+                      </div>
+                    </div>
+
+                    <!-- Card form -->
+                    <div class="card-form">
+                      <h4><mat-icon>credit_card</mat-icon> Datos de tarjeta</h4>
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Nombre en la tarjeta *</mat-label>
+                        <input matInput [(ngModel)]="card.name" placeholder="Nombre Apellido">
                       </mat-form-field>
-                      <mat-form-field appearance="outline">
-                        <mat-label>CVV *</mat-label>
-                        <input matInput [(ngModel)]="card.cvv" maxlength="4"
-                               type="password" placeholder="•••">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Número de tarjeta *</mat-label>
+                        <input matInput [(ngModel)]="card.number" maxlength="19"
+                               placeholder="0000 0000 0000 0000"
+                               (input)="formatCardNumber()">
+                        <mat-hint>Ingrese los números de su tarjeta</mat-hint>
                       </mat-form-field>
+                      <div class="card-row-2">
+                        <mat-form-field appearance="outline">
+                          <mat-label>Vencimiento *</mat-label>
+                          <input matInput [(ngModel)]="card.expiry" maxlength="5" placeholder="MM/AA"
+                                 (input)="formatExpiry()">
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>CVV *</mat-label>
+                          <input matInput [(ngModel)]="card.cvv" maxlength="4"
+                                 type="password" placeholder="•••">
+                        </mat-form-field>
+                      </div>
                     </div>
-                  </div>
 
-                  <div class="error-msg" *ngIf="paymentError">
-                    <mat-icon>error</mat-icon> {{ paymentError }}
-                  </div>
-                  <div class="hint-text" *ngIf="!cardValid()">
-                    Complete todos los campos de la tarjeta para proceder.
-                  </div>
-                </mat-card-content>
-                <mat-card-actions style="display:flex;gap:8px;align-items:center">
-                  <button mat-button (click)="bookingStep = 'calendar'" [disabled]="paying">
-                    ← Volver
-                  </button>
-                  <button mat-raised-button color="primary"
-                          [disabled]="!cardValid() || paying"
-                          (click)="pay()">
-                    <mat-spinner *ngIf="paying" diameter="20" style="display:inline-block;margin-right:8px"></mat-spinner>
-                    <mat-icon *ngIf="!paying">lock</mat-icon>
-                    {{ paying ? 'Procesando pago...' : 'Pagar Q ' + consultationFee }}
-                  </button>
-                </mat-card-actions>
-              </mat-card>
+                    <div class="error-msg" *ngIf="paymentError">
+                      <mat-icon>error</mat-icon> {{ paymentError }}
+                    </div>
+                    <div class="hint-text" *ngIf="!cardValid()">
+                      Complete todos los campos de la tarjeta para proceder.
+                    </div>
+                  </mat-card-content>
+                  <mat-card-actions style="display:flex;gap:8px;align-items:center">
+                    <button mat-button (click)="bookingStep = 'calendar'" [disabled]="paying">
+                      ← Volver
+                    </button>
+                    <button mat-raised-button color="primary"
+                            [disabled]="!cardValid() || paying"
+                            (click)="pay()">
+                      <mat-spinner *ngIf="paying" diameter="20" style="display:inline-block;margin-right:8px"></mat-spinner>
+                      <mat-icon *ngIf="!paying">lock</mat-icon>
+                      {{ paying ? 'Procesando pago...' : 'Pagar Q ' + consultationFee }}
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
+
+                <!-- Document upload card -->
+                <mat-card class="upload-card">
+                  <mat-card-header>
+                    <mat-icon mat-card-avatar style="color:#1D6C61">upload_file</mat-icon>
+                    <mat-card-title>Documentos</mat-card-title>
+                    <mat-card-subtitle>Adjunte exámenes u otros archivos — opcional</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+
+                    <!-- Drop zone -->
+                    <div class="upload-zone"
+                         [class.upload-zone-full]="uploadedDocs.length >= 5"
+                         (click)="uploadedDocs.length < 5 && docInput.click()"
+                         (dragover)="$event.preventDefault()"
+                         (drop)="onDocDrop($event)">
+                      <mat-icon class="upload-zone-icon">{{ uploadedDocs.length >= 5 ? 'block' : 'upload_file' }}</mat-icon>
+                      <p class="upload-zone-text">
+                        {{ uploadedDocs.length >= 5 ? 'Límite de 5 archivos alcanzado' : 'Haga clic o arrastre archivos PDF aquí' }}
+                      </p>
+                      <small class="upload-zone-hint">Máx. 5 archivos · 20 MB por archivo · solo PDF</small>
+                    </div>
+                    <input #docInput type="file" accept=".pdf,application/pdf" multiple hidden
+                           (change)="addDocs($any($event.target).files)">
+
+                    <!-- File list -->
+                    <div class="doc-list" *ngIf="uploadedDocs.length > 0">
+                      <div class="doc-item" *ngFor="let f of uploadedDocs; let i = index">
+                        <mat-icon class="doc-icon">picture_as_pdf</mat-icon>
+                        <div class="doc-meta">
+                          <span class="doc-name">{{ f.name }}</span>
+                          <span class="doc-size">{{ formatFileSize(f.size) }}</span>
+                        </div>
+                        <button mat-icon-button (click)="removeDoc(i)" style="flex-shrink:0">
+                          <mat-icon style="color:#c62828;font-size:18px">close</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Validation errors -->
+                    <div class="upload-errors" *ngIf="uploadErrors.length > 0">
+                      <div class="upload-error-item" *ngFor="let e of uploadErrors">
+                        <mat-icon>error_outline</mat-icon> {{ e }}
+                      </div>
+                    </div>
+
+                    <p class="hint-text" style="margin-top:14px;display:flex;align-items:flex-start;gap:6px">
+                      <mat-icon style="font-size:15px;width:15px;height:15px;flex-shrink:0;margin-top:2px">info</mat-icon>
+                      Solo PDF válidos. No se aceptan archivos cifrados, con contraseña o vacíos.
+                    </p>
+                  </mat-card-content>
+                </mat-card>
+
+              </div>
             </ng-container>
 
             <!-- STEP: Confirmed -->
@@ -732,6 +789,35 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
     .slot-btn.selected { background:#1D6C61; color:white; border-color:#1D6C61; }
     .no-slots { grid-column:1/-1; display:flex; align-items:center; gap:8px; color:#9e9e9e; font-size:0.9rem; padding:12px; }
 
+    /* Payment layout */
+    .payment-layout { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+    .payment-card { flex:1; min-width:300px; max-width:700px; }
+    .upload-card { flex:0 0 320px; min-width:280px; }
+
+    /* Upload card */
+    .upload-zone {
+      border:2px dashed #b2dfdb; border-radius:10px; padding:28px 16px;
+      text-align:center; cursor:pointer; transition:all 0.2s;
+      background:#f7fdfc; margin-bottom:16px;
+    }
+    .upload-zone:hover:not(.upload-zone-full) { border-color:#1D6C61; background:#e8f5f3; }
+    .upload-zone-full { cursor:default; opacity:0.6; }
+    .upload-zone-icon { font-size:36px; width:36px; height:36px; color:#1D6C61; margin-bottom:8px; }
+    .upload-zone-text { font-size:0.88rem; font-weight:600; color:#333; margin:0 0 4px; }
+    .upload-zone-hint { font-size:0.75rem; color:#9e9e9e; }
+    .doc-list { display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+    .doc-item {
+      display:flex; align-items:center; gap:8px; padding:8px 10px;
+      background:#f0faf8; border-radius:8px; border:1px solid #d0eae6;
+    }
+    .doc-icon { color:#c62828; font-size:22px; width:22px; height:22px; flex-shrink:0; }
+    .doc-meta { flex:1; min-width:0; }
+    .doc-name { font-size:0.82rem; font-weight:500; color:#212121; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .doc-size { font-size:0.72rem; color:#9e9e9e; }
+    .upload-errors { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+    .upload-error-item { display:flex; align-items:flex-start; gap:6px; font-size:0.8rem; color:#c62828; }
+    .upload-error-item mat-icon { font-size:16px; width:16px; height:16px; flex-shrink:0; margin-top:1px; }
+
     /* Payment */
     .appt-summary { background:#f0faf8; border:1px solid #b2dfdb; border-radius:10px; padding:16px; margin-bottom:20px; }
     .summary-row { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:0.95rem; }
@@ -886,6 +972,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   consultationFee = '150.00';
   paying = false;
   paymentError = '';
+  uploadedDocs: File[] = [];
+  uploadErrors: string[] = [];
   readonly allSlots = ALL_SLOTS;
 
   // Slots
@@ -1216,6 +1304,89 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.card.expiry = v;
   }
 
+  formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  async addDocs(files: FileList | null): Promise<void> {
+    if (!files) return;
+    this.uploadErrors = [];
+    const MAX_SIZE = 20 * 1024 * 1024;
+    const MAX_FILES = 5;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      if (this.uploadedDocs.length >= MAX_FILES) {
+        this.uploadErrors.push(`Límite de ${MAX_FILES} archivos alcanzado. "${file.name}" no agregado.`);
+        continue;
+      }
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        this.uploadErrors.push(`"${file.name}": solo se aceptan archivos PDF.`);
+        continue;
+      }
+      if (file.size === 0) {
+        this.uploadErrors.push(`"${file.name}": el archivo está vacío.`);
+        continue;
+      }
+      if (file.size > MAX_SIZE) {
+        this.uploadErrors.push(`"${file.name}": excede el límite de 20 MB (${this.formatFileSize(file.size)}).`);
+        continue;
+      }
+      if (this.uploadedDocs.some(d => d.name === file.name && d.size === file.size)) {
+        this.uploadErrors.push(`"${file.name}": archivo ya agregado.`);
+        continue;
+      }
+
+      const validationError = await this.validatePdfContent(file);
+      if (validationError) {
+        this.uploadErrors.push(`"${file.name}": ${validationError}`);
+        continue;
+      }
+
+      this.uploadedDocs.push(file);
+    }
+  }
+
+  private validatePdfContent(file: File): Promise<string | null> {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const buf = e.target?.result as ArrayBuffer;
+        const bytes = new Uint8Array(buf);
+        // Check %PDF- header (first 5 bytes)
+        const header = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
+        if (!header.startsWith('%PDF')) {
+          resolve('no es un archivo PDF válido.');
+          return;
+        }
+        // Check for /Encrypt keyword → encrypted/password-protected
+        const text = new TextDecoder('latin1').decode(buf);
+        if (/\/Encrypt\s/.test(text)) {
+          resolve('el archivo está cifrado o protegido con contraseña.');
+          return;
+        }
+        resolve(null);
+      };
+      reader.onerror = () => resolve('no se pudo leer el archivo.');
+      reader.readAsArrayBuffer(file.slice(0, 4096));
+    });
+  }
+
+  onDocDrop(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer?.files) {
+      this.addDocs(event.dataTransfer.files);
+    }
+  }
+
+  removeDoc(index: number): void {
+    this.uploadedDocs.splice(index, 1);
+    this.uploadErrors = [];
+  }
+
   cardValid(): boolean {
     const digits = this.card.number.replace(/\s/g, '');
     if (this.card.name.trim().length < 2) return false;
@@ -1310,6 +1481,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.availableSlots = [];
     this.card = { name: this.userName, number: '', expiry: '', cvv: '' };
     this.paymentError = '';
+    this.uploadedDocs = [];
+    this.uploadErrors = [];
     const now = new Date();
     this.calYear = now.getFullYear();
     this.calMonth = now.getMonth();
