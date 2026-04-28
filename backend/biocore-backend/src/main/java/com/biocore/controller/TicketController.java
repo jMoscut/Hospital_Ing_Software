@@ -13,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -34,6 +35,13 @@ public class TicketController {
     @GetMapping("/queue/{clinicId}")
     public ResponseEntity<ApiResponse<List<TicketDTO>>> getQueue(@PathVariable Long clinicId) {
         return ResponseEntity.ok(ApiResponse.ok(ticketService.getQueue(clinicId)));
+    }
+
+    /** Cola filtrada por doctor — solo tickets asignados a ese médico hoy. */
+    @GetMapping("/queue/{clinicId}/doctor/{doctorId}")
+    public ResponseEntity<ApiResponse<List<TicketDTO>>> getQueueForDoctor(
+            @PathVariable Long clinicId, @PathVariable Long doctorId) {
+        return ResponseEntity.ok(ApiResponse.ok(ticketService.getQueueForDoctor(clinicId, doctorId)));
     }
 
     @PostMapping
@@ -81,7 +89,7 @@ public class TicketController {
 
     /** CU3 FA01: Paciente ausente (3 llamados sin respuesta) */
     @PutMapping("/{ticketId}/mark-absent")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'HEALTH_STAFF', 'NURSE')")
     public ResponseEntity<ApiResponse<TicketDTO>> markAbsent(@PathVariable Long ticketId) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Paciente marcado como ausente", ticketService.markAbsent(ticketId)));
@@ -95,6 +103,13 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.ok(ticketService.getByPatient(patientId)));
     }
 
+    /** Todos los tickets activos de hoy — para monitoreo de personal de salud */
+    @GetMapping("/queue/today")
+    @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'NURSE', 'ADMIN', 'DOCTOR', 'CASHIER', 'LAB_TECHNICIAN')")
+    public ResponseEntity<ApiResponse<List<TicketDTO>>> getTodayAllActive() {
+        return ResponseEntity.ok(ApiResponse.ok(ticketService.getTodayAllActive()));
+    }
+
     /** Health staff calls next WAITING patient to vital signs area */
     @PutMapping("/clinic/{clinicId}/call-to-vital-signs")
     @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'NURSE', 'ADMIN')")
@@ -102,6 +117,19 @@ public class TicketController {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Paciente llamado a signos vitales",
                     ticketService.callNextToVitalSigns(clinicId)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Health staff marks sample physically collected for a LABORATORIO ticket.
+     *  Creates LabOrder report for lab tech portal, completes ticket, frees lab tech. */
+    @PutMapping("/{ticketId}/collect-sample")
+    @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'NURSE', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> collectSample(@PathVariable Long ticketId) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Muestra recolectada y enviada a laboratorio",
+                    ticketService.collectSample(ticketId)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

@@ -15,10 +15,12 @@ import { MatRadioModule } from '@angular/material/radio';
 import { PatientService } from '../../shared/services/patient.service';
 import { PaymentService, InsuranceService } from '../../shared/services/payment.service';
 import { AppointmentService, ClinicService } from '../../shared/services/ticket.service';
+import { LabExamService } from '../../shared/services/lab.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Patient } from '../../core/models/patient.model';
 import { Payment } from '../../core/models/payment.model';
 import { Clinic } from '../../core/models/ticket.model';
+import { LabExam } from '../../core/models/lab.model';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -27,6 +29,7 @@ const LAB_KEYWORDS = ['laboratorio','lab'];
 const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 
 type CitStep = 'dpi' | 'patient' | 'calendar' | 'payment' | 'receipt';
+type LabStep = 'dpi' | 'patient' | 'calendar' | 'payment' | 'receipt';
 type PayMode = 'TARJETA' | 'EFECTIVO';
 
 @Component({
@@ -64,7 +67,7 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                       <mat-icon matPrefix>search</mat-icon>
                       <input matInput formControlName="query" placeholder="0000000000000 o PAT-0001">
                     </mat-form-field>
-                    <button mat-raised-button color="primary" (click)="searchPatient()">Buscar</button>
+                    <button mat-raised-button color="primary" type="button" (click)="searchPatient()">Buscar</button>
                   </form>
                   <div class="patient-found" *ngIf="patient">
                     <div class="patient-info">
@@ -219,7 +222,7 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                       <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
                     </mat-form-field>
                     <div class="step-actions">
-                      <button mat-raised-button color="primary"
+                      <button mat-raised-button color="primary" type="button"
                               (click)="citSearchByDpi()" [disabled]="citDpiForm.invalid || citSearching">
                         <mat-spinner *ngIf="citSearching" diameter="20"></mat-spinner>
                         <mat-icon *ngIf="!citSearching">search</mat-icon>
@@ -232,12 +235,12 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                         <strong>{{ citExistingPatient.firstName }} {{ citExistingPatient.lastName }}</strong>
                         <br><small>{{ citExistingPatient.patientCode }} · {{ citExistingPatient.phone }}</small>
                       </div>
-                      <button mat-raised-button color="accent" (click)="citStep = 'patient'">Ver y Editar →</button>
+                      <button mat-raised-button color="accent" type="button" (click)="citStep = 'patient'">Ver y Editar →</button>
                     </div>
                     <div class="new-patient-notice" *ngIf="citIsNewPatient">
                       <mat-icon>person_add</mat-icon>
                       <span>DPI no encontrado — complete los datos para registrar al paciente.</span>
-                      <button mat-raised-button color="accent" (click)="citStep = 'patient'">Registrar →</button>
+                      <button mat-raised-button color="accent" type="button" (click)="citStep = 'patient'">Registrar →</button>
                     </div>
                   </form>
                 </mat-card-content>
@@ -294,8 +297,8 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                       Se generará usuario y contraseña temporales enviados al correo del paciente.
                     </p>
                     <div class="step-actions">
-                      <button mat-button (click)="citStep = 'dpi'">← Anterior</button>
-                      <button mat-raised-button color="primary"
+                      <button mat-button type="button" (click)="citStep = 'dpi'">← Anterior</button>
+                      <button mat-raised-button color="primary" type="button"
                               [disabled]="citPatientForm.invalid || citSaving"
                               (click)="citSaveAndContinue()">
                         <mat-spinner *ngIf="citSaving" diameter="20"></mat-spinner>
@@ -389,84 +392,441 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
 
             <!-- STEP: Payment -->
             <ng-container *ngIf="citStep === 'payment'">
+              <div class="cit-payment-layout">
+
+                <!-- Payment card -->
+                <mat-card style="flex:1;min-width:300px">
+                  <mat-card-header>
+                    <mat-card-title>Paso 4 — Cobro</mat-card-title>
+                  </mat-card-header>
+                  <mat-card-content>
+
+                    <!-- Reservation countdown -->
+                    <div class="reservation-timer" *ngIf="citReservationTimeLeft > 0" [class.timer-low]="citReservationLow" style="margin-bottom:16px">
+                      <mat-icon>timer</mat-icon>
+                      <span>Reserva expira en <strong>{{ citReservationMinutes }}:{{ citReservationSeconds }}</strong> — completa el pago antes</span>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="pay-summary">
+                      <div class="pay-summary-row"><mat-icon>person</mat-icon><span>{{ citExistingPatient?.firstName }} {{ citExistingPatient?.lastName }}</span></div>
+                      <div class="pay-summary-row"><mat-icon>local_hospital</mat-icon><span>{{ citClinicName }}</span></div>
+                      <div class="pay-summary-row"><mat-icon>medical_services</mat-icon><span>{{ citTypeLabel(citType) }}</span></div>
+                      <div class="pay-summary-row"><mat-icon>event</mat-icon><span>{{ citFormatDate(citSelectedDate) }} a las <strong>{{ citSelectedSlot }}</strong></span></div>
+                      <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>Monto a cobrar: <strong>Q{{ citFee }}</strong></span></div>
+                    </div>
+
+                    <!-- Method selection -->
+                    <h3 style="margin:20px 0 12px">Método de Pago</h3>
+                    <div class="pay-method-grid">
+                      <button type="button" [class]="'pay-method-btn' + (citPayMode === 'TARJETA' ? ' active' : '')"
+                              (click)="citPayMode = 'TARJETA'; citCashReceived = null">
+                        <mat-icon>credit_card</mat-icon>
+                        <span>Tarjeta (POS)</span>
+                      </button>
+                      <button type="button" [class]="'pay-method-btn' + (citPayMode === 'EFECTIVO' ? ' active' : '')"
+                              (click)="citPayMode = 'EFECTIVO'">
+                        <mat-icon>money</mat-icon>
+                        <span>Efectivo</span>
+                      </button>
+                    </div>
+
+                    <!-- TARJETA: POS simulation -->
+                    <div class="pos-area" *ngIf="citPayMode === 'TARJETA'">
+                      <div class="pos-device">
+                        <mat-icon>point_of_sale</mat-icon>
+                        <span>Terminal POS</span>
+                        <small>Presente la tarjeta en el lector y confirme</small>
+                      </div>
+                      <button mat-raised-button color="primary" style="width:100%;font-size:1.05rem;padding:14px"
+                              [disabled]="citBooking" (click)="citBookAndPay()">
+                        <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                        <mat-icon *ngIf="!citBooking">point_of_sale</mat-icon>
+                        {{ citBooking ? 'Procesando...' : 'Cobrar Q' + citFee + ' con POS' }}
+                      </button>
+                    </div>
+
+                    <!-- EFECTIVO: amount input + change -->
+                    <div class="cash-area" *ngIf="citPayMode === 'EFECTIVO'">
+                      <mat-form-field appearance="outline" class="wide">
+                        <mat-label>Efectivo recibido (Q)</mat-label>
+                        <mat-icon matPrefix>money</mat-icon>
+                        <input matInput type="number" [(ngModel)]="citCashReceived" [ngModelOptions]="{standalone:true}"
+                               min="0" step="0.01" (ngModelChange)="citComputeChange()">
+                      </mat-form-field>
+                      <div class="change-display" *ngIf="citCashReceived !== null && citCashReceived >= citFee">
+                        <mat-icon>change_circle</mat-icon>
+                        <span>Vuelto a entregar: <strong>Q{{ citChange.toFixed(2) }}</strong></span>
+                      </div>
+                      <div class="insufficient-notice" *ngIf="citCashReceived !== null && citCashReceived < citFee">
+                        <mat-icon>warning</mat-icon>
+                        <span>Efectivo insuficiente. Faltan Q{{ (citFee - citCashReceived).toFixed(2) }}</span>
+                      </div>
+                      <button mat-raised-button color="primary" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
+                              [disabled]="citBooking || citCashReceived === null || citCashReceived < citFee"
+                              (click)="citBookAndPay()">
+                        <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                        <mat-icon *ngIf="!citBooking">payments</mat-icon>
+                        {{ citBooking ? 'Procesando...' : 'Confirmar Pago en Efectivo' }}
+                      </button>
+                    </div>
+
+                    <div class="step-actions" style="margin-top:16px">
+                      <button mat-button (click)="citStep = 'calendar'" [disabled]="citBooking">← Anterior</button>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+
+                <!-- Upload card -->
+                <mat-card style="flex:0 0 300px;min-width:260px;align-self:flex-start">
+                  <mat-card-header>
+                    <mat-icon mat-card-avatar style="color:#1D6C61">upload_file</mat-icon>
+                    <mat-card-title>Documentos</mat-card-title>
+                    <mat-card-subtitle>Adjunte exámenes u otros PDF — opcional</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="upload-zone"
+                         [class.upload-zone-full]="citUploadedDocs.length >= 5"
+                         (click)="citUploadedDocs.length < 5 && citDocInput.click()"
+                         (dragover)="$event.preventDefault()"
+                         (drop)="citOnDocDrop($event)">
+                      <mat-icon class="upload-zone-icon">{{ citUploadedDocs.length >= 5 ? 'block' : 'upload_file' }}</mat-icon>
+                      <p class="upload-zone-text">{{ citUploadedDocs.length >= 5 ? 'Límite alcanzado' : 'Clic o arrastre PDF aquí' }}</p>
+                      <small class="upload-zone-hint">Máx. 5 archivos · 20 MB · solo PDF</small>
+                    </div>
+                    <input #citDocInput type="file" accept=".pdf,application/pdf" multiple hidden
+                           (change)="citAddDocs($any($event.target).files)">
+
+                    <div class="doc-list" *ngIf="citUploadedDocs.length > 0">
+                      <div class="doc-item" *ngFor="let f of citUploadedDocs; let i = index">
+                        <mat-icon class="doc-icon">picture_as_pdf</mat-icon>
+                        <div class="doc-meta">
+                          <span class="doc-name">{{ f.name }}</span>
+                          <span class="doc-size">{{ citFormatFileSize(f.size) }}</span>
+                        </div>
+                        <button mat-icon-button (click)="citRemoveDoc(i)" style="flex-shrink:0">
+                          <mat-icon style="color:#c62828;font-size:18px">close</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="upload-errors" *ngIf="citUploadErrors.length > 0">
+                      <div class="upload-error-item" *ngFor="let e of citUploadErrors">
+                        <mat-icon>error_outline</mat-icon> {{ e }}
+                      </div>
+                    </div>
+
+                    <p class="hint-text" style="margin-top:12px;display:flex;align-items:flex-start;gap:5px">
+                      <mat-icon style="font-size:14px;width:14px;height:14px;flex-shrink:0;margin-top:2px">info</mat-icon>
+                      Solo PDF válidos, no cifrados y no vacíos.
+                    </p>
+                  </mat-card-content>
+                </mat-card>
+
+              </div>
+            </ng-container>
+
+          </div>
+        </mat-tab>
+
+        <!-- TAB 3: Laboratorios -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">biotech</mat-icon>
+            Laboratorios
+          </ng-template>
+          <div class="tab-content">
+
+            <!-- RECEIPT -->
+            <ng-container *ngIf="labStep === 'receipt' && labReceipt">
+              <mat-card class="receipt-card">
+                <mat-card-content>
+                  <div class="receipt-header">
+                    <mat-icon class="receipt-icon">check_circle</mat-icon>
+                    <div>
+                      <h2>Cita de Laboratorio Registrada</h2>
+                      <p>El turno ha entrado al sistema de cola.</p>
+                    </div>
+                  </div>
+                  <div class="receipt-body">
+                    <div class="receipt-row"><mat-icon>confirmation_number</mat-icon><span><strong>Turno:</strong> {{ labReceipt.ticketNumber }}</span></div>
+                    <div class="receipt-row"><mat-icon>person</mat-icon><span><strong>Paciente:</strong> {{ labReceipt.patientName }}</span></div>
+                    <div class="receipt-row"><mat-icon>biotech</mat-icon><span><strong>Examen:</strong> {{ labReceipt.examName }}</span></div>
+                    <div class="receipt-row"><mat-icon>event</mat-icon><span><strong>Fecha:</strong> {{ labReceipt.scheduledDate }}</span></div>
+                    <div class="receipt-row"><mat-icon>access_time</mat-icon><span><strong>Hora:</strong> {{ labReceipt.scheduledTime }}</span></div>
+                    <mat-divider style="margin:12px 0"></mat-divider>
+                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>Monto cobrado:</strong> Q{{ labReceipt.amount }}</span></div>
+                    <div class="receipt-row" *ngIf="labReceipt.payMode === 'EFECTIVO'"><mat-icon>money</mat-icon><span><strong>Efectivo recibido:</strong> Q{{ labReceipt.cashReceived }}</span></div>
+                    <div class="receipt-row receipt-change" *ngIf="labReceipt.change > 0"><mat-icon>change_circle</mat-icon><span><strong>Vuelto:</strong> Q{{ labReceipt.change.toFixed(2) }}</span></div>
+                    <div class="receipt-row"><mat-icon>credit_card</mat-icon><span><strong>Método:</strong> {{ labReceipt.payMode === 'TARJETA' ? 'Tarjeta (POS)' : 'Efectivo' }}</span></div>
+                  </div>
+                  <div class="cred-box" *ngIf="labNewCredentials">
+                    <mat-icon>key</mat-icon>
+                    <div>
+                      <strong>Credenciales enviadas al correo del paciente</strong>
+                      <div class="cred-row"><span>Usuario:</span> <code>{{ labNewCredentials.username }}</code></div>
+                      <div class="cred-row"><span>Contraseña temporal:</span> <code>{{ labNewCredentials.tempPassword }}</code></div>
+                    </div>
+                  </div>
+                  <button mat-raised-button color="primary" style="margin-top:24px" (click)="labReset()">
+                    <mat-icon>add</mat-icon> Nueva Cita
+                  </button>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: DPI -->
+            <ng-container *ngIf="labStep === 'dpi'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 1 — Identificar Paciente</mat-card-title>
+                  <mat-card-subtitle>Buscar por DPI</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                  <form [formGroup]="labDpiForm">
+                    <mat-form-field appearance="outline" class="wide">
+                      <mat-label>DPI del Paciente (13 dígitos)</mat-label>
+                      <mat-icon matPrefix>badge</mat-icon>
+                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                    </mat-form-field>
+                    <div class="step-actions">
+                      <button mat-raised-button color="primary" type="button"
+                              (click)="labSearchByDpi()" [disabled]="labDpiForm.invalid || labSearching">
+                        <mat-spinner *ngIf="labSearching" diameter="20"></mat-spinner>
+                        <mat-icon *ngIf="!labSearching">search</mat-icon>
+                        {{ labSearching ? 'Buscando...' : 'Buscar' }}
+                      </button>
+                    </div>
+                    <div class="found-box" *ngIf="labExistingPatient">
+                      <mat-icon>check_circle</mat-icon>
+                      <div>
+                        <strong>{{ labExistingPatient.firstName }} {{ labExistingPatient.lastName }}</strong>
+                        <br><small>{{ labExistingPatient.patientCode }} · {{ labExistingPatient.phone }}</small>
+                      </div>
+                      <button mat-raised-button color="accent" type="button" (click)="labStep = 'patient'">Ver y Editar →</button>
+                    </div>
+                    <div class="new-patient-notice" *ngIf="labIsNewPatient">
+                      <mat-icon>person_add</mat-icon>
+                      <span>DPI no encontrado — complete los datos para registrar al paciente.</span>
+                      <button mat-raised-button color="accent" type="button" (click)="labStep = 'patient'">Registrar →</button>
+                    </div>
+                  </form>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: Patient Data -->
+            <ng-container *ngIf="labStep === 'patient'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 2 — {{ labExistingPatient ? 'Datos del Paciente' : 'Registrar Nuevo Paciente' }}</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <form [formGroup]="labPatientForm">
+                    <div class="form-grid">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Nombres *</mat-label>
+                        <input matInput formControlName="firstName">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Apellidos *</mat-label>
+                        <input matInput formControlName="lastName">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Fecha de Nacimiento</mat-label>
+                        <mat-icon matPrefix>cake</mat-icon>
+                        <input matInput type="date" formControlName="birthDate">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Teléfono</mat-label>
+                        <input matInput formControlName="phone">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Correo Electrónico *</mat-label>
+                        <input matInput formControlName="email">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Dirección</mat-label>
+                        <input matInput formControlName="address">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Seguro Médico</mat-label>
+                        <mat-select formControlName="insuranceId">
+                          <mat-option [value]="null">Sin seguro</mat-option>
+                          <mat-option *ngFor="let ins of insurances" [value]="ins.id">{{ ins.name }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>No. de Póliza / Carné (opcional)</mat-label>
+                        <input matInput formControlName="insuranceNumber">
+                      </mat-form-field>
+                    </div>
+                    <p class="hint-text" *ngIf="!labExistingPatient">
+                      Se generará usuario y contraseña temporales enviados al correo del paciente.
+                    </p>
+                    <div class="step-actions">
+                      <button mat-button type="button" (click)="labStep = 'dpi'">← Anterior</button>
+                      <button mat-raised-button color="primary" type="button"
+                              [disabled]="labPatientForm.invalid || labSaving"
+                              (click)="labSaveAndContinue()">
+                        <mat-spinner *ngIf="labSaving" diameter="20"></mat-spinner>
+                        <mat-icon *ngIf="!labSaving">arrow_forward</mat-icon>
+                        {{ labSaving ? 'Guardando...' : (labExistingPatient ? 'Guardar y Continuar' : 'Registrar y Continuar') }}
+                      </button>
+                    </div>
+                  </form>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: Calendar -->
+            <ng-container *ngIf="labStep === 'calendar'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Paso 3 — Seleccionar Cita de Laboratorio</mat-card-title>
+                  <mat-card-subtitle>Paciente: {{ labExistingPatient?.firstName }} {{ labExistingPatient?.lastName }}</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="form-grid" style="margin-bottom:16px">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Examen de Laboratorio *</mat-label>
+                      <mat-icon matPrefix>biotech</mat-icon>
+                      <mat-select [(ngModel)]="labSelectedExam" (ngModelChange)="labUpdateFee()" [ngModelOptions]="{standalone:true}">
+                        <mat-option *ngFor="let e of labExams" [value]="e">{{ e.name }} — Q{{ e.price }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Área de Laboratorio *</mat-label>
+                      <mat-icon matPrefix>local_hospital</mat-icon>
+                      <mat-select [(ngModel)]="labSelectedClinicId" (ngModelChange)="labOnClinicChange($event)" [ngModelOptions]="{standalone:true}">
+                        <mat-option *ngFor="let c of labClinics" [value]="c.id">{{ c.name }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="calendar-nav">
+                    <button class="nav-btn" type="button" (click)="labPrevMonth()">&#8249;</button>
+                    <span class="month-label">{{ labMonthLabel }}</span>
+                    <button class="nav-btn" type="button" (click)="labNextMonth()">&#8250;</button>
+                  </div>
+                  <div class="calendar-grid">
+                    <div class="cal-weekday" *ngFor="let d of weekDays">{{ d }}</div>
+                    <ng-container *ngFor="let day of labCalendarDays">
+                      <div *ngIf="!day" class="cal-day empty"></div>
+                      <div *ngIf="day" [class]="labGetDayClass(day)" (click)="!labIsPastDay(day) && labSelectDate(day)">
+                        {{ day.getDate() }}
+                      </div>
+                    </ng-container>
+                  </div>
+
+                  <ng-container *ngIf="labSelectedDate">
+                    <div class="slots-label">
+                      <mat-icon>access_time</mat-icon>
+                      {{ labFormatDate(labSelectedDate) }}
+                      <mat-spinner *ngIf="labLoadingSlots" diameter="16" style="margin-left:8px"></mat-spinner>
+                    </div>
+                    <div class="slots-grid" *ngIf="!labLoadingSlots">
+                      <button *ngFor="let slot of labAvailableSlots"
+                              type="button"
+                              [class]="'slot-btn' + (labSelectedSlot === slot ? ' selected' : '')"
+                              (click)="labSelectSlot(slot)">{{ slot }}</button>
+                      <div *ngIf="labAvailableSlots.length === 0" class="no-slots">
+                        <mat-icon>event_busy</mat-icon> No hay horarios disponibles para este día
+                      </div>
+                    </div>
+                    <div class="reservation-timer" *ngIf="labReservationTimeLeft > 0" [class.timer-low]="labReservationLow">
+                      <mat-icon>timer</mat-icon>
+                      <span>Horario <strong>{{ labSelectedSlot }}</strong> reservado — expira en <strong>{{ labReservationMinutes }}:{{ labReservationSeconds }}</strong></span>
+                    </div>
+                  </ng-container>
+
+                  <div class="step-actions" style="margin-top:16px">
+                    <button mat-button (click)="labStep = 'patient'">← Anterior</button>
+                    <button mat-raised-button color="primary"
+                            [disabled]="!labSelectedDate || !labSelectedSlot || !labSelectedClinicId || !labSelectedExam"
+                            (click)="labStep = 'payment'">
+                      <mat-icon>payments</mat-icon> Continuar al Pago →
+                    </button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- STEP: Payment -->
+            <ng-container *ngIf="labStep === 'payment'">
               <mat-card>
                 <mat-card-header>
                   <mat-card-title>Paso 4 — Cobro</mat-card-title>
                 </mat-card-header>
                 <mat-card-content>
-
-                  <!-- Reservation countdown -->
-                  <div class="reservation-timer" *ngIf="citReservationTimeLeft > 0" [class.timer-low]="citReservationLow" style="margin-bottom:16px">
+                  <div class="reservation-timer" *ngIf="labReservationTimeLeft > 0" [class.timer-low]="labReservationLow" style="margin-bottom:16px">
                     <mat-icon>timer</mat-icon>
-                    <span>Reserva expira en <strong>{{ citReservationMinutes }}:{{ citReservationSeconds }}</strong> — completa el pago antes</span>
+                    <span>Reserva expira en <strong>{{ labReservationMinutes }}:{{ labReservationSeconds }}</strong> — completa el pago antes</span>
                   </div>
 
-                  <!-- Summary -->
                   <div class="pay-summary">
-                    <div class="pay-summary-row"><mat-icon>person</mat-icon><span>{{ citExistingPatient?.firstName }} {{ citExistingPatient?.lastName }}</span></div>
-                    <div class="pay-summary-row"><mat-icon>local_hospital</mat-icon><span>{{ citClinicName }}</span></div>
-                    <div class="pay-summary-row"><mat-icon>medical_services</mat-icon><span>{{ citTypeLabel(citType) }}</span></div>
-                    <div class="pay-summary-row"><mat-icon>event</mat-icon><span>{{ citFormatDate(citSelectedDate) }} a las <strong>{{ citSelectedSlot }}</strong></span></div>
-                    <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>Monto a cobrar: <strong>Q{{ citFee }}</strong></span></div>
+                    <div class="pay-summary-row"><mat-icon>person</mat-icon><span>{{ labExistingPatient?.firstName }} {{ labExistingPatient?.lastName }}</span></div>
+                    <div class="pay-summary-row"><mat-icon>local_hospital</mat-icon><span>{{ labClinicName }}</span></div>
+                    <div class="pay-summary-row"><mat-icon>biotech</mat-icon><span>{{ labSelectedExam?.name }}</span></div>
+                    <div class="pay-summary-row"><mat-icon>event</mat-icon><span>{{ labFormatDate(labSelectedDate) }} a las <strong>{{ labSelectedSlot }}</strong></span></div>
+                    <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>Monto a cobrar: <strong>Q{{ labFee }}</strong></span></div>
                   </div>
 
-                  <!-- Method selection -->
                   <h3 style="margin:20px 0 12px">Método de Pago</h3>
                   <div class="pay-method-grid">
-                    <button type="button" [class]="'pay-method-btn' + (citPayMode === 'TARJETA' ? ' active' : '')"
-                            (click)="citPayMode = 'TARJETA'; citCashReceived = null">
+                    <button type="button" [class]="'pay-method-btn' + (labPayMode === 'TARJETA' ? ' active' : '')"
+                            (click)="labPayMode = 'TARJETA'; labCashReceived = null">
                       <mat-icon>credit_card</mat-icon>
                       <span>Tarjeta (POS)</span>
                     </button>
-                    <button type="button" [class]="'pay-method-btn' + (citPayMode === 'EFECTIVO' ? ' active' : '')"
-                            (click)="citPayMode = 'EFECTIVO'">
+                    <button type="button" [class]="'pay-method-btn' + (labPayMode === 'EFECTIVO' ? ' active' : '')"
+                            (click)="labPayMode = 'EFECTIVO'">
                       <mat-icon>money</mat-icon>
                       <span>Efectivo</span>
                     </button>
                   </div>
 
-                  <!-- TARJETA: POS simulation -->
-                  <div class="pos-area" *ngIf="citPayMode === 'TARJETA'">
+                  <div class="pos-area" *ngIf="labPayMode === 'TARJETA'">
                     <div class="pos-device">
                       <mat-icon>point_of_sale</mat-icon>
                       <span>Terminal POS</span>
                       <small>Presente la tarjeta en el lector y confirme</small>
                     </div>
                     <button mat-raised-button color="primary" style="width:100%;font-size:1.05rem;padding:14px"
-                            [disabled]="citBooking" (click)="citBookAndPay()">
-                      <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
-                      <mat-icon *ngIf="!citBooking">point_of_sale</mat-icon>
-                      {{ citBooking ? 'Procesando...' : 'Cobrar Q' + citFee + ' con POS' }}
+                            [disabled]="labBooking" (click)="labBookAndPay()">
+                      <mat-spinner *ngIf="labBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                      <mat-icon *ngIf="!labBooking">point_of_sale</mat-icon>
+                      {{ labBooking ? 'Procesando...' : 'Cobrar Q' + labFee + ' con POS' }}
                     </button>
                   </div>
 
-                  <!-- EFECTIVO: amount input + change -->
-                  <div class="cash-area" *ngIf="citPayMode === 'EFECTIVO'">
+                  <div class="cash-area" *ngIf="labPayMode === 'EFECTIVO'">
                     <mat-form-field appearance="outline" class="wide">
                       <mat-label>Efectivo recibido (Q)</mat-label>
                       <mat-icon matPrefix>money</mat-icon>
-                      <input matInput type="number" [(ngModel)]="citCashReceived" [ngModelOptions]="{standalone:true}"
-                             min="0" step="0.01" (ngModelChange)="citComputeChange()">
+                      <input matInput type="number" [(ngModel)]="labCashReceived" [ngModelOptions]="{standalone:true}"
+                             min="0" step="0.01" (ngModelChange)="labComputeChange()">
                     </mat-form-field>
-                    <div class="change-display" *ngIf="citCashReceived !== null && citCashReceived >= citFee">
+                    <div class="change-display" *ngIf="labCashReceived !== null && labCashReceived >= labFee">
                       <mat-icon>change_circle</mat-icon>
-                      <span>Vuelto a entregar: <strong>Q{{ citChange.toFixed(2) }}</strong></span>
+                      <span>Vuelto a entregar: <strong>Q{{ labChange.toFixed(2) }}</strong></span>
                     </div>
-                    <div class="insufficient-notice" *ngIf="citCashReceived !== null && citCashReceived < citFee">
+                    <div class="insufficient-notice" *ngIf="labCashReceived !== null && labCashReceived < labFee">
                       <mat-icon>warning</mat-icon>
-                      <span>Efectivo insuficiente. Faltan Q{{ (citFee - citCashReceived).toFixed(2) }}</span>
+                      <span>Efectivo insuficiente. Faltan Q{{ (labFee - labCashReceived).toFixed(2) }}</span>
                     </div>
                     <button mat-raised-button color="primary" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
-                            [disabled]="citBooking || citCashReceived === null || citCashReceived < citFee"
-                            (click)="citBookAndPay()">
-                      <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
-                      <mat-icon *ngIf="!citBooking">payments</mat-icon>
-                      {{ citBooking ? 'Procesando...' : 'Confirmar Pago en Efectivo' }}
+                            [disabled]="labBooking || labCashReceived === null || labCashReceived < labFee"
+                            (click)="labBookAndPay()">
+                      <mat-spinner *ngIf="labBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                      <mat-icon *ngIf="!labBooking">payments</mat-icon>
+                      {{ labBooking ? 'Procesando...' : 'Confirmar Pago en Efectivo' }}
                     </button>
                   </div>
 
                   <div class="step-actions" style="margin-top:16px">
-                    <button mat-button (click)="citStep = 'calendar'" [disabled]="citBooking">← Anterior</button>
+                    <button mat-button (click)="labStep = 'calendar'" [disabled]="labBooking">← Anterior</button>
                   </div>
                 </mat-card-content>
               </mat-card>
@@ -572,6 +932,28 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
     .reservation-timer.timer-low { background:#fff3e0; color:#e65100; animation:pulse-timer 1s infinite; }
     .reservation-timer.timer-low mat-icon { color:#e65100; }
     @keyframes pulse-timer { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+
+    /* Cit PDF upload */
+    .cit-payment-layout { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
+    .cit-payment-layout > mat-card { flex:1 1 340px; min-width:300px; }
+    .upload-zone { border:2px dashed #90caf9; border-radius:10px; padding:28px 16px; text-align:center; cursor:pointer; background:#f0f8ff; transition:background 0.2s; }
+    .upload-zone:hover:not(.upload-zone-full) { background:#e3f2fd; }
+    .upload-zone-full { border-color:#ef9a9a; background:#fff5f5; cursor:default; }
+    .upload-zone-icon { font-size:36px; width:36px; height:36px; color:#1565c0; margin-bottom:8px; }
+    .upload-zone-full .upload-zone-icon { color:#c62828; }
+    .upload-zone-text { margin:0 0 4px; font-weight:600; color:#1565c0; font-size:0.95rem; }
+    .upload-zone-full .upload-zone-text { color:#c62828; }
+    .upload-zone-hint { color:#78909c; font-size:0.8rem; }
+    .doc-list { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+    .doc-item { display:flex; align-items:center; gap:10px; background:#f5f5f5; border-radius:8px; padding:8px 12px; }
+    .doc-icon { color:#e53935; font-size:22px; width:22px; height:22px; flex-shrink:0; }
+    .doc-meta { flex:1; min-width:0; }
+    .doc-name { font-size:0.88rem; font-weight:600; color:#212121; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .doc-size { font-size:0.78rem; color:#757575; }
+    .doc-item button { flex-shrink:0; }
+    .upload-errors { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+    .upload-error-item { display:flex; align-items:flex-start; gap:8px; background:#fce4ec; border-radius:6px; padding:6px 10px; font-size:0.82rem; color:#c62828; }
+    .upload-error-item mat-icon { font-size:16px; width:16px; height:16px; flex-shrink:0; margin-top:1px; }
   `]
 })
 export class PaymentsComponent implements OnInit, OnDestroy {
@@ -637,6 +1019,52 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   citBooking = false;
   citReceipt: any = null;
 
+  // Upload docs
+  citUploadedDocs: File[] = [];
+  citUploadErrors: string[] = [];
+
+  // ── Laboratorios ───────────────────────────────────────────────────────────
+  labStep: LabStep = 'dpi';
+  labDpiForm!: FormGroup;
+  labPatientForm!: FormGroup;
+
+  labExistingPatient: Patient | null = null;
+  labIsNewPatient = false;
+  labSearching = false;
+  labSaving = false;
+  labNewCredentials: { username: string; tempPassword: string } | null = null;
+
+  labClinics: Clinic[] = [];
+  labExams: LabExam[] = [];
+  labSelectedExam: LabExam | null = null;
+  labFee = 0;
+
+  labCalYear = 0;
+  labCalMonth = 0;
+  labCalendarDays: (Date | null)[] = [];
+  labSelectedDate: Date | null = null;
+  labSelectedSlot: string | null = null;
+  labSelectedClinicId: number | null = null;
+  labAvailableSlots: string[] = [];
+  labLoadingSlots = false;
+  private labSlotPollTimer: any = null;
+
+  get labMonthLabel(): string { return `${MONTH_NAMES[this.labCalMonth]} ${this.labCalYear}`; }
+  get labClinicName(): string { return this.labClinics.find(c => c.id === this.labSelectedClinicId)?.name ?? '—'; }
+
+  labReservationId: number | null = null;
+  labReservationTimeLeft = 0;
+  private labReservationTimer: any = null;
+  get labReservationMinutes(): number { return Math.floor(this.labReservationTimeLeft / 60); }
+  get labReservationSeconds(): string { return (this.labReservationTimeLeft % 60).toString().padStart(2, '0'); }
+  get labReservationLow(): boolean { return this.labReservationTimeLeft > 0 && this.labReservationTimeLeft <= 120; }
+
+  labPayMode: PayMode | null = null;
+  labCashReceived: number | null = null;
+  labChange = 0;
+  labBooking = false;
+  labReceipt: any = null;
+
   constructor(
     private fb: FormBuilder,
     private patientService: PatientService,
@@ -644,6 +1072,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     private appointmentService: AppointmentService,
     private clinicService: ClinicService,
     private insuranceService: InsuranceService,
+    private labExamService: LabExamService,
     private notification: NotificationService
   ) {
     this.searchForm = this.fb.group({ query: ['', Validators.required] });
@@ -668,26 +1097,51 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       insuranceNumber: ['']
     });
 
+    this.labDpiForm = this.fb.group({
+      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+    });
+    this.labPatientForm = this.fb.group({
+      firstName:       ['', Validators.required],
+      lastName:        ['', Validators.required],
+      birthDate:       [''],
+      phone:           [''],
+      email:           ['', [Validators.required, Validators.email]],
+      address:         [''],
+      insuranceId:     [null],
+      insuranceNumber: ['']
+    });
+
     this.clinicService.getAll().subscribe(res => {
       if (res.success) {
         this.citClinics = res.data.filter((c: Clinic) =>
-          BOOKING_CLINIC_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
+          c.type === 'GENERAL_MEDICINE' || c.type === 'EXTERNAL_CONSULTATION'
         );
         if (this.citClinics.length === 0) {
           this.citClinics = res.data.filter((c: Clinic) =>
             !LAB_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
           );
         }
+        this.labClinics = res.data.filter((c: Clinic) =>
+          c.type === 'LABORATORY' ||
+          LAB_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
+        );
+        if (this.labClinics.length === 0) this.labClinics = res.data;
       }
     });
     this.insuranceService.getAll().subscribe(res => {
       if (res.success) this.insurances = res.data;
+    });
+    this.labExamService.getAll().subscribe(res => {
+      if (res.success) this.labExams = res.data.filter((e: LabExam) => e.active);
     });
 
     const now = new Date();
     this.citCalYear = now.getFullYear();
     this.citCalMonth = now.getMonth();
     this.citBuildCalendar();
+    this.labCalYear = now.getFullYear();
+    this.labCalMonth = now.getMonth();
+    this.labBuildCalendar();
   }
 
   ngOnDestroy(): void {
@@ -696,6 +1150,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     }
     this.citClearReservationTimer();
     this.citStopSlotPolling();
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+    }
+    this.labClearReservationTimer();
+    this.labStopSlotPolling();
   }
 
   // ── Pagos Generales methods ────────────────────────────────────────────────
@@ -929,7 +1388,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
             this.citAvailableSlots = allSlots;
           }
           if (this.citSelectedSlot && !this.citAvailableSlots.includes(this.citSelectedSlot)) {
-            this.citSelectedSlot = null;
+            if (this.citReservationId) {
+              this.citAvailableSlots = [this.citSelectedSlot, ...this.citAvailableSlots];
+            } else {
+              this.citSelectedSlot = null;
+            }
           }
         }
         this.citLoadingSlots = false;
@@ -988,7 +1451,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   }
 
   citStartReservationTimer(seconds: number): void {
-    this.citClearReservationTimer();
+    if (this.citReservationTimer) { clearInterval(this.citReservationTimer); this.citReservationTimer = null; }
     this.citReservationTimeLeft = seconds;
     this.citReservationTimer = setInterval(() => {
       this.citReservationTimeLeft--;
@@ -1048,6 +1511,9 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         const apptId = bookRes.data.id;
         this.appointmentService.confirmPayment(apptId, { paymentMethod }).subscribe({
           next: confRes => {
+            if (confRes.success && this.citUploadedDocs.length > 0) {
+              this.appointmentService.uploadDocuments(apptId, this.citUploadedDocs).subscribe({ error: () => {} });
+            }
             if (confRes.success) {
               this.citReceipt = {
                 ticketNumber:  confRes.data.ticketNumber ?? '—',
@@ -1106,10 +1572,413 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.citFee = 150;
     this.citDpiForm.reset();
     this.citPatientForm.reset();
+    this.citUploadedDocs = [];
+    this.citUploadErrors = [];
     this.citStopSlotPolling();
     const now = new Date();
     this.citCalYear = now.getFullYear();
     this.citCalMonth = now.getMonth();
     this.citBuildCalendar();
+  }
+
+  // ── Citas Presenciales: Doc Upload ─────────────────────────────────────────
+
+  citFormatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  private citValidatePdfContent(file: File): Promise<string | null> {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const buf = e.target?.result as ArrayBuffer;
+        const bytes = new Uint8Array(buf);
+        const header = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
+        if (!header.startsWith('%PDF')) { resolve('no es un archivo PDF válido.'); return; }
+        const text = new TextDecoder('latin1').decode(buf);
+        if (/\/Encrypt\s/.test(text)) { resolve('el archivo está cifrado o protegido con contraseña.'); return; }
+        resolve(null);
+      };
+      reader.readAsArrayBuffer(file.slice(0, 4096));
+    });
+  }
+
+  async citAddDocs(files: FileList | null): Promise<void> {
+    if (!files) return;
+    const errors: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+        errors.push(`"${f.name}": solo se aceptan archivos PDF.`); continue;
+      }
+      if (f.size === 0) {
+        errors.push(`"${f.name}": el archivo está vacío.`); continue;
+      }
+      if (f.size > 20 * 1024 * 1024) {
+        errors.push(`"${f.name}": supera el límite de 20 MB.`); continue;
+      }
+      if (this.citUploadedDocs.some(d => d.name === f.name && d.size === f.size)) {
+        errors.push(`"${f.name}": ya fue agregado.`); continue;
+      }
+      if (this.citUploadedDocs.length >= 5) {
+        errors.push(`"${f.name}": límite de 5 archivos alcanzado.`); break;
+      }
+      const contentErr = await this.citValidatePdfContent(f);
+      if (contentErr) { errors.push(`"${f.name}": ${contentErr}`); continue; }
+      this.citUploadedDocs = [...this.citUploadedDocs, f];
+    }
+    this.citUploadErrors = errors;
+  }
+
+  citOnDocDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.citAddDocs(event.dataTransfer?.files ?? null);
+  }
+
+  citRemoveDoc(index: number): void {
+    this.citUploadedDocs = this.citUploadedDocs.filter((_, i) => i !== index);
+  }
+
+  // ── Laboratorios: DPI ──────────────────────────────────────────────────────
+
+  labSearchByDpi(): void {
+    const dpi = this.labDpiForm.value.dpi;
+    this.labSearching = true;
+    this.labExistingPatient = null;
+    this.labIsNewPatient = false;
+    this.patientService.getByDpi(dpi).subscribe({
+      next: res => {
+        if (res.success && res.data) {
+          this.labExistingPatient = res.data;
+          this.labPatientForm.patchValue(res.data);
+        } else {
+          this.labIsNewPatient = true;
+          this.labPatientForm.reset();
+        }
+        this.labSearching = false;
+      },
+      error: () => {
+        this.labIsNewPatient = true;
+        this.labPatientForm.reset();
+        this.labSearching = false;
+      }
+    });
+  }
+
+  // ── Laboratorios: Patient save ─────────────────────────────────────────────
+
+  labSaveAndContinue(): void {
+    this.labSaving = true;
+    if (this.labExistingPatient) {
+      const data = { ...this.labPatientForm.value, dpi: this.labExistingPatient.dpi };
+      this.patientService.update(this.labExistingPatient.id, data).subscribe({
+        next: res => {
+          if (res.success) { this.labExistingPatient = res.data; this.labStep = 'calendar'; }
+          else this.notification.error(res.message || 'Error al actualizar');
+          this.labSaving = false;
+        },
+        error: err => { this.notification.error(err.error?.message || 'Error'); this.labSaving = false; }
+      });
+    } else {
+      const data = { ...this.labDpiForm.value, ...this.labPatientForm.value, createAccount: true };
+      this.patientService.create(data).subscribe({
+        next: res => {
+          if (res.success) {
+            if ((res.data as any).tempPassword) {
+              this.labNewCredentials = {
+                username: (res.data as any).username ?? data.dpi,
+                tempPassword: (res.data as any).tempPassword
+              };
+            }
+            this.labExistingPatient = res.data;
+            this.labStep = 'calendar';
+          } else {
+            this.notification.error(res.message || 'Error al registrar paciente');
+          }
+          this.labSaving = false;
+        },
+        error: err => { this.notification.error(err.error?.message || 'Error'); this.labSaving = false; }
+      });
+    }
+  }
+
+  // ── Laboratorios: Calendar ─────────────────────────────────────────────────
+
+  labBuildCalendar(): void {
+    const firstDay = new Date(this.labCalYear, this.labCalMonth, 1).getDay();
+    const daysInMonth = new Date(this.labCalYear, this.labCalMonth + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(this.labCalYear, this.labCalMonth, i));
+    this.labCalendarDays = days;
+  }
+
+  labPrevMonth(): void {
+    if (this.labCalMonth === 0) { this.labCalMonth = 11; this.labCalYear--; }
+    else this.labCalMonth--;
+    this.labBuildCalendar();
+  }
+
+  labNextMonth(): void {
+    if (this.labCalMonth === 11) { this.labCalMonth = 0; this.labCalYear++; }
+    else this.labCalMonth++;
+    this.labBuildCalendar();
+  }
+
+  labIsPastDay(d: Date): boolean {
+    const today = this.getCATodayStr();
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return ds < today;
+  }
+
+  labGetDayClass(day: Date): string {
+    let cls = 'cal-day';
+    if (this.labIsPastDay(day)) return cls + ' past';
+    const today = this.getCATodayStr();
+    const ds = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    if (ds === today) cls += ' today';
+    if (this.labSelectedDate && day.getTime() === this.labSelectedDate.getTime()) cls += ' selected';
+    return cls;
+  }
+
+  labSelectDate(day: Date): void {
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+      this.labClearReservationTimer();
+    }
+    this.labSelectedDate = day;
+    this.labSelectedSlot = null;
+    this.labLoadSlots();
+    this.labStartSlotPolling();
+  }
+
+  labSelectSlot(slot: string): void {
+    if (this.labSelectedSlot === slot) return;
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+      this.labClearReservationTimer();
+    }
+    this.labSelectedSlot = slot;
+    this.labReserveSlot(slot);
+  }
+
+  labOnClinicChange(id: number): void {
+    this.labSelectedClinicId = id;
+    this.labSelectedSlot = null;
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+      this.labClearReservationTimer();
+    }
+    if (this.labSelectedDate) { this.labLoadSlots(); this.labStartSlotPolling(); }
+  }
+
+  labUpdateFee(): void {
+    this.labFee = this.labSelectedExam?.price ?? 0;
+  }
+
+  labLoadSlots(silent = false): void {
+    if (!this.labSelectedDate || !this.labSelectedClinicId) return;
+    if (!silent) this.labLoadingSlots = true;
+    const d = this.labSelectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    this.appointmentService.getAvailableSlots(dateStr, this.labSelectedClinicId).subscribe({
+      next: res => {
+        if (res.success) {
+          const allSlots = res.data;
+          const today = this.getCATodayStr();
+          const selStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          if (selStr === today) {
+            const cutoff = this.getCAMinutesNow() + 30;
+            this.labAvailableSlots = allSlots.filter((slot: string) => {
+              const [h, m] = slot.split(':').map(Number);
+              return h * 60 + m > cutoff;
+            });
+          } else {
+            this.labAvailableSlots = allSlots;
+          }
+          if (this.labSelectedSlot && !this.labAvailableSlots.includes(this.labSelectedSlot)) {
+            if (this.labReservationId) {
+              this.labAvailableSlots = [this.labSelectedSlot, ...this.labAvailableSlots];
+            } else {
+              this.labSelectedSlot = null;
+            }
+          }
+        }
+        this.labLoadingSlots = false;
+      },
+      error: () => { this.labLoadingSlots = false; }
+    });
+  }
+
+  labStartSlotPolling(): void {
+    this.labStopSlotPolling();
+    this.labSlotPollTimer = setInterval(() => {
+      if (this.labStep === 'calendar' && this.labSelectedDate && this.labSelectedClinicId) {
+        this.labLoadSlots(true);
+      } else {
+        this.labStopSlotPolling();
+      }
+    }, 5000);
+  }
+
+  labStopSlotPolling(): void {
+    if (this.labSlotPollTimer) { clearInterval(this.labSlotPollTimer); this.labSlotPollTimer = null; }
+  }
+
+  labFormatDate(d: Date | null): string {
+    if (!d) return '';
+    const days = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    return `${days[d.getDay()]} ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // ── Laboratorios: Reservation ─────────────────────────────────────────────
+
+  labReserveSlot(slot: string): void {
+    if (!this.labSelectedDate || !this.labSelectedClinicId || !this.labExistingPatient) return;
+    const d = this.labSelectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    this.appointmentService.reserve({
+      patientId: this.labExistingPatient.id,
+      clinicId: this.labSelectedClinicId,
+      date: dateStr,
+      time: slot
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.labReservationId = res.data.id;
+          const expiresAt = new Date(res.data.expiresAt);
+          const secondsLeft = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+          this.labStartReservationTimer(secondsLeft);
+        }
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'No se pudo reservar el horario');
+        this.labSelectedSlot = null;
+        this.labLoadSlots();
+      }
+    });
+  }
+
+  labStartReservationTimer(seconds: number): void {
+    if (this.labReservationTimer) { clearInterval(this.labReservationTimer); this.labReservationTimer = null; }
+    this.labReservationTimeLeft = seconds;
+    this.labReservationTimer = setInterval(() => {
+      this.labReservationTimeLeft--;
+      if (this.labReservationTimeLeft <= 0) {
+        this.labClearReservationTimer();
+        this.labOnReservationExpired();
+      }
+    }, 1000);
+  }
+
+  labClearReservationTimer(): void {
+    if (this.labReservationTimer) { clearInterval(this.labReservationTimer); this.labReservationTimer = null; }
+    this.labReservationTimeLeft = 0;
+    this.labReservationId = null;
+  }
+
+  labOnReservationExpired(): void {
+    this.notification.error('La reserva del horario expiró. Seleccione nuevamente.');
+    this.labSelectedSlot = null;
+    this.labStep = 'calendar';
+    if (this.labSelectedDate) { this.labLoadSlots(); this.labStartSlotPolling(); }
+  }
+
+  // ── Laboratorios: Payment ──────────────────────────────────────────────────
+
+  labComputeChange(): void {
+    this.labChange = this.labCashReceived !== null ? Math.max(0, this.labCashReceived - this.labFee) : 0;
+  }
+
+  labBookAndPay(): void {
+    if (!this.labExistingPatient || !this.labSelectedClinicId || !this.labSelectedDate || !this.labSelectedSlot || !this.labSelectedExam) return;
+    this.labBooking = true;
+    this.labStopSlotPolling();
+
+    const d = this.labSelectedDate;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const paymentMethod = this.labPayMode === 'TARJETA' ? 'POS_CARD' : 'CASH';
+
+    this.appointmentService.book({
+      patientId: this.labExistingPatient.id,
+      clinicId: this.labSelectedClinicId,
+      type: 'LABORATORIO',
+      scheduledDate: dateStr,
+      scheduledTime: this.labSelectedSlot,
+      notes: `Examen: ${this.labSelectedExam.name} — Cita de laboratorio registrada en caja`
+    }).subscribe({
+      next: bookRes => {
+        if (!bookRes.success) {
+          this.notification.error(bookRes.message || 'Error al agendar cita');
+          this.labBooking = false;
+          return;
+        }
+        const apptId = bookRes.data.id;
+        this.appointmentService.confirmPayment(apptId, { paymentMethod }).subscribe({
+          next: confRes => {
+            if (confRes.success) {
+              this.labReceipt = {
+                ticketNumber:  confRes.data.ticketNumber ?? '—',
+                patientName:   bookRes.data.patientName,
+                examName:      this.labSelectedExam!.name,
+                scheduledDate: dateStr,
+                scheduledTime: this.labSelectedSlot,
+                amount:        this.labFee,
+                payMode:       this.labPayMode,
+                cashReceived:  this.labCashReceived,
+                change:        this.labChange
+              };
+              this.labStep = 'receipt';
+              this.notification.success('Cita de laboratorio confirmada y turno asignado.');
+            } else {
+              this.notification.error(confRes.message || 'Error al confirmar pago');
+            }
+            this.labBooking = false;
+          },
+          error: err => {
+            this.notification.error(err.error?.message || 'Error al confirmar pago');
+            this.labBooking = false;
+          }
+        });
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Horario no disponible. Seleccione otro.');
+        this.labSelectedSlot = null;
+        this.labLoadSlots();
+        this.labStartSlotPolling();
+        this.labStep = 'calendar';
+        this.labBooking = false;
+      }
+    });
+  }
+
+  labReset(): void {
+    if (this.labReservationId) {
+      this.appointmentService.cancelReservation(this.labReservationId).subscribe({ error: () => {} });
+    }
+    this.labClearReservationTimer();
+    this.labStep = 'dpi';
+    this.labExistingPatient = null;
+    this.labIsNewPatient = false;
+    this.labNewCredentials = null;
+    this.labReceipt = null;
+    this.labSelectedDate = null;
+    this.labSelectedSlot = null;
+    this.labSelectedClinicId = null;
+    this.labAvailableSlots = [];
+    this.labPayMode = null;
+    this.labCashReceived = null;
+    this.labChange = 0;
+    this.labSelectedExam = null;
+    this.labFee = 0;
+    this.labDpiForm.reset();
+    this.labPatientForm.reset();
+    this.labStopSlotPolling();
+    const now = new Date();
+    this.labCalYear = now.getFullYear();
+    this.labCalMonth = now.getMonth();
+    this.labBuildCalendar();
   }
 }

@@ -105,9 +105,21 @@ public class UserController {
         }
     }
 
+    /** Clears onlineAt on logout so the user is immediately shown as FUERA_DE_TURNO */
+    @DeleteMapping("/me/session")
+    public ResponseEntity<ApiResponse<Void>> clearSession(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            userService.clearSession(userDetails.getUser().getId());
+            return ResponseEntity.ok(ApiResponse.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.ok(null)); // best-effort, never block logout
+        }
+    }
+
     /** Doctor toggles their own availability status */
     @PatchMapping("/me/toggle-availability")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'LAB_TECHNICIAN')")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> toggleAvailability(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {

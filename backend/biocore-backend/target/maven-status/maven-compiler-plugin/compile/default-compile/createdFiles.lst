@@ -49,6 +49,7 @@ com\biocore\dto\DashboardDTO$DashboardDTOBuilder.class
 com\biocore\entity\DoctorClinicAssignment$DoctorClinicAssignmentBuilder.class
 com\biocore\controller\MedicineController.class
 com\biocore\dto\UserDTO.class
+com\biocore\controller\DocumentController.class
 com\biocore\dto\TicketCreateRequest.class
 com\biocore\entity\Medicine$MedicineBuilder.class
 com\biocore\enums\ClinicType.class
@@ -62,6 +63,7 @@ com\biocore\entity\Prescription$PrescriptionBuilder.class
 com\biocore\repository\PatientRepository.class
 com\biocore\entity\LabExam.class
 com\biocore\entity\SlotReservation$SlotReservationBuilder.class
+com\biocore\service\DocumentService.class
 com\biocore\dto\DoctorScheduleRequest.class
 com\biocore\entity\User.class
 com\biocore\entity\Document$DocumentBuilder.class
@@ -107,6 +109,7 @@ com\biocore\service\AuthService.class
 com\biocore\config\SecurityConfig.class
 com\biocore\entity\Appointment.class
 com\biocore\repository\DoctorScheduleRepository.class
+com\biocore\service\TicketService$1.class
 com\biocore\dto\LabOrderDTO.class
 com\biocore\entity\LabResult.class
 com\biocore\repository\DocumentRepository.class

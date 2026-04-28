@@ -23,6 +23,14 @@ export class TicketService {
     return this.http.get<ApiResponse<Ticket[]>>(`${this.url}/queue/${clinicId}`);
   }
 
+  getQueueForDoctor(clinicId: number, doctorId: number): Observable<ApiResponse<Ticket[]>> {
+    return this.http.get<ApiResponse<Ticket[]>>(`${this.url}/queue/${clinicId}/doctor/${doctorId}`);
+  }
+
+  getTodayAllActive(): Observable<ApiResponse<Ticket[]>> {
+    return this.http.get<ApiResponse<Ticket[]>>(`${this.url}/queue/today`);
+  }
+
   create(data: any): Observable<ApiResponse<Ticket>> {
     return this.http.post<ApiResponse<Ticket>>(this.url, data);
   }
@@ -51,6 +59,10 @@ export class TicketService {
     return this.http.put<ApiResponse<Ticket>>(`${this.url}/${ticketId}/mark-absent`, {});
   }
 
+  collectSample(ticketId: number): Observable<ApiResponse<any>> {
+    return this.http.put<ApiResponse<any>>(`${this.url}/${ticketId}/collect-sample`, {});
+  }
+
   getDoctorAvailability(clinicId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/users/doctors/availability?clinicId=${clinicId}`);
   }
@@ -65,6 +77,10 @@ export class TicketService {
 
   getMe(): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/users/me`);
+  }
+
+  clearSession(): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${environment.apiUrl}/users/me/session`);
   }
 
   getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
@@ -130,8 +146,22 @@ export class AppointmentService {
     return this.http.get<ApiResponse<any[]>>(`${this.url}/doctor/${doctorId}?date=${date}`);
   }
 
+  getAllByDoctor(doctorId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/doctor/${doctorId}/all`);
+  }
+
   getByVoucherCode(code: string): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.url}/voucher/${code}`);
+  }
+
+  uploadDocuments(appointmentId: number, files: File[]): Observable<ApiResponse<any[]>> {
+    const form = new FormData();
+    files.forEach(f => form.append('files', f));
+    return this.http.post<ApiResponse<any[]>>(`${this.url}/${appointmentId}/documents`, form);
+  }
+
+  getDocuments(appointmentId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/${appointmentId}/documents`);
   }
 }
 

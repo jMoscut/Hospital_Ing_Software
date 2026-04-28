@@ -186,7 +186,23 @@ import { Patient } from '../../core/models/patient.model';
           </ng-template>
           <div class="tab-content">
 
-            <p class="hint-text">Pacientes llamados al área de signos vitales. Haga clic en un paciente para registrar sus signos.</p>
+            <!-- Llamar siguiente paciente -->
+            <div class="call-next-bar">
+              <mat-form-field appearance="outline" style="min-width:200px;margin-bottom:0">
+                <mat-label>Clínica</mat-label>
+                <mat-select [(ngModel)]="selectedVitalsClinicId">
+                  <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <button mat-raised-button color="primary" [disabled]="!selectedVitalsClinicId || callingVitals"
+                      (click)="callNextToVitalSigns()">
+                <mat-spinner *ngIf="callingVitals" diameter="18" style="display:inline-block;margin-right:6px"></mat-spinner>
+                <mat-icon *ngIf="!callingVitals">campaign</mat-icon>
+                {{ callingVitals ? 'Llamando...' : 'Llamar Siguiente' }}
+              </button>
+            </div>
+
+            <p class="hint-text" style="margin-top:12px">Pacientes en área de signos vitales. Haga clic para registrar signos.</p>
 
             <div *ngIf="calledTickets.length === 0" class="empty-state">
               <mat-icon>health_and_safety</mat-icon>
@@ -198,7 +214,14 @@ import { Patient } from '../../core/models/patient.model';
                 <div class="ticket-number">{{ t.ticketNumber }}</div>
                 <div class="ticket-info">
                   <div class="ticket-patient">{{ t.patientName }}</div>
-                  <div class="ticket-meta">{{ t.clinicName }} · {{ t.type }}</div>
+                  <div class="ticket-meta">
+                    {{ t.clinicName }} · {{ t.type }}
+                    <span *ngIf="t.doctorName"> · Dr. {{ t.doctorName }}</span>
+                  </div>
+                  <div class="ticket-time" *ngIf="t.scheduledTime" style="font-size:0.75rem;color:#1D6C61;margin-top:2px">
+                    <mat-icon style="font-size:11px;width:11px;height:11px;vertical-align:middle">schedule</mat-icon>
+                    {{ t.scheduledTime }}
+                  </div>
                 </div>
                 <span class="status-chip status-vitals">En Signos Vitales</span>
               </div>
@@ -235,17 +258,70 @@ import { Patient } from '../../core/models/patient.model';
                 <div class="vitals-actions">
                   <button mat-raised-button color="primary" (click)="sendToDoctor(t)"
                           [disabled]="sendingVitals">
-                    <mat-icon>send</mat-icon>
-                    {{ sendingVitals ? 'Enviando...' : 'Registrar y Enviar a Médico' }}
+                    <mat-icon>{{ t.type === 'LABORATORIO' ? 'science' : 'send' }}</mat-icon>
+                    {{ sendingVitals ? 'Registrando...' : (t.type === 'LABORATORIO' ? 'Registrar Signos Vitales' : 'Registrar y Enviar a Médico') }}
+                  </button>
+                  <button mat-stroked-button color="warn" (click)="markAbsent(t)"
+                          [disabled]="sendingVitals">
+                    <mat-icon>person_off</mat-icon> Ausente
                   </button>
                   <button mat-button (click)="activeVitalsTicketId = null">Cancelar</button>
                 </div>
               </ng-container>
               <ng-template #showVitalsBtn>
-                <button mat-stroked-button color="primary" (click)="openVitalsForm(t)" style="margin-top:12px">
-                  <mat-icon>edit</mat-icon> Tomar Signos Vitales
-                </button>
+                <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap" *ngIf="!samplePanels[t.id]">
+                  <button mat-stroked-button color="primary" (click)="openVitalsForm(t)">
+                    <mat-icon>edit</mat-icon> Tomar Signos Vitales
+                  </button>
+                  <button mat-stroked-button color="warn" (click)="markAbsent(t)">
+                    <mat-icon>person_off</mat-icon> Ausente
+                  </button>
+                </div>
               </ng-template>
+
+              <!-- Sample collection panel (LAB tickets, after vitals recorded) -->
+              <ng-container *ngIf="samplePanels[t.id] && !samplePanels[t.id].done">
+                <div class="sample-panel">
+                  <div class="sample-info">
+                    <mat-icon>biotech</mat-icon>
+                    <div>
+                      <strong>Recolección de Muestra — {{ t.patientName }}</strong>
+                      <div class="sample-meta" *ngIf="t.notes">{{ t.notes.split('—')[0].trim() }}</div>
+                      <div class="sample-meta">Signos vitales registrados ✓ — Recolecte la muestra física y confirme</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+                    <button mat-raised-button color="accent"
+                            [disabled]="samplePanels[t.id].collecting"
+                            (click)="collectSampleAction(t)">
+                      <mat-spinner *ngIf="samplePanels[t.id].collecting" diameter="18" style="display:inline-block;margin-right:6px"></mat-spinner>
+                      <mat-icon *ngIf="!samplePanels[t.id].collecting">science</mat-icon>
+                      {{ samplePanels[t.id].collecting ? 'Enviando a Lab...' : 'Muestra Recolectada — Enviar a Lab' }}
+                    </button>
+                    <button mat-stroked-button color="warn" (click)="markAbsent(t)" [disabled]="samplePanels[t.id].collecting">
+                      <mat-icon>person_off</mat-icon> Ausente
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- Sample receipt (after successful collection) -->
+              <ng-container *ngIf="samplePanels[t.id]?.done">
+                <div class="sample-receipt">
+                  <mat-icon class="sample-receipt-icon">check_circle</mat-icon>
+                  <div class="sample-receipt-body">
+                    <strong>Muestra enviada a Laboratorio</strong>
+                    <div class="sample-receipt-row"><mat-icon>qr_code</mat-icon><span>Código: <code>{{ samplePanels[t.id].receipt?.sampleCode }}</code></span></div>
+                    <div class="sample-receipt-row"><mat-icon>person</mat-icon><span>{{ samplePanels[t.id].receipt?.patientName }}</span></div>
+                    <div class="sample-receipt-row"><mat-icon>biotech</mat-icon><span>{{ samplePanels[t.id].receipt?.examName }}</span></div>
+                    <div class="sample-receipt-row"><mat-icon>colorize</mat-icon><span>Tipo de muestra: {{ samplePanels[t.id].receipt?.sampleTypeLabel }}</span></div>
+                  </div>
+                  <button mat-raised-button color="primary" (click)="dismissSamplePanel(t.id)">
+                    <mat-icon>done</mat-icon> Listo
+                  </button>
+                </div>
+              </ng-container>
+
             </div>
           </div>
         </mat-tab>
@@ -267,7 +343,14 @@ import { Patient } from '../../core/models/patient.model';
               <div class="ticket-number">{{ t.ticketNumber }}</div>
               <div class="ticket-info">
                 <div class="ticket-patient">{{ t.patientName }}</div>
-                <div class="ticket-meta">{{ t.clinicName }} · {{ t.type }}</div>
+                <div class="ticket-meta">
+                  {{ t.clinicName }} · {{ t.type }}
+                  <span *ngIf="t.doctorName"> · Dr. {{ t.doctorName }}</span>
+                </div>
+                <div class="ticket-time" *ngIf="t.scheduledTime" style="font-size:0.75rem;color:#1D6C61;margin-top:2px">
+                  <mat-icon style="font-size:11px;width:11px;height:11px;vertical-align:middle">schedule</mat-icon>
+                  {{ t.scheduledTime }}
+                </div>
               </div>
               <span [class]="'status-chip ' + getStatusClass(t.status)">{{ statusLabel(t.status) }}</span>
             </div>
@@ -369,6 +452,18 @@ import { Patient } from '../../core/models/patient.model';
     .slot-btn-hs { padding:12px 4px;border-radius:8px;border:2px solid #d0e8e5;background:white;cursor:pointer;font-size:0.9rem;font-weight:600;color:#1D6C61;transition:all 0.15s; }
     .slot-btn-hs:hover { background:#d0f4ef;border-color:#3EB9A8; }
     .slot-btn-hs.selected { background:#1D6C61;color:white;border-color:#1D6C61; }
+    .call-next-bar { display:flex;align-items:center;gap:16px;padding:16px;background:#f5fafa;border-radius:10px;margin-bottom:4px; }
+    .sample-panel { background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin-top:12px; }
+    .sample-info { display:flex;align-items:flex-start;gap:12px; }
+    .sample-info mat-icon { font-size:28px;width:28px;height:28px;color:#f57f17;flex-shrink:0;margin-top:2px; }
+    .sample-meta { font-size:0.82rem;color:#757575;margin-top:4px; }
+    .sample-receipt { display:flex;align-items:flex-start;gap:14px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:16px;margin-top:12px; }
+    .sample-receipt-icon { font-size:36px;width:36px;height:36px;color:#2e7d32;flex-shrink:0;margin-top:2px; }
+    .sample-receipt-body { flex:1;display:flex;flex-direction:column;gap:6px; }
+    .sample-receipt-body strong { color:#1b5e20;font-size:0.95rem; }
+    .sample-receipt-row { display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#333; }
+    .sample-receipt-row mat-icon { font-size:16px;width:16px;height:16px;color:#2e7d32;flex-shrink:0; }
+    .sample-receipt-row code { background:#e0f2f1;padding:2px 8px;border-radius:4px;font-weight:700;color:#00695c;font-size:0.95rem; }
   `]
 })
 export class HealthStaffComponent implements OnInit, OnDestroy {
@@ -391,6 +486,9 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
   activeVitalsTicketId: number | null = null;
   vitalsFormMap: Record<number, FormGroup> = {};
   sendingVitals = false;
+  selectedVitalsClinicId: number | null = null;
+  callingVitals = false;
+  samplePanels: Record<number, { collecting: boolean; done: boolean; receipt: any | null }> = {};
   private pollInterval: any;
 
   // Queue tab
@@ -527,14 +625,46 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     this.recepPatientForm.reset();
   }
 
+  callNextToVitalSigns(): void {
+    if (!this.selectedVitalsClinicId) return;
+    this.callingVitals = true;
+    this.ticketService.callToVitalSigns(this.selectedVitalsClinicId).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success(`${res.data.ticketNumber} llamado a signos vitales`);
+          this.loadCalledTickets();
+        }
+        this.callingVitals = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al llamar paciente');
+        this.callingVitals = false;
+      }
+    });
+  }
+
   loadCalledTickets(): void {
-    this.ticketService.getAll().subscribe({
+    this.ticketService.getTodayAllActive().subscribe({
       next: res => {
         if (res.success) {
           this.calledTickets = res.data.filter((t: Ticket) => t.status === 'CALLED_TO_VITAL_SIGNS');
         }
       },
       error: () => {}
+    });
+  }
+
+  markAbsent(ticket: Ticket): void {
+    this.ticketService.markAbsent(ticket.id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.info(`${ticket.patientName} marcado como ausente`);
+          this.activeVitalsTicketId = null;
+          delete this.vitalsFormMap[ticket.id];
+          this.loadCalledTickets();
+        }
+      },
+      error: () => this.notification.error('Error al marcar ausente')
     });
   }
 
@@ -556,26 +686,32 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     this.sendingVitals = true;
     const form = this.vitalsFormMap[ticket.id];
     const v = form?.value ?? {};
-    const confirmAndSend = () => {
-      this.ticketService.confirmArrival(ticket.id).subscribe({
-        next: res => {
-          if (res.success) {
-            this.notification.success(`${ticket.patientName} enviado a consultorio`);
-            this.activeVitalsTicketId = null;
-            delete this.vitalsFormMap[ticket.id];
-            this.loadCalledTickets();
+
+    const afterVitals = () => {
+      if (ticket.type === 'LABORATORIO') {
+        // For lab tickets: show sample collection panel instead of confirmArrival
+        this.sendingVitals = false;
+        this.activeVitalsTicketId = null;
+        this.samplePanels[ticket.id] = { collecting: false, done: false, receipt: null };
+      } else {
+        this.ticketService.confirmArrival(ticket.id).subscribe({
+          next: res => {
+            if (res.success) {
+              this.notification.success(`${ticket.patientName} enviado a consultorio`);
+              this.activeVitalsTicketId = null;
+              delete this.vitalsFormMap[ticket.id];
+              this.loadCalledTickets();
+            }
+            this.sendingVitals = false;
+          },
+          error: (err) => {
+            this.notification.error(err.error?.message || 'Error al enviar paciente');
+            this.sendingVitals = false;
           }
-          this.sendingVitals = false;
-        },
-        error: (err) => {
-          const msg = err.error?.message || 'Error al enviar paciente';
-          this.notification.error(msg);
-          this.sendingVitals = false;
-        }
-      });
+        });
+      }
     };
 
-    // Always register vitals (upsert on backend); even empty values satisfy RN-03
     this.vitalSignsService.register({
       ticketId: ticket.id,
       bloodPressure: v.bloodPressure || null,
@@ -584,7 +720,35 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
       weight: v.weight ? +v.weight : null,
       height: v.height ? +v.height : null,
       oxygenSaturation: v.oxygenSaturation ? +v.oxygenSaturation : null
-    }).subscribe({ next: () => confirmAndSend(), error: () => confirmAndSend() });
+    }).subscribe({ next: () => afterVitals(), error: () => afterVitals() });
+  }
+
+  collectSampleAction(ticket: Ticket): void {
+    const panel = this.samplePanels[ticket.id];
+    if (!panel) return;
+    panel.collecting = true;
+    this.ticketService.collectSample(ticket.id).subscribe({
+      next: res => {
+        if (res.success) {
+          panel.receipt = res.data;
+          panel.done = true;
+          this.notification.success(`Muestra ${res.data.sampleCode} enviada a laboratorio`);
+        } else {
+          this.notification.error('Error al recolectar muestra');
+        }
+        panel.collecting = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al recolectar muestra');
+        panel.collecting = false;
+      }
+    });
+  }
+
+  dismissSamplePanel(ticketId: number): void {
+    delete this.samplePanels[ticketId];
+    delete this.vitalsFormMap[ticketId];
+    this.loadCalledTickets();
   }
 
   getStatusClass(status: string): string {
@@ -618,12 +782,9 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
   // ── Queue ──────────────────────────────────────────────────────────────────
 
   loadTodayQueue(): void {
-    this.ticketService.getAll().subscribe({
+    this.ticketService.getTodayAllActive().subscribe({
       next: res => {
-        if (res.success) {
-          const active = ['WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR','BEING_CALLED','IN_CONSULTATION'];
-          this.todayQueue = res.data.filter((t: Ticket) => active.includes(t.status));
-        }
+        if (res.success) this.todayQueue = res.data;
       },
       error: () => {}
     });

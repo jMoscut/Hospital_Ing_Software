@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -11,7 +11,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { LabService, LabExamService } from '../../shared/services/lab.service';
+import { TicketService } from '../../shared/services/ticket.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
 
@@ -22,12 +24,17 @@ import { LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.mod
     CommonModule, ReactiveFormsModule, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatTabsModule,
     MatTableModule, MatChipsModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatBadgeModule
+    MatSelectModule, MatBadgeModule, MatSlideToggleModule
   ],
   template: `
     <div class="page-container">
       <div class="page-header">
         <h1><mat-icon style="vertical-align:middle;margin-right:8px">science</mat-icon>Laboratorio</h1>
+        <div class="availability-bar" [class.available]="meAvailable">
+          <mat-icon>{{ meAvailable ? 'check_circle' : 'pause_circle' }}</mat-icon>
+          <span>{{ meAvailable ? 'Disponible' : 'No disponible' }}</span>
+          <mat-slide-toggle [checked]="meAvailable" (change)="toggleAvailability()" color="primary"></mat-slide-toggle>
+        </div>
       </div>
 
       <mat-tab-group animationDuration="200ms">
@@ -229,6 +236,11 @@ import { LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.mod
   styles: [`
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
+    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .page-header h1 { font-size:1.6rem; font-weight:500; color:#1565c0; margin:0; }
+    .availability-bar { display:flex; align-items:center; gap:10px; padding:8px 16px; border-radius:20px; background:#fce4ec; color:#c62828; font-size:0.88rem; font-weight:600; transition:all 0.3s; }
+    .availability-bar mat-icon { font-size:20px; width:20px; height:20px; }
+    .availability-bar.available { background:#e8f5e9; color:#2e7d32; }
 
     /* Orden de laboratorio */
     .lab-order {
@@ -269,7 +281,7 @@ import { LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.mod
     .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 8px; color: #3EB9A8; opacity: 0.5; }
   `]
 })
-export class LaboratoryComponent implements OnInit {
+export class LaboratoryComponent implements OnInit, OnDestroy {
   pending: LabOrder[] = [];
   completed: LabOrder[] = [];
   labExams: LabExam[] = [];
@@ -286,10 +298,14 @@ export class LaboratoryComponent implements OnInit {
 
   catalogColumns = ['code', 'name', 'sampleType', 'category'];
 
+  meAvailable = false;
+  private heartbeatInterval: any;
+
   constructor(
     private fb: FormBuilder,
     private labService: LabService,
     private labExamService: LabExamService,
+    private ticketService: TicketService,
     private notification: NotificationService
   ) {}
 
@@ -300,6 +316,31 @@ export class LaboratoryComponent implements OnInit {
     });
     this.load();
     this.loadCatalog();
+    // Heartbeat: updates onlineAt every 5s so system sees lab tech as "en turno"
+    this.ticketService.getMe().subscribe(res => {
+      if (res.success) this.meAvailable = res.data.available ?? false;
+    });
+    this.heartbeatInterval = setInterval(() => {
+      this.ticketService.getMe().subscribe(res => {
+        if (res.success) this.meAvailable = res.data.available ?? false;
+      });
+    }, 5000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.heartbeatInterval);
+  }
+
+  toggleAvailability(): void {
+    this.ticketService.toggleDoctorAvailability().subscribe({
+      next: res => {
+        if (res.success) {
+          this.meAvailable = res.data.available;
+          this.notification.success(this.meAvailable ? 'Ahora estás disponible' : 'Marcado como no disponible');
+        }
+      },
+      error: () => this.notification.error('Error al cambiar disponibilidad')
+    });
   }
 
   load(): void {

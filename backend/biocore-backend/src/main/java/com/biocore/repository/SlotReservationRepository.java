@@ -37,6 +37,11 @@ public interface SlotReservationRepository extends JpaRepository<SlotReservation
     void deleteBySlot(@Param("clinicId") Long clinicId, @Param("date") LocalDate date,
                       @Param("time") String time, @Param("patientId") Long patientId);
 
+    /** Clears ALL active reservations for a patient on a given date — ensures only one slot held at a time. */
+    @Modifying
+    @Query("DELETE FROM SlotReservation r WHERE r.patientId = :patientId AND r.date = :date")
+    void deleteAllByPatientAndDate(@Param("patientId") Long patientId, @Param("date") LocalDate date);
+
     @Modifying
     @Query("DELETE FROM SlotReservation r WHERE r.expiresAt <= :now")
     void deleteExpired(@Param("now") LocalDateTime now);

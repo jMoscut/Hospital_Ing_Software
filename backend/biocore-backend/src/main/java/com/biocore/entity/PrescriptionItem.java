@@ -20,8 +20,12 @@ public class PrescriptionItem {
     private Prescription prescription;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medicine_id", nullable = false)
+    @JoinColumn(name = "medicine_id", nullable = true)
     private Medicine medicine;
+
+    /** Free-text name for off-catalog medicines (medicine == null when this is set) */
+    @Column(name = "custom_medicine_name")
+    private String customMedicineName;
 
     @Column(nullable = false)
     private int quantity;

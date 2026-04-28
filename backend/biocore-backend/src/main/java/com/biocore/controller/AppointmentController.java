@@ -83,6 +83,13 @@ public class AppointmentController {
         }
     }
 
+    /** All appointments assigned to a doctor across all dates (for calendar view). */
+    @GetMapping("/doctor/{doctorId}/all")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllByDoctor(
+            @PathVariable Long doctorId) {
+        return ResponseEntity.ok(ApiResponse.ok(appointmentService.getAllByDoctor(doctorId)));
+    }
+
     /** Reserve a slot for 10 minutes while patient completes payment */
     @PostMapping("/reserve")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reserve(@RequestBody ReserveRequest req) {

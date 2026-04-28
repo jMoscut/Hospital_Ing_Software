@@ -86,27 +86,44 @@ const NOTIF_KEY = 'biocore_notification_settings';
                     </mat-select>
                   </mat-form-field>
                   <button mat-raised-button color="primary"
-                          [disabled]="!callClinicId || !anyDoctorAvailable || calling"
+                          [disabled]="!callClinicId || !canCallNext || calling"
                           (click)="callNextToVitalSigns()">
                     <mat-spinner *ngIf="calling" diameter="20"></mat-spinner>
                     <mat-icon *ngIf="!calling">campaign</mat-icon>
                     {{ calling ? 'Llamando...' : 'Llamar Siguiente Paciente' }}
                   </button>
                 </div>
-                <!-- Doctor availability status -->
+                <!-- Availability status -->
                 <div *ngIf="callClinicId">
-                  <p class="call-hint warn-hint" *ngIf="!anyDoctorAvailable">
-                    <mat-icon style="font-size:15px;vertical-align:middle">warning</mat-icon>
-                    Ningún médico disponible — espere a que un médico se marque disponible
-                  </p>
-                  <div class="doctor-chips" *ngIf="doctorStatuses.length > 0">
-                    <div class="doctor-chip" *ngFor="let d of doctorStatuses"
-                         [class.avail]="d.available" [class.busy]="!d.available">
-                      <mat-icon style="font-size:14px">{{ d.available ? 'check_circle' : 'cancel' }}</mat-icon>
-                      Dr. {{ d.firstName }} {{ d.lastName }}
-                      <span class="avail-label">{{ d.available ? 'Disponible' : 'Ocupado' }}</span>
+                  <ng-container *ngIf="!isLabClinic">
+                    <p class="call-hint warn-hint" *ngIf="!anyDoctorAvailable">
+                      <mat-icon style="font-size:15px;vertical-align:middle">warning</mat-icon>
+                      Ningún médico disponible — espere a que un médico se marque disponible
+                    </p>
+                    <div class="doctor-chips" *ngIf="doctorStatuses.length > 0">
+                      <div class="doctor-chip" *ngFor="let d of doctorStatuses"
+                           [class.avail]="d.available" [class.busy]="!d.available">
+                        <mat-icon style="font-size:14px">{{ d.available ? 'check_circle' : 'cancel' }}</mat-icon>
+                        Dr. {{ d.firstName }} {{ d.lastName }}
+                        <span class="avail-label">{{ d.available ? 'Disponible' : 'Ocupado' }}</span>
+                      </div>
                     </div>
-                  </div>
+                  </ng-container>
+                  <ng-container *ngIf="isLabClinic">
+                    <p class="call-hint warn-hint" *ngIf="!anyLabTechAvailable">
+                      <mat-icon style="font-size:15px;vertical-align:middle">warning</mat-icon>
+                      Ningún técnico de laboratorio disponible — espere a que uno se marque disponible
+                    </p>
+                    <div class="doctor-chips" *ngIf="anyLabTechAvailable">
+                      <ng-container *ngFor="let s of staffList">
+                        <div class="doctor-chip avail" *ngIf="s.role === 'LAB_TECHNICIAN' && s.status === 'ACTIVO'">
+                          <mat-icon style="font-size:14px">check_circle</mat-icon>
+                          {{ s.firstName }} {{ s.lastName }}
+                          <span class="avail-label">Disponible</span>
+                        </div>
+                      </ng-container>
+                    </div>
+                  </ng-container>
                 </div>
               </mat-card-content>
             </mat-card>
@@ -134,11 +151,20 @@ const NOTIF_KEY = 'biocore_notification_settings';
               <div class="ticket-body">
                 <div class="ticket-name">{{ t.patientName }}</div>
                 <div class="ticket-sub">{{ t.clinicName }} · {{ t.type }}</div>
-                <div class="ticket-sub" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
+                <ng-container *ngIf="!isLabTicket(t)">
+                  <div class="ticket-sub ticket-doctor" *ngIf="t.doctorName">
+                    <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">stethoscope</mat-icon>
+                    Dr. {{ t.doctorName }}
+                  </div>
+                </ng-container>
               </div>
               <div class="ticket-right">
                 <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
-                <div class="ticket-time" *ngIf="t.createdAt">{{ t.createdAt | date:'HH:mm' }}</div>
+                <div class="ticket-time" *ngIf="t.scheduledTime">
+                  <mat-icon style="font-size:12px;width:12px;height:12px;vertical-align:middle">schedule</mat-icon>
+                  {{ t.scheduledTime }}
+                </div>
+                <div class="ticket-time" *ngIf="!t.scheduledTime && t.createdAt">{{ t.createdAt | date:'HH:mm' }}</div>
               </div>
               <div class="ticket-actions">
                 <button mat-icon-button color="warn" *ngIf="t.status === 'BEING_CALLED' && canManage()"
@@ -181,21 +207,24 @@ const NOTIF_KEY = 'biocore_notification_settings';
 
             <div class="staff-grid">
               <div class="staff-card" *ngFor="let s of filteredStaff" [ngClass]="'staff-' + s.status.toLowerCase()">
-                <div class="staff-avatar">
-                  <mat-icon>{{ s.role === 'LAB_TECHNICIAN' ? 'science' : 'stethoscope' }}</mat-icon>
+                <div class="staff-card-top">
+                  <div class="staff-avatar">
+                    <mat-icon>{{ s.role === 'LAB_TECHNICIAN' ? 'science' : 'stethoscope' }}</mat-icon>
+                  </div>
+                  <div class="staff-info">
+                    <div class="staff-name">{{ s.firstName }} {{ s.lastName }}</div>
+                    <div class="staff-role">{{ s.role === 'DOCTOR' ? 'Médico' : 'Técnico de Laboratorio' }}</div>
+                  </div>
                 </div>
-                <div class="staff-info">
-                  <div class="staff-name">{{ s.firstName }} {{ s.lastName }}</div>
-                  <div class="staff-role">{{ s.role === 'DOCTOR' ? 'Médico' : 'Técnico de Laboratorio' }}</div>
-                  <div class="staff-specialty" *ngIf="s.specialty">{{ s.specialty }}</div>
-                </div>
-                <div class="staff-area">
-                  <mat-icon style="font-size:15px;vertical-align:middle;margin-right:4px">location_on</mat-icon>
-                  {{ s.area }}
-                </div>
-                <div class="staff-status-badge" [ngClass]="'badge-' + s.status.toLowerCase()">
-                  <span class="status-dot"></span>
-                  {{ staffStatusLabel(s.status) }}
+                <div class="staff-card-bottom">
+                  <div class="staff-area">
+                    <mat-icon>location_on</mat-icon>
+                    <span>{{ s.area }}</span>
+                  </div>
+                  <div class="staff-status-badge" [ngClass]="'badge-' + s.status.toLowerCase()">
+                    <span class="status-dot"></span>
+                    {{ staffStatusLabel(s.status) }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -219,8 +248,18 @@ const NOTIF_KEY = 'biocore_notification_settings';
               <div class="ticket-body">
                 <div class="ticket-name">{{ t.patientName }}</div>
                 <div class="ticket-sub">{{ t.clinicName }} · {{ t.type }}</div>
+                <div class="ticket-sub ticket-doctor" *ngIf="!isLabTicket(t) && t.doctorName">
+                  <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">stethoscope</mat-icon>
+                  Dr. {{ t.doctorName }}
+                </div>
               </div>
-              <span class="status-chip status-completed">Completado</span>
+              <div class="ticket-right">
+                <span class="status-chip status-completed">Completado</span>
+                <div class="ticket-time" *ngIf="t.scheduledTime">
+                  <mat-icon style="font-size:12px;width:12px;height:12px;vertical-align:middle">schedule</mat-icon>
+                  {{ t.scheduledTime }}
+                </div>
+              </div>
             </div>
             <div class="empty-state" *ngIf="completedTickets.length === 0">
               <mat-icon>task_alt</mat-icon>
@@ -292,8 +331,9 @@ const NOTIF_KEY = 'biocore_notification_settings';
     .ticket-body { flex: 1; }
     .ticket-name { font-weight: 600; }
     .ticket-sub { font-size: 0.8rem; color: #757575; margin-top: 2px; }
+    .ticket-doctor { color: #1565c0; font-size: 0.8rem; margin-top: 3px; display:flex; align-items:center; gap:3px; }
     .ticket-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-    .ticket-time { font-size: 0.75rem; color: #9e9e9e; }
+    .ticket-time { font-size: 0.8rem; color: #1D6C61; font-weight: 600; display:flex; align-items:center; gap:2px; }
     .ticket-actions { display: flex; gap: 4px; }
     .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
 
@@ -335,41 +375,39 @@ const NOTIF_KEY = 'biocore_notification_settings';
     .staff-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
     .staff-filter-field { min-width: 200px; }
     .staff-summary { display: flex; gap: 8px; flex-wrap: wrap; }
-    .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
     .staff-card {
-      display: flex; align-items: center; gap: 14px;
-      background: white; border-radius: 12px; padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e8e8e8;
+      display: flex; flex-direction: column; gap: 12px;
+      background: white; border-radius: 12px; padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07); border: 1px solid #e8e8e8;
       border-left: 5px solid #e0e0e0;
-      transition: box-shadow 0.2s;
     }
     .staff-card.staff-activo { border-left-color: #43a047; }
     .staff-card.staff-inactivo { border-left-color: #fb8c00; }
     .staff-card.staff-fuera_de_turno { border-left-color: #9e9e9e; opacity: 0.75; }
+    .staff-card-top { display: flex; align-items: center; gap: 12px; }
+    .staff-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
     .staff-avatar {
-      width: 44px; height: 44px; border-radius: 50%;
+      width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
       background: #e8f5e9; display: flex; align-items: center; justify-content: center;
-      color: #1D6C61; flex-shrink: 0;
+      color: #1D6C61;
     }
     .staff-card.staff-inactivo .staff-avatar { background: #fff3e0; color: #e65100; }
     .staff-card.staff-fuera_de_turno .staff-avatar { background: #f5f5f5; color: #9e9e9e; }
     .staff-info { flex: 1; min-width: 0; }
-    .staff-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .staff-role { font-size: 0.78rem; color: #757575; margin-top: 2px; }
-    .staff-specialty { font-size: 0.75rem; color: #9e9e9e; font-style: italic; }
-    .staff-area { font-size: 0.78rem; color: #1D6C61; white-space: nowrap; }
+    .staff-name { font-weight: 700; font-size: 0.97rem; color: #212121; line-height: 1.3; word-break: break-word; }
+    .staff-role { font-size: 0.78rem; color: #757575; margin-top: 3px; }
+    .staff-area { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #1D6C61; font-weight: 500; flex-shrink: 0; }
+    .staff-area mat-icon { font-size: 15px; width: 15px; height: 15px; }
     .staff-status-badge {
       display: flex; align-items: center; gap: 5px;
       padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
-      white-space: nowrap;
+      flex-shrink: 0;
     }
     .badge-activo { background: #e8f5e9; color: #2e7d32; }
     .badge-inactivo { background: #fff3e0; color: #e65100; }
     .badge-fuera_de_turno { background: #f5f5f5; color: #757575; }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: currentColor; display: inline-block;
-    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
   `]
 })
 export class AppointmentsComponent implements OnInit, OnDestroy {
@@ -395,6 +433,31 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
 
   get anyDoctorAvailable(): boolean {
     return this.doctorStatuses.some(d => d.available);
+  }
+
+  isLabTicket(t: Ticket): boolean {
+    if (!t.clinicName) return false;
+    const name = t.clinicName.toLowerCase();
+    const clinic = this.visitClinics.find(c => c.id === t.clinicId);
+    if (clinic?.type === 'LABORATORY') return true;
+    return name.includes('laboratorio') || name.includes('lab');
+  }
+
+  get isLabClinic(): boolean {
+    if (!this.callClinicId) return false;
+    const clinic = this.visitClinics.find(c => c.id === this.callClinicId);
+    if (!clinic) return false;
+    if (clinic.type === 'LABORATORY') return true;
+    const name = clinic.name.toLowerCase();
+    return name.includes('laboratorio') || name.includes('lab');
+  }
+
+  get anyLabTechAvailable(): boolean {
+    return this.staffList.some(s => s.role === 'LAB_TECHNICIAN' && s.status === 'ACTIVO');
+  }
+
+  get canCallNext(): boolean {
+    return this.isLabClinic ? this.anyLabTechAvailable : this.anyDoctorAvailable;
   }
 
   constructor(
@@ -432,12 +495,12 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   }
 
   loadAll(): void {
-    this.ticketService.getAll().subscribe({
+    this.ticketService.getTodayAllActive().subscribe({
       next: res => {
         if (!res.success) return;
         const all = res.data;
-        const activeStatuses = new Set(['WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR','BEING_CALLED','IN_CONSULTATION']);
-        this.activeTickets = all.filter((t: Ticket) => activeStatuses.has(t.status));
+        this.activeTickets = all.filter((t: Ticket) =>
+          ['WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR','BEING_CALLED','IN_CONSULTATION'].includes(t.status));
         this.calledTickets = all.filter((t: Ticket) =>
           t.status === 'CALLED_TO_VITAL_SIGNS' || t.status === 'BEING_CALLED');
         this.completedTickets = all.filter((t: Ticket) => t.status === 'COMPLETED');

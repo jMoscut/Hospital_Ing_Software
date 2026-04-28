@@ -54,6 +54,16 @@ public class UserService {
         return enrichWithClinic(UserDTO.from(u));
     }
 
+    /** Null onlineAt + set available=false on logout so user shows as FUERA_DE_TURNO immediately. */
+    @Transactional
+    public void clearSession(Long id) {
+        userRepository.findById(id).ifPresent(u -> {
+            u.setOnlineAt(null);
+            u.setAvailable(false);
+            userRepository.save(u);
+        });
+    }
+
     @Transactional
     public UserDTO create(UserCreateRequest req) {
         if (userRepository.existsByUsername(req.getUsername())) {
@@ -210,15 +220,20 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getDoctorAvailabilityByClinic(Long clinicId) {
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
         return assignmentRepository.findActiveDoctorsByClinic(clinicId).stream()
                 .map(a -> {
                     User doc = a.getDoctor();
+                    boolean online = doc.isActive()
+                            && doc.getOnlineAt() != null
+                            && doc.getOnlineAt().isAfter(threshold);
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id",        doc.getId());
                     m.put("firstName", doc.getFirstName());
                     m.put("lastName",  doc.getLastName());
                     m.put("specialty", doc.getSpecialty());
-                    m.put("available", doc.isAvailable());
+                    m.put("available", online && doc.isAvailable());
+                    m.put("online",    online);
                     return m;
                 })
                 .collect(Collectors.toList());

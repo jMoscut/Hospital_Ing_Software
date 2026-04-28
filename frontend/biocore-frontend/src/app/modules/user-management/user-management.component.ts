@@ -112,10 +112,6 @@ function defaultSettings(): NotifSettings {
                     <mat-icon>info_outline</mat-icon>
                     Este rol se asigna automáticamente a: <strong>{{ area }}</strong>
                   </div>
-                  <mat-form-field appearance="outline" *ngIf="userForm.value.role === 'DOCTOR'">
-                    <mat-label>Especialidad</mat-label>
-                    <input matInput formControlName="specialty">
-                  </mat-form-field>
                   <mat-form-field appearance="outline"
                     *ngIf="['DOCTOR','LAB_TECHNICIAN','HEALTH_STAFF'].includes(userForm.value.role)">
                     <mat-label>N° Colegiado {{ isCollegiateRequired() ? '*' : '(opcional)' }}</mat-label>
@@ -159,11 +155,10 @@ function defaultSettings(): NotifSettings {
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="specialty">
-                    <th mat-header-cell *matHeaderCellDef>Especialidad / Colegiado</th>
+                    <th mat-header-cell *matHeaderCellDef>N° Colegiado</th>
                     <td mat-cell *matCellDef="let u">
-                      <span *ngIf="u.specialty">{{ u.specialty }}</span>
                       <span *ngIf="u.collegiateNumber" class="collegiate-badge">{{ u.collegiateNumber }}</span>
-                      <span *ngIf="!u.specialty && !u.collegiateNumber" style="color:#bbb">—</span>
+                      <span *ngIf="!u.collegiateNumber" style="color:#bbb">—</span>
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="clinic">
@@ -564,10 +559,6 @@ function defaultSettings(): NotifSettings {
                 <mat-option value="PHARMACIST">Farmacéutico/a</mat-option>
                 <mat-option value="CASHIER">Cajero/a</mat-option>
               </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline" *ngIf="editUserForm.value.role === 'DOCTOR'">
-              <mat-label>Especialidad</mat-label>
-              <input matInput formControlName="specialty">
             </mat-form-field>
             <mat-form-field appearance="outline"
               *ngIf="['DOCTOR','LAB_TECHNICIAN','HEALTH_STAFF'].includes(editUserForm.value.role)">

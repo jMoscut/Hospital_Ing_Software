@@ -5,6 +5,7 @@ export interface Ticket {
   id: number;
   ticketNumber: string;
   patientId: number;
+  appointmentId?: number;
   patientName: string;
   patientCode: string;
   clinicId: number;

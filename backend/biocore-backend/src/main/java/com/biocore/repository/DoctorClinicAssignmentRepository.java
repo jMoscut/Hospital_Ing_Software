@@ -22,6 +22,9 @@ public interface DoctorClinicAssignmentRepository extends JpaRepository<DoctorCl
     @Query("SELECT COUNT(a) FROM DoctorClinicAssignment a JOIN a.doctor d WHERE a.clinic.id = :clinicId AND a.active = true AND d.available = true")
     long countAvailableDoctorsInClinic(@Param("clinicId") Long clinicId);
 
+    @Query("SELECT a FROM DoctorClinicAssignment a JOIN FETCH a.doctor d WHERE a.clinic.id = :clinicId AND a.active = true AND d.available = true")
+    List<DoctorClinicAssignment> findAvailableDoctorsByClinic(@Param("clinicId") Long clinicId);
+
     @Query("SELECT a FROM DoctorClinicAssignment a WHERE a.doctor.id = :doctorId ORDER BY a.assignedAt DESC")
     List<DoctorClinicAssignment> findAllByDoctorId(@Param("doctorId") Long doctorId);
 }

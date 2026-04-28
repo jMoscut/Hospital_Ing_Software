@@ -3,10 +3,12 @@ package com.biocore.controller;
 import com.biocore.dto.ApiResponse;
 import com.biocore.dto.LoginRequest;
 import com.biocore.dto.LoginResponse;
+import com.biocore.security.CustomUserDetails;
 import com.biocore.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,8 +31,11 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
-        // JWT es stateless — el cliente elimina el token
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails != null) {
+            authService.logout(userDetails.getUser().getId());
+        }
         return ResponseEntity.ok(ApiResponse.ok("Sesión cerrada exitosamente", null));
     }
 }

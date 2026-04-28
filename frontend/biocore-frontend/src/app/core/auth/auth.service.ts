@@ -36,6 +36,7 @@ export class AuthService {
   }
 
   logout(): void {
+    this.http.delete(`${environment.apiUrl}/users/me/session`).subscribe({ error: () => {} });
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.currentUser.set(null);
