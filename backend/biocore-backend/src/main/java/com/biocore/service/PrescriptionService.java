@@ -41,11 +41,15 @@ public class PrescriptionService {
 
         if (req.getItems() != null) {
             for (PrescriptionRequest.PrescriptionItemRequest itemReq : req.getItems()) {
-                Medicine medicine = medicineRepository.findById(itemReq.getMedicineId())
-                        .orElseThrow(() -> new RuntimeException("Medicamento no encontrado: " + itemReq.getMedicineId()));
+                Medicine medicine = null;
+                if (itemReq.getMedicineId() != null) {
+                    medicine = medicineRepository.findById(itemReq.getMedicineId())
+                            .orElseThrow(() -> new RuntimeException("Medicamento no encontrado: " + itemReq.getMedicineId()));
+                }
                 PrescriptionItem item = PrescriptionItem.builder()
                         .prescription(saved)
                         .medicine(medicine)
+                        .customMedicineName(itemReq.getCustomMedicineName())
                         .quantity(itemReq.getQuantity())
                         .dosage(itemReq.getDosage())
                         .instructions(itemReq.getInstructions())
@@ -82,6 +86,12 @@ public class PrescriptionService {
         for (PrescriptionItem item : prescription.getItems()) {
             if (itemIds.contains(item.getId())) {
                 Medicine medicine = item.getMedicine();
+                if (medicine == null) {
+                    // External/off-catalog medicine — no stock to deduct, mark dispatched directly
+                    item.setDispatched(true);
+                    prescriptionItemRepository.save(item);
+                    continue;
+                }
                 // RN-F01: Verificar stock
                 if (medicine.getStock() < item.getQuantity()) {
                     throw new RuntimeException("Stock insuficiente para: " + medicine.getName()

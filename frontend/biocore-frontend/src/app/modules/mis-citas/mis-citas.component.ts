@@ -1057,10 +1057,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       if (res.success) {
         this.clinics = res.data;
         this.labClinics = res.data.filter((c: Clinic) =>
+          c.type === 'LABORATORY' ||
           LAB_CLINIC_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
         );
         this.bookingClinics = res.data.filter((c: Clinic) =>
-          BOOKING_CLINIC_KEYWORDS.some(k => c.name.toLowerCase().includes(k))
+          c.type === 'GENERAL_MEDICINE' || c.type === 'EXTERNAL_CONSULTATION'
         );
         if (this.bookingClinics.length === 0) {
           this.bookingClinics = res.data.filter((c: Clinic) =>
@@ -1177,8 +1178,13 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         if (res.success) {
           this.availableSlots = this.filterSlotsForToday(res.data);
           if (this.selectedSlot && !this.availableSlots.includes(this.selectedSlot)) {
-            this.selectedSlot = null;
-            this.notification.error('El horario seleccionado ya no está disponible.');
+            if (this.reservationId) {
+              // Slot is reserved by this user — backend excludes it from available list; add it back
+              this.availableSlots = [this.selectedSlot, ...this.availableSlots];
+            } else {
+              this.selectedSlot = null;
+              this.notification.error('El horario seleccionado ya no está disponible.');
+            }
           }
         }
         this.loadingSlots = false;
@@ -1430,7 +1436,14 @@ export class MisCitasComponent implements OnInit, OnDestroy {
             this.appointmentService.confirmPayment(apptId, {
               paymentMethod: 'ONLINE_CARD',
               amount: this.consultationFee
-            }).subscribe({ error: () => {} });
+            }).subscribe({
+              next: () => {
+                if (this.uploadedDocs.length > 0) {
+                  this.appointmentService.uploadDocuments(apptId, this.uploadedDocs).subscribe({ error: () => {} });
+                }
+              },
+              error: () => {}
+            });
           }
           this.paying = false;
           this.clearReservationTimer();

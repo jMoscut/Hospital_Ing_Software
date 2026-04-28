@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +21,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket, VitalSigns } from '../../core/models/ticket.model';
 import { Medicine, LabExam } from '../../core/models/lab.model';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-consultation',
@@ -44,7 +46,8 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
             <span>{{ doctorAvailable ? 'Disponible' : 'No disponible' }}</span>
             <mat-slide-toggle [checked]="doctorAvailable" (change)="toggleAvailability()" color="primary"></mat-slide-toggle>
           </div>
-          <button mat-raised-button color="warn" *ngIf="currentTicket && currentTicket.status === 'IN_CONSULTATION'"
+          <button mat-raised-button color="warn"
+                  *ngIf="currentTicket && (currentTicket.status === 'IN_CONSULTATION' || currentTicket.status === 'BEING_CALLED')"
                   (click)="markAbsent()" title="Paciente no se presentó">
             <mat-icon>person_off</mat-icon> Ausente
           </button>
@@ -270,6 +273,33 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
                 </div>
               </div>
 
+              <!-- Documentos adjuntos -->
+              <ng-container *ngIf="currentTicket.appointmentId">
+                <mat-divider class="mt-16 mb-16"></mat-divider>
+                <div class="docs-section">
+                  <div class="docs-header">
+                    <mat-icon>attach_file</mat-icon>
+                    <strong>Documentos del Paciente</strong>
+                    <span class="docs-count" *ngIf="appointmentDocs.length > 0">({{ appointmentDocs.length }})</span>
+                  </div>
+                  <div *ngIf="loadingDocs" style="display:flex;align-items:center;gap:8px;color:#78909c;font-size:0.88rem">
+                    <mat-spinner diameter="16"></mat-spinner> Cargando documentos...
+                  </div>
+                  <div *ngIf="!loadingDocs && appointmentDocs.length === 0" class="docs-empty">
+                    Sin documentos adjuntos
+                  </div>
+                  <div class="docs-list" *ngIf="!loadingDocs && appointmentDocs.length > 0">
+                    <button *ngFor="let d of appointmentDocs"
+                            class="doc-link"
+                            (click)="openDoc(d)">
+                      <mat-icon class="doc-pdf-icon">picture_as_pdf</mat-icon>
+                      <span class="doc-link-name">{{ d.fileName }}</span>
+                      <mat-icon class="doc-open-icon">open_in_new</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
+
               <mat-divider class="mt-16 mb-16"></mat-divider>
 
               <!-- Diagnóstico + Receta -->
@@ -308,6 +338,34 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
                   </div>
                   <button mat-stroked-button (click)="addItem()" class="mb-16">
                     <mat-icon>add</mat-icon> Agregar Medicamento
+                  </button>
+
+                  <!-- Medicamentos externos (no en catálogo) -->
+                  <div class="custom-med-header">
+                    <mat-icon style="font-size:16px;width:16px;height:16px;color:#e65100">info</mat-icon>
+                    <span>Medicamentos externos (no disponibles en catálogo)</span>
+                  </div>
+                  <div class="medicine-row" *ngFor="let item of customMedItems; let i = index">
+                    <mat-form-field appearance="outline" style="flex:2">
+                      <mat-label>Nombre del medicamento</mat-label>
+                      <input matInput [(ngModel)]="item.name" [ngModelOptions]="{standalone: true}"
+                             placeholder="ej. Amoxicilina 500mg">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" style="width:90px">
+                      <mat-label>Cant.</mat-label>
+                      <input matInput type="number" min="1" [(ngModel)]="item.quantity" [ngModelOptions]="{standalone: true}">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" style="flex:1">
+                      <mat-label>Dosificación</mat-label>
+                      <input matInput [(ngModel)]="item.dosage" [ngModelOptions]="{standalone: true}"
+                             placeholder="ej. 1 cápsula cada 8h">
+                    </mat-form-field>
+                    <button mat-icon-button color="warn" (click)="removeCustomMedItem(i)" title="Quitar">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                  <button mat-stroked-button (click)="addCustomMedItem()" class="mb-16" style="border-color:#e65100;color:#e65100">
+                    <mat-icon>add</mat-icon> Agregar Medicamento Externo
                   </button>
 
                   <!-- Sección de órdenes de laboratorio -->
@@ -435,6 +493,22 @@ import { Medicine, LabExam } from '../../core/models/lab.model';
     .cal-day-detail { background:#f8fffe;border:1px solid #d0ede9;border-radius:8px;padding:12px;margin-top:8px; }
     .cal-day-title { display:flex;align-items:center;gap:6px;font-weight:600;color:#1D6C61;font-size:0.88rem;margin-bottom:8px; }
     .cal-day-title mat-icon { font-size:16px;width:16px;height:16px; }
+
+    /* Custom (off-catalog) medicines */
+    .custom-med-header { display:flex;align-items:center;gap:6px;background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:6px 12px;margin-bottom:10px;font-size:0.82rem;color:#e65100;font-weight:500; }
+
+    /* Documents section */
+    .docs-section { background:#f3f8ff;border:1px solid #bbdefb;border-radius:8px;padding:14px 16px; }
+    .docs-header { display:flex;align-items:center;gap:8px;font-size:0.95rem;color:#1565c0;margin-bottom:10px; }
+    .docs-header mat-icon { font-size:20px;width:20px;height:20px; }
+    .docs-count { color:#1976d2;font-size:0.82rem; }
+    .docs-empty { font-size:0.85rem;color:#78909c; }
+    .docs-list { display:flex;flex-direction:column;gap:6px; }
+    .doc-link { display:flex;align-items:center;gap:8px;background:white;border:1px solid #e3f2fd;border-radius:6px;padding:8px 12px;text-decoration:none;color:#212121;transition:background 0.15s;cursor:pointer;width:100%;text-align:left; }
+    .doc-link:hover { background:#e3f2fd; }
+    .doc-pdf-icon { color:#e53935;font-size:20px;width:20px;height:20px;flex-shrink:0; }
+    .doc-link-name { flex:1;font-size:0.88rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .doc-open-icon { font-size:16px;width:16px;height:16px;color:#1976d2;flex-shrink:0; }
   `]
 })
 export class ConsultationComponent implements OnInit, OnDestroy {
@@ -447,6 +521,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   labExams: LabExam[] = [];
   labCategories: string[] = [];
   prescriptionItems: any[] = [];
+  customMedItems: any[] = [];
   labOrderItems: any[] = [];
   consultationForm!: FormGroup;
   calling = false;
@@ -463,6 +538,9 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   readonly calWeekDays = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   readonly calMonthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   private sub!: Subscription;
+  appointmentDocs: any[] = [];
+  loadingDocs = false;
+  readonly apiUrl = environment.apiUrl;
 
   constructor(
     private fb: FormBuilder,
@@ -474,7 +552,8 @@ export class ConsultationComponent implements OnInit, OnDestroy {
     private medicineService: MedicineService,
     private authService: AuthService,
     private notification: NotificationService,
-    private appointmentService: AppointmentService
+    private appointmentService: AppointmentService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -530,6 +609,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           this.currentTicket = myTicket;
           this.currentVitals = null;
           this.loadCurrentVitals();
+          if (isNew) {
+            this.appointmentDocs = [];
+            this.loadAppointmentDocs();
+          }
         }
       } else if (!this.assignedClinicId && res.data.length > 0) {
         this.assignedClinicId = res.data[0]?.clinicId;
@@ -578,7 +661,9 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         if (res.success) {
           this.currentTicket = res.data;
           this.currentVitals = null;
+          this.appointmentDocs = [];
           this.loadCurrentVitals();
+          this.loadAppointmentDocs();
           this.notification.info(`${res.data.ticketNumber} llamado al consultorio`);
         }
       },
@@ -619,6 +704,26 @@ export class ConsultationComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadAppointmentDocs(): void {
+    if (!this.currentTicket?.appointmentId) return;
+    this.loadingDocs = true;
+    this.appointmentService.getDocuments(this.currentTicket.appointmentId).subscribe({
+      next: res => { if (res.success) this.appointmentDocs = res.data ?? []; this.loadingDocs = false; },
+      error: () => { this.loadingDocs = false; }
+    });
+  }
+
+  openDoc(doc: any): void {
+    this.http.get(`${this.apiUrl}/documents/${doc.id}/file`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      },
+      error: () => this.notification.error('No se pudo abrir el documento.')
+    });
+  }
+
   private loadCurrentVitals(): void {
     if (!this.currentTicket) return;
     this.vitalSignsService.getByTicket(this.currentTicket.id).subscribe({
@@ -629,6 +734,9 @@ export class ConsultationComponent implements OnInit, OnDestroy {
 
   addItem(): void { this.prescriptionItems.push({ medicineId: null, quantity: 1, dosage: '', instructions: '' }); }
   removeItem(i: number): void { this.prescriptionItems.splice(i, 1); }
+
+  addCustomMedItem(): void { this.customMedItems.push({ name: '', quantity: 1, dosage: '', instructions: '' }); }
+  removeCustomMedItem(i: number): void { this.customMedItems.splice(i, 1); }
 
   addLabItem(): void { this.labOrderItems.push({ labExamId: null, notes: '' }); }
   removeLabItem(i: number): void { this.labOrderItems.splice(i, 1); }
@@ -649,6 +757,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           this.currentTicket = null;
           this.currentVitals = null;
           this.prescriptionItems = [];
+          this.customMedItems = [];
           this.labOrderItems = [];
           this.consultationForm.reset();
           this.loadClinicQueue();
@@ -675,14 +784,25 @@ export class ConsultationComponent implements OnInit, OnDestroy {
       });
     };
 
-    // Crear receta si hay medicamentos
-    if (this.prescriptionItems.length > 0) {
+    const allItems = [
+      ...this.prescriptionItems,
+      ...this.customMedItems.filter(c => c.name?.trim()).map(c => ({
+        medicineId: null,
+        customMedicineName: c.name.trim(),
+        quantity: c.quantity || 1,
+        dosage: c.dosage,
+        instructions: c.instructions
+      }))
+    ];
+
+    // Crear receta si hay medicamentos (catálogo o externos)
+    if (allItems.length > 0) {
       this.prescriptionService.create({
         patientId: this.currentTicket.patientId,
         doctorId: userId,
         ticketId: this.currentTicket.id,
         notes: this.consultationForm.value.notes,
-        items: this.prescriptionItems
+        items: allItems
       }).subscribe({
         next: () => { this.notification.success('Receta generada'); createLabOrders(finalize); },
         error: () => createLabOrders(finalize)

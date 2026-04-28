@@ -53,6 +53,7 @@ public class PrescriptionDTO {
         private Long id;
         private Long medicineId;
         private String medicineName;
+        private String customMedicineName;
         private int quantity;
         private String dosage;
         private String instructions;
@@ -60,10 +61,12 @@ public class PrescriptionDTO {
         private Medicine medicine;
 
         public static ItemDTO from(PrescriptionItem item) {
+            boolean hasMed = item.getMedicine() != null;
             return ItemDTO.builder()
                     .id(item.getId())
-                    .medicineId(item.getMedicine().getId())
-                    .medicineName(item.getMedicine().getName())
+                    .medicineId(hasMed ? item.getMedicine().getId() : null)
+                    .medicineName(hasMed ? item.getMedicine().getName() : null)
+                    .customMedicineName(item.getCustomMedicineName())
                     .quantity(item.getQuantity())
                     .dosage(item.getDosage())
                     .instructions(item.getInstructions())

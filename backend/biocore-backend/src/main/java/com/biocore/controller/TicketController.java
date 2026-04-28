@@ -105,7 +105,7 @@ public class TicketController {
 
     /** Todos los tickets activos de hoy — para monitoreo de personal de salud */
     @GetMapping("/queue/today")
-    @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'NURSE', 'ADMIN', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'NURSE', 'ADMIN', 'DOCTOR', 'CASHIER', 'LAB_TECHNICIAN')")
     public ResponseEntity<ApiResponse<List<TicketDTO>>> getTodayAllActive() {
         return ResponseEntity.ok(ApiResponse.ok(ticketService.getTodayAllActive()));
     }

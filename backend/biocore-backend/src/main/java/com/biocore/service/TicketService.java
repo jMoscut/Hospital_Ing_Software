@@ -14,11 +14,15 @@ import com.biocore.enums.Role;
 import com.biocore.enums.SampleType;
 import com.biocore.enums.TicketPriority;
 import com.biocore.enums.TicketStatus;
+import com.biocore.entity.Appointment;
+import com.biocore.entity.Prescription;
+import com.biocore.repository.AppointmentRepository;
 import com.biocore.repository.ClinicRepository;
 import com.biocore.repository.DoctorClinicAssignmentRepository;
 import com.biocore.repository.LabExamRepository;
 import com.biocore.repository.LabOrderRepository;
 import com.biocore.repository.PatientRepository;
+import com.biocore.repository.PrescriptionRepository;
 import com.biocore.repository.TicketRepository;
 import com.biocore.repository.UserRepository;
 import com.biocore.repository.VitalSignsRepository;
@@ -55,6 +59,9 @@ public class TicketService {
     private final UserRepository userRepository;
     private final LabOrderRepository labOrderRepository;
     private final LabExamRepository labExamRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public List<TicketDTO> getAll() {
@@ -134,11 +141,17 @@ public class TicketService {
         TicketPriority priority = req.getPriority() != null ? req.getPriority() : TicketPriority.NORMAL;
         String type = req.getType() != null ? req.getType() : "CONSULTA";
 
+        Appointment linkedAppt = null;
+        if (req.getAppointmentId() != null) {
+            linkedAppt = appointmentRepository.findById(req.getAppointmentId()).orElse(null);
+        }
+
         Ticket ticket = Ticket.builder()
                 .ticketNumber(ticketNumber)
                 .patient(patient)
                 .clinic(clinic)
                 .doctor(assignedDoctor)
+                .appointment(linkedAppt)
                 .priority(priority)
                 .type(type)
                 .notes(req.getNotes())
@@ -300,7 +313,16 @@ public class TicketService {
             });
         }
 
-        return TicketDTO.from(ticketRepository.save(ticket));
+        TicketDTO result = TicketDTO.from(ticketRepository.save(ticket));
+
+        // Send diagnosis summary email with prescription and lab orders
+        if (ticket.getPatient() != null) {
+            List<Prescription> prescriptions = prescriptionRepository.findByTicketId(ticketId);
+            List<LabOrder> labOrders = labOrderRepository.findByTicketId(ticketId);
+            emailService.sendDiagnosisEmail(ticket.getPatient(), ticket, prescriptions, labOrders);
+        }
+
+        return result;
     }
 
     @Transactional

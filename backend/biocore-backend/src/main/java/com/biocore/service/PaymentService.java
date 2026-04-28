@@ -25,6 +25,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final PatientRepository patientRepository;
     private final TicketRepository ticketRepository;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public List<Payment> getByPatient(Long patientId) {
@@ -88,6 +89,8 @@ public class PaymentService {
         payment.setPaidAt(LocalDateTime.now());
         payment.setInvoiceNumber(invoiceNumber);
 
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+        emailService.sendPaymentReceiptEmail(saved.getPatient(), saved);
+        return saved;
     }
 }

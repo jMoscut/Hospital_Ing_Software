@@ -13,6 +13,7 @@ import java.util.List;
 @Repository
 public interface LabOrderRepository extends JpaRepository<LabOrder, Long> {
     List<LabOrder> findByPatientIdOrderByOrderDateDesc(Long patientId);
+    List<LabOrder> findByTicketId(Long ticketId);
     List<LabOrder> findByDoctorId(Long doctorId);
     List<LabOrder> findByStatus(LabOrderStatus status);
     List<LabOrder> findByStatusIn(List<LabOrderStatus> statuses);

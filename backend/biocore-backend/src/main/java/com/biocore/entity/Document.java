@@ -22,6 +22,10 @@ public class Document {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "appointment_id")
+    private Appointment appointment;
+
     /** RN-05 / RN-L04: Solo PDF */
     @Column(nullable = false)
     private String fileName;

@@ -5,6 +5,7 @@ import com.biocore.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +50,12 @@ public class Ticket {
     @Column(nullable = false)
     @Builder.Default
     private TicketPriority priority = TicketPriority.NORMAL;
+
+    /** Link to the appointment that originated this ticket (null for walk-ins) */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "appointment_id")
+    private Appointment appointment;
 
     /** CONSULTA, EMERGENCIA, LABORATORIO, FARMACIA */
     @Column(nullable = false)

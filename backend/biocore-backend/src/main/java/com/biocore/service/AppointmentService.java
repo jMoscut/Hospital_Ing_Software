@@ -53,6 +53,7 @@ public class AppointmentService {
     private final SlotReservationRepository  slotReservationRepository;
     private final DoctorScheduleService      doctorScheduleService;
     private final LabExamRepository          labExamRepository;
+    private final EmailService               emailService;
 
     /**
      * Returns available time slots for a clinic+date.
@@ -137,7 +138,9 @@ public class AppointmentService {
             }
         }
 
-        slotReservationRepository.deleteBySlot(clinicId, date, time, patientId);
+        // Clear ALL of this patient's reservations for this date before creating a new one
+        // Prevents multiple stale reservations from accumulating when frontend cancellation fails silently
+        slotReservationRepository.deleteAllByPatientAndDate(patientId, date);
         slotReservationRepository.deleteExpired(now);
 
         LocalDateTime expiresAt = now.plusMinutes(10);
@@ -259,6 +262,7 @@ public class AppointmentService {
         req.setPatientId(appt.getPatient().getId());
         req.setClinicId(appt.getClinic().getId());
         req.setDoctorId(appt.getDoctor() != null ? appt.getDoctor().getId() : null);
+        req.setAppointmentId(appointmentId);
         req.setType(appt.getType());
         req.setNotes(appt.getNotes() != null && !appt.getNotes().isBlank()
                 ? appt.getNotes()
@@ -266,6 +270,8 @@ public class AppointmentService {
         req.setScheduledDate(appt.getScheduledDate());
         req.setScheduledTime(appt.getScheduledTime());
         com.biocore.dto.TicketDTO ticket = ticketService.create(req);
+
+        emailService.sendAppointmentSummaryEmail(appt.getPatient(), appt, ticket.getTicketNumber());
 
         Map<String, Object> response = buildResponse(appt);
         response.put("ticketNumber", ticket.getTicketNumber());

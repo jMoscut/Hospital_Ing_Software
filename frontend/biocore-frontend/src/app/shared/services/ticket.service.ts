@@ -153,6 +153,16 @@ export class AppointmentService {
   getByVoucherCode(code: string): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.url}/voucher/${code}`);
   }
+
+  uploadDocuments(appointmentId: number, files: File[]): Observable<ApiResponse<any[]>> {
+    const form = new FormData();
+    files.forEach(f => form.append('files', f));
+    return this.http.post<ApiResponse<any[]>>(`${this.url}/${appointmentId}/documents`, form);
+  }
+
+  getDocuments(appointmentId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/${appointmentId}/documents`);
+  }
 }
 
 @Injectable({ providedIn: 'root' })

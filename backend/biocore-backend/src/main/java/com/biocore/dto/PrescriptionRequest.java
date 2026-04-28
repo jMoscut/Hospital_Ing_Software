@@ -15,7 +15,8 @@ public class PrescriptionRequest {
 
     @Data
     public static class PrescriptionItemRequest {
-        @NotNull private Long medicineId;
+        private Long medicineId;
+        private String customMedicineName;
         @NotNull private Integer quantity;
         private String dosage;
         private String instructions;

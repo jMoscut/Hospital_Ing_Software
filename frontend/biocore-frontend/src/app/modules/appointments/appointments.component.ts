@@ -151,11 +151,20 @@ const NOTIF_KEY = 'biocore_notification_settings';
               <div class="ticket-body">
                 <div class="ticket-name">{{ t.patientName }}</div>
                 <div class="ticket-sub">{{ t.clinicName }} · {{ t.type }}</div>
-                <div class="ticket-sub" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
+                <ng-container *ngIf="!isLabTicket(t)">
+                  <div class="ticket-sub ticket-doctor" *ngIf="t.doctorName">
+                    <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">stethoscope</mat-icon>
+                    Dr. {{ t.doctorName }}
+                  </div>
+                </ng-container>
               </div>
               <div class="ticket-right">
                 <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
-                <div class="ticket-time" *ngIf="t.createdAt">{{ t.createdAt | date:'HH:mm' }}</div>
+                <div class="ticket-time" *ngIf="t.scheduledTime">
+                  <mat-icon style="font-size:12px;width:12px;height:12px;vertical-align:middle">schedule</mat-icon>
+                  {{ t.scheduledTime }}
+                </div>
+                <div class="ticket-time" *ngIf="!t.scheduledTime && t.createdAt">{{ t.createdAt | date:'HH:mm' }}</div>
               </div>
               <div class="ticket-actions">
                 <button mat-icon-button color="warn" *ngIf="t.status === 'BEING_CALLED' && canManage()"
@@ -239,8 +248,18 @@ const NOTIF_KEY = 'biocore_notification_settings';
               <div class="ticket-body">
                 <div class="ticket-name">{{ t.patientName }}</div>
                 <div class="ticket-sub">{{ t.clinicName }} · {{ t.type }}</div>
+                <div class="ticket-sub ticket-doctor" *ngIf="!isLabTicket(t) && t.doctorName">
+                  <mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">stethoscope</mat-icon>
+                  Dr. {{ t.doctorName }}
+                </div>
               </div>
-              <span class="status-chip status-completed">Completado</span>
+              <div class="ticket-right">
+                <span class="status-chip status-completed">Completado</span>
+                <div class="ticket-time" *ngIf="t.scheduledTime">
+                  <mat-icon style="font-size:12px;width:12px;height:12px;vertical-align:middle">schedule</mat-icon>
+                  {{ t.scheduledTime }}
+                </div>
+              </div>
             </div>
             <div class="empty-state" *ngIf="completedTickets.length === 0">
               <mat-icon>task_alt</mat-icon>
@@ -312,8 +331,9 @@ const NOTIF_KEY = 'biocore_notification_settings';
     .ticket-body { flex: 1; }
     .ticket-name { font-weight: 600; }
     .ticket-sub { font-size: 0.8rem; color: #757575; margin-top: 2px; }
+    .ticket-doctor { color: #1565c0; font-size: 0.8rem; margin-top: 3px; display:flex; align-items:center; gap:3px; }
     .ticket-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-    .ticket-time { font-size: 0.75rem; color: #9e9e9e; }
+    .ticket-time { font-size: 0.8rem; color: #1D6C61; font-weight: 600; display:flex; align-items:center; gap:2px; }
     .ticket-actions { display: flex; gap: 4px; }
     .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
 
@@ -415,10 +435,19 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
     return this.doctorStatuses.some(d => d.available);
   }
 
+  isLabTicket(t: Ticket): boolean {
+    if (!t.clinicName) return false;
+    const name = t.clinicName.toLowerCase();
+    const clinic = this.visitClinics.find(c => c.id === t.clinicId);
+    if (clinic?.type === 'LABORATORY') return true;
+    return name.includes('laboratorio') || name.includes('lab');
+  }
+
   get isLabClinic(): boolean {
     if (!this.callClinicId) return false;
     const clinic = this.visitClinics.find(c => c.id === this.callClinicId);
     if (!clinic) return false;
+    if (clinic.type === 'LABORATORY') return true;
     const name = clinic.name.toLowerCase();
     return name.includes('laboratorio') || name.includes('lab');
   }

@@ -29,7 +29,7 @@ import { Patient } from '../../../core/models/patient.model';
     <div class="page-container">
       <div class="page-header">
         <h1>Registro / Edición de Paciente</h1>
-        <button mat-button routerLink="/patients">
+        <button mat-button type="button" routerLink="/patients">
           <mat-icon>arrow_back</mat-icon> Volver
         </button>
       </div>
@@ -51,7 +51,7 @@ import { Patient } from '../../../core/models/patient.model';
                     El DPI debe tener exactamente 13 dígitos numéricos
                   </mat-error>
                 </mat-form-field>
-                <button mat-raised-button color="primary" (click)="searchByDpi()" [disabled]="dpiForm.invalid || searching">
+                <button mat-raised-button color="primary" type="button" (click)="searchByDpi()" [disabled]="dpiForm.invalid || searching">
                   <mat-spinner *ngIf="searching" diameter="20"></mat-spinner>
                   <mat-icon *ngIf="!searching">search</mat-icon>
                   {{ searching ? 'Buscando...' : 'Buscar Paciente' }}
@@ -63,7 +63,7 @@ import { Patient } from '../../../core/models/patient.model';
                     <strong>Paciente encontrado:</strong> {{ existingPatient.firstName }} {{ existingPatient.lastName }}
                     <br><small>Código: {{ existingPatient.patientCode }}</small>
                   </div>
-                  <button mat-raised-button color="accent" matStepperNext>Editar datos →</button>
+                  <button mat-raised-button color="accent" type="button" matStepperNext>Editar datos →</button>
                 </div>
 
                 <div class="patient-new" *ngIf="dpiSearched && !existingPatient">
@@ -71,7 +71,7 @@ import { Patient } from '../../../core/models/patient.model';
                   <div>
                     <strong>Paciente no encontrado.</strong> Complete los datos para registrarlo.
                   </div>
-                  <button mat-raised-button color="primary" matStepperNext>Registrar →</button>
+                  <button mat-raised-button color="primary" type="button" matStepperNext>Registrar →</button>
                 </div>
               </form>
             </mat-step>
@@ -134,13 +134,35 @@ import { Patient } from '../../../core/models/patient.model';
                 </div>
 
                 <div class="step-actions">
-                  <button mat-button matStepperPrevious>← Anterior</button>
-                  <button mat-raised-button color="primary"
+                  <button mat-button type="button" matStepperPrevious>← Anterior</button>
+                  <button mat-raised-button color="primary" type="button"
                           (click)="submit()" [disabled]="patientForm.invalid || submitting">
                     <mat-spinner *ngIf="submitting" diameter="20"></mat-spinner>
                     <mat-icon *ngIf="!submitting">save</mat-icon>
                     {{ submitting ? 'Guardando...' : (existingPatient ? 'Guardar cambios' : 'Registrar paciente') }}
                   </button>
+                </div>
+
+                <!-- Confirmación y credenciales -->
+                <div class="success-box" *ngIf="registered">
+                  <mat-icon>check_circle</mat-icon>
+                  <div>
+                    <strong>{{ existingPatient ? 'Datos actualizados correctamente' : 'Paciente registrado exitosamente' }}</strong>
+                    <p *ngIf="newCredentials">Credenciales enviadas al correo del paciente.</p>
+                    <button mat-raised-button color="primary" type="button" style="margin-top:10px" (click)="goToPatients()">
+                      <mat-icon>people</mat-icon> Ver pacientes
+                    </button>
+                  </div>
+                </div>
+
+                <div class="credentials-box" *ngIf="newCredentials && registered" style="margin-top:12px">
+                  <mat-icon>key</mat-icon>
+                  <div>
+                    <strong>Credenciales generadas — entregar al paciente</strong>
+                    <p>El paciente deberá cambiar la contraseña en su primer inicio de sesión.</p>
+                    <div class="cred-row"><span>Usuario:</span> <code>{{ newCredentials.username }}</code></div>
+                    <div class="cred-row"><span>Contraseña temporal:</span> <code>{{ newCredentials.tempPassword }}</code></div>
+                  </div>
                 </div>
               </form>
             </mat-step>
@@ -166,6 +188,22 @@ import { Patient } from '../../../core/models/patient.model';
       background: #e3f2fd; padding: 16px; border-radius: 8px; color: #1565c0;
     }
     .patient-new mat-icon { font-size: 32px; width: 32px; height: 32px; }
+    .success-box {
+      display: flex; align-items: flex-start; gap: 12px; margin-top: 16px;
+      background: #e8f5e9; padding: 16px; border-radius: 8px; color: #2e7d32;
+    }
+    .success-box mat-icon { font-size: 32px; width: 32px; height: 32px; flex-shrink: 0; }
+    .credentials-box {
+      display: flex; align-items: flex-start; gap: 16px;
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+      padding: 16px 20px; margin: 12px 0;
+    }
+    .credentials-box mat-icon { font-size: 28px; width: 28px; height: 28px; color: #f57f17; flex-shrink: 0; margin-top: 4px; }
+    .credentials-box strong { color: #e65100; font-size: 0.95rem; }
+    .credentials-box p { color: #555; font-size: 0.82rem; margin: 4px 0 10px; }
+    .cred-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 4px; }
+    .cred-row span { color: #757575; min-width: 140px; }
+    .cred-row code { background: #fff3e0; padding: 2px 8px; border-radius: 4px; font-size: 1rem; font-weight: 700; letter-spacing: 0.5px; color: #e65100; }
   `]
 })
 export class PatientRegisterComponent implements OnInit {
@@ -176,6 +214,8 @@ export class PatientRegisterComponent implements OnInit {
   dpiSearched = false;
   searching = false;
   submitting = false;
+  registered = false;
+  newCredentials: { username: string; tempPassword: string } | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -241,8 +281,8 @@ export class PatientRegisterComponent implements OnInit {
       this.patientService.update(this.existingPatient.id, data).subscribe({
         next: res => {
           if (res.success) {
+            this.registered = true;
             this.notification.success('Datos del paciente actualizados correctamente');
-            this.router.navigate(['/patients']);
           } else {
             this.notification.error(res.message || 'Error al actualizar');
           }
@@ -254,11 +294,18 @@ export class PatientRegisterComponent implements OnInit {
         }
       });
     } else {
-      this.patientService.create(data).subscribe({
+      const createData = { ...data, createAccount: true };
+      this.patientService.create(createData).subscribe({
         next: res => {
           if (res.success) {
+            if ((res.data as any).tempPassword) {
+              this.newCredentials = {
+                username: (res.data as any).username ?? data.dpi,
+                tempPassword: (res.data as any).tempPassword
+              };
+            }
+            this.registered = true;
             this.notification.success(`Paciente ${res.data.patientCode} registrado exitosamente`);
-            this.router.navigate(['/patients']);
           } else {
             this.notification.error(res.message || 'Error al registrar');
           }
@@ -270,5 +317,9 @@ export class PatientRegisterComponent implements OnInit {
         }
       });
     }
+  }
+
+  goToPatients(): void {
+    this.router.navigate(['/patients']);
   }
 }
