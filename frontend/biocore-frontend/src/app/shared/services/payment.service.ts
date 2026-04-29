@@ -83,6 +83,38 @@ export class EmergencyService {
   register(data: any): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.url}/register`, data);
   }
+
+  registerVitals(ticketId: number, data: any): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.url}/vitals/${ticketId}`, data);
+  }
+
+  getPendingPayments(): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/pending-payments`);
+  }
+
+  processPayment(ticketId: number, amount: number, method: string): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.url}/payment/${ticketId}/process`, { amount, method });
+  }
+
+  getReports(): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/reports`);
+  }
+
+  completeRegistration(reportId: number, data: any): Observable<ApiResponse<any>> {
+    return this.http.put<ApiResponse<any>>(`${this.url}/reports/${reportId}/register-patient`, data);
+  }
+
+  markAttended(ticketId: number): Observable<ApiResponse<any>> {
+    return this.http.put<ApiResponse<any>>(`${this.url}/tickets/${ticketId}/mark-attended`, {});
+  }
+
+  getMyEmergencyTickets(): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/my-tickets`);
+  }
+
+  submitMedicalReport(ticketId: number, data: { diagnosis: string; treatment: string; medications: string }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.url}/tickets/${ticketId}/medical-report`, data);
+  }
 }
 
 @Injectable({ providedIn: 'root' })

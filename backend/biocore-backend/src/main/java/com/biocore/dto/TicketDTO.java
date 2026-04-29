@@ -22,6 +22,7 @@ public class TicketDTO {
     private Long appointmentId;
     private String patientName;
     private String patientCode;
+    private String patientDpi;
     private Long clinicId;
     private String clinicName;
     private Long doctorId;
@@ -45,6 +46,7 @@ public class TicketDTO {
                 .appointmentId(t.getAppointment() != null ? t.getAppointment().getId() : null)
                 .patientName(t.getPatient().getFirstName() + " " + t.getPatient().getLastName())
                 .patientCode(t.getPatient().getPatientCode())
+                .patientDpi(t.getPatient().getDpi())
                 .clinicId(t.getClinic().getId())
                 .clinicName(t.getClinic().getName())
                 .doctorId(t.getDoctor() != null ? t.getDoctor().getId() : null)

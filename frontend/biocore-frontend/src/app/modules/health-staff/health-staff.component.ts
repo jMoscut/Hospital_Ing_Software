@@ -464,6 +464,18 @@ import { Patient } from '../../core/models/patient.model';
     .sample-receipt-row { display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#333; }
     .sample-receipt-row mat-icon { font-size:16px;width:16px;height:16px;color:#2e7d32;flex-shrink:0; }
     .sample-receipt-row code { background:#e0f2f1;padding:2px 8px;border-radius:4px;font-weight:700;color:#00695c;font-size:0.95rem; }
+    /* Emergency tab */
+    .emg-empty { display:flex;align-items:center;gap:12px;padding:40px;color:#9e9e9e;justify-content:center; }
+    .emg-empty mat-icon { font-size:40px;width:40px;height:40px;opacity:0.4; }
+    .emg-ticket-card { display:flex;align-items:flex-start;justify-content:space-between;gap:16px;background:#fff5f5;border:1px solid #ef9a9a;border-left:4px solid #c62828;border-radius:10px;padding:16px 20px;margin-bottom:12px; }
+    .emg-ticket-left { flex:1;min-width:0; }
+    .emg-urgente-badge { background:#c62828;color:white;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:0.05em;display:inline-block;margin-bottom:6px; }
+    .emg-ticket-num { font-size:1.8rem;font-weight:800;color:#b71c1c;line-height:1; }
+    .emg-ticket-name { font-size:1rem;font-weight:600;color:#333;margin:4px 0; }
+    .emg-ticket-notes { font-size:0.85rem;color:#555;background:#fce4ec;border-radius:6px;padding:4px 10px;margin-bottom:4px;display:inline-block; }
+    .emg-ticket-status { font-size:0.82rem;color:#757575;margin-top:4px; }
+    .emg-doctor { font-size:0.82rem;color:#555;display:flex;align-items:center;gap:4px;margin-top:4px; }
+    .emg-ticket-actions { display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0; }
   `]
 })
 export class HealthStaffComponent implements OnInit, OnDestroy {
@@ -789,4 +801,5 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
       error: () => {}
     });
   }
+
 }

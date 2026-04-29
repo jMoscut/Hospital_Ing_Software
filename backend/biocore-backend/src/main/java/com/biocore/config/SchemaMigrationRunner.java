@@ -43,6 +43,9 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         // Recreate role check constraint to include PATIENT role
         fixRoleCheckConstraint();
 
+        // Recreate ticket status check constraint to include PENDING_PAYMENT
+        fixTicketStatusCheckConstraint();
+
         log.info("Schema migration checks complete.");
     }
 
@@ -57,6 +60,19 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             log.info("Schema: users_role_check constraint updated to include PATIENT role");
         } catch (Exception e) {
             log.warn("Schema migration warning for users_role_check: {}", e.getMessage());
+        }
+    }
+
+    private void fixTicketStatusCheckConstraint() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check");
+            jdbcTemplate.execute(
+                "ALTER TABLE tickets ADD CONSTRAINT tickets_status_check CHECK (" +
+                "status IN ('PENDING_PAYMENT','WAITING','CALLED','IN_CONSULTATION','COMPLETED','CANCELLED','NO_SHOW'))"
+            );
+            log.info("Schema: tickets_status_check constraint updated to include PENDING_PAYMENT");
+        } catch (Exception e) {
+            log.warn("Schema migration warning for tickets_status_check: {}", e.getMessage());
         }
     }
 

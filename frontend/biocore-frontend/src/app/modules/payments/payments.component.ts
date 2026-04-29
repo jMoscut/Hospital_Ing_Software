@@ -7,13 +7,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { PatientService } from '../../shared/services/patient.service';
-import { PaymentService, InsuranceService } from '../../shared/services/payment.service';
+import { PaymentService, InsuranceService, EmergencyService } from '../../shared/services/payment.service';
 import { AppointmentService, ClinicService } from '../../shared/services/ticket.service';
 import { LabExamService } from '../../shared/services/lab.service';
 import { NotificationService } from '../../shared/services/notification.service';
@@ -39,7 +38,7 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
     CommonModule, ReactiveFormsModule, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatTableModule, MatDividerModule, MatTabsModule,
+    MatDividerModule, MatTabsModule,
     MatProgressSpinnerModule, MatRadioModule
   ],
   template: `
@@ -50,116 +49,7 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
 
       <mat-tab-group animationDuration="200ms">
 
-        <!-- TAB 1: Pagos Generales -->
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">payments</mat-icon>
-            Pagos Generales
-          </ng-template>
-          <div style="padding:24px 0">
-            <div class="payments-layout">
-              <mat-card>
-                <mat-card-header><mat-card-title>Identificar Paciente</mat-card-title></mat-card-header>
-                <mat-card-content>
-                  <form [formGroup]="searchForm" class="search-row">
-                    <mat-form-field appearance="outline">
-                      <mat-label>DPI o Código de Paciente</mat-label>
-                      <mat-icon matPrefix>search</mat-icon>
-                      <input matInput formControlName="query" placeholder="0000000000000 o PAT-0001">
-                    </mat-form-field>
-                    <button mat-raised-button color="primary" type="button" (click)="searchPatient()">Buscar</button>
-                  </form>
-                  <div class="patient-found" *ngIf="patient">
-                    <div class="patient-info">
-                      <mat-icon>person</mat-icon>
-                      <div>
-                        <strong>{{ patient.firstName }} {{ patient.lastName }}</strong>
-                        <div class="patient-meta">
-                          {{ patient.patientCode }} · {{ patient.dpi }}
-                          <span *ngIf="patient.insuranceName" class="insurance-badge">
-                            {{ patient.insuranceName }} ({{ patient.discountPercentage }}% desc.)
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </mat-card-content>
-              </mat-card>
-
-              <mat-card *ngIf="patient">
-                <mat-card-header><mat-card-title>Registrar Cargo</mat-card-title></mat-card-header>
-                <mat-card-content>
-                  <form [formGroup]="paymentForm" class="form-grid">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Tipo de Servicio</mat-label>
-                      <mat-select formControlName="type">
-                        <mat-option value="CONSULTATION">Consulta Médica</mat-option>
-                        <mat-option value="LABORATORY">Laboratorio</mat-option>
-                        <mat-option value="PHARMACY">Farmacia</mat-option>
-                        <mat-option value="EMERGENCY">Emergencia</mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                    <mat-form-field appearance="outline">
-                      <mat-label>Monto (Q)</mat-label>
-                      <input matInput type="number" formControlName="amount" step="0.01">
-                    </mat-form-field>
-                  </form>
-                  <div class="discount-summary" *ngIf="paymentForm.value.amount && patient?.discountPercentage">
-                    <div class="summary-row"><span>Subtotal:</span><span>Q{{ paymentForm.value.amount }}</span></div>
-                    <div class="summary-row discount"><span>Descuento ({{ patient?.discountPercentage }}%):</span><span>-Q{{ getDiscount() }}</span></div>
-                    <mat-divider></mat-divider>
-                    <div class="summary-row total"><strong>Total Neto:</strong><strong>Q{{ getNetAmount() }}</strong></div>
-                  </div>
-                  <button mat-raised-button color="primary" (click)="createPayment()" [disabled]="paymentForm.invalid">
-                    <mat-icon>add</mat-icon> Generar Orden de Pago
-                  </button>
-                </mat-card-content>
-              </mat-card>
-
-              <mat-card *ngIf="pendingPayments.length > 0">
-                <mat-card-header><mat-card-title>Pagos Pendientes</mat-card-title></mat-card-header>
-                <mat-card-content>
-                  <div class="payment-row" *ngFor="let p of pendingPayments">
-                    <div class="payment-info">
-                      <strong>{{ p.type }}</strong>
-                      <div class="payment-meta">Total: Q{{ p.netAmount }}<span *ngIf="p.discountAmount > 0"> (descuento: Q{{ p.discountAmount }})</span></div>
-                    </div>
-                    <div class="payment-actions">
-                      <mat-form-field appearance="outline" style="width:160px">
-                        <mat-label>Método</mat-label>
-                        <mat-select [(ngModel)]="selectedMethods[p.id]" [ngModelOptions]="{standalone: true}">
-                          <mat-option value="CASH">Efectivo</mat-option>
-                          <mat-option value="DEBIT_CARD">Débito</mat-option>
-                          <mat-option value="CREDIT_CARD">Crédito</mat-option>
-                        </mat-select>
-                      </mat-form-field>
-                      <button mat-raised-button color="primary" [disabled]="!selectedMethods[p.id]" (click)="processPayment(p)">
-                        <mat-icon>payments</mat-icon> Cobrar
-                      </button>
-                    </div>
-                  </div>
-                </mat-card-content>
-              </mat-card>
-
-              <mat-card *ngIf="paidPayments.length > 0">
-                <mat-card-header><mat-card-title>Pagos Realizados</mat-card-title></mat-card-header>
-                <mat-card-content>
-                  <table mat-table [dataSource]="paidPayments">
-                    <ng-container matColumnDef="invoice"><th mat-header-cell *matHeaderCellDef>Factura</th><td mat-cell *matCellDef="let p">{{ p.invoiceNumber || '-' }}</td></ng-container>
-                    <ng-container matColumnDef="type"><th mat-header-cell *matHeaderCellDef>Servicio</th><td mat-cell *matCellDef="let p">{{ p.type }}</td></ng-container>
-                    <ng-container matColumnDef="amount"><th mat-header-cell *matHeaderCellDef>Neto</th><td mat-cell *matCellDef="let p">Q{{ p.netAmount }}</td></ng-container>
-                    <ng-container matColumnDef="method"><th mat-header-cell *matHeaderCellDef>Método</th><td mat-cell *matCellDef="let p">{{ p.method }}</td></ng-container>
-                    <ng-container matColumnDef="date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let p">{{ p.paidAt | date:'dd/MM/yyyy HH:mm' }}</td></ng-container>
-                    <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                    <tr mat-row *matRowDef="let row; columns: columns;"></tr>
-                  </table>
-                </mat-card-content>
-              </mat-card>
-            </div>
-          </div>
-        </mat-tab>
-
-        <!-- TAB 2: Citas Presenciales -->
+        <!-- TAB 1: Citas Presenciales -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">event_available</mat-icon>
@@ -835,6 +725,181 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
           </div>
         </mat-tab>
 
+        <!-- TAB 3: Emergencias -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle;color:#c62828">emergency</mat-icon>
+            Emergencias
+          </ng-template>
+          <div class="tab-content">
+
+            <!-- RECEIPT -->
+            <ng-container *ngIf="emgStep === 'receipt' && emgReceipt">
+              <mat-card class="receipt-card emg-receipt-card">
+                <mat-card-content>
+                  <div class="receipt-header">
+                    <mat-icon class="receipt-icon emg-icon">local_hospital</mat-icon>
+                    <div>
+                      <h2>Emergencia Pagada</h2>
+                      <p>El turno entró a la cola con prioridad URGENTE.</p>
+                    </div>
+                  </div>
+                  <div class="receipt-body">
+                    <div class="receipt-row"><mat-icon>confirmation_number</mat-icon><span><strong>Turno:</strong> {{ emgReceipt.ticketNumber }}</span></div>
+                    <div class="receipt-row"><mat-icon>person</mat-icon><span><strong>Paciente:</strong> {{ emgReceipt.patientName }}</span></div>
+                    <div class="receipt-row"><mat-icon>receipt_long</mat-icon><span><strong>Factura:</strong> {{ emgReceipt.invoiceNumber }}</span></div>
+                    <mat-divider style="margin:12px 0"></mat-divider>
+                    <div class="receipt-row"><mat-icon>money_off</mat-icon><span><strong>Monto bruto:</strong> Q{{ emgReceipt.amount }}</span></div>
+                    <div class="receipt-row" *ngIf="emgReceipt.discountAmount > 0" style="color:#2e7d32">
+                      <mat-icon>discount</mat-icon><span><strong>Descuento seguro:</strong> -Q{{ emgReceipt.discountAmount }}</span>
+                    </div>
+                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>Monto cobrado:</strong> Q{{ emgReceipt.netAmount }}</span></div>
+                    <div class="receipt-row" *ngIf="emgReceipt.payMode === 'EFECTIVO'"><mat-icon>money</mat-icon><span><strong>Efectivo recibido:</strong> Q{{ emgReceipt.cashReceived }}</span></div>
+                    <div class="receipt-row receipt-change" *ngIf="emgReceipt.change > 0"><mat-icon>change_circle</mat-icon><span><strong>Vuelto:</strong> Q{{ emgReceipt.change.toFixed(2) }}</span></div>
+                    <div class="receipt-row"><mat-icon>credit_card</mat-icon><span><strong>Método:</strong> {{ emgReceipt.payMode === 'TARJETA' ? 'Tarjeta (POS)' : 'Efectivo' }}</span></div>
+                    <div class="receipt-row" *ngIf="emgReceipt.hasEmail" style="color:#1565c0">
+                      <mat-icon>email</mat-icon><span>Recibo enviado a <strong>{{ emgReceipt.email }}</strong></span>
+                    </div>
+                  </div>
+                  <button mat-raised-button color="primary" style="margin-top:24px" (click)="emgReset()">
+                    <mat-icon>refresh</mat-icon> Ver Órdenes
+                  </button>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- PAYMENT STEP -->
+            <ng-container *ngIf="emgStep === 'payment' && emgSelectedOrder">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Cobro de Emergencia</mat-card-title>
+                  <mat-card-subtitle>Turno #{{ emgSelectedOrder.ticketNumber }} — {{ emgSelectedOrder.patientName }}</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+
+                  <div class="emg-order-info">
+                    <div class="emg-order-row"><mat-icon>badge</mat-icon><span><strong>DPI:</strong> {{ emgSelectedOrder.patientDpi ?? '—' }}</span></div>
+                    <div class="emg-order-row"><mat-icon>notes</mat-icon><span><strong>Motivo:</strong> {{ emgSelectedOrder.notes ?? '—' }}</span></div>
+                    <div class="emg-order-row"><mat-icon>schedule</mat-icon><span><strong>Registrado:</strong> {{ emgSelectedOrder.createdAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+                  </div>
+
+                  <!-- Amount entry -->
+                  <mat-form-field appearance="outline" style="width:100%;margin-top:16px">
+                    <mat-label>Monto a cobrar (Q) *</mat-label>
+                    <mat-icon matPrefix>attach_money</mat-icon>
+                    <input matInput type="number" [(ngModel)]="emgAmount" [ngModelOptions]="{standalone:true}"
+                           min="0.01" step="0.01" placeholder="0.00" (ngModelChange)="emgComputeChange()">
+                  </mat-form-field>
+
+                  <!-- Method -->
+                  <h3 style="margin:16px 0 12px">Método de Pago</h3>
+                  <div class="pay-method-grid">
+                    <button type="button" [class]="'pay-method-btn' + (emgPayMode === 'TARJETA' ? ' active' : '')"
+                            (click)="emgPayMode = 'TARJETA'; emgCashReceived = null">
+                      <mat-icon>credit_card</mat-icon><span>Tarjeta (POS)</span>
+                    </button>
+                    <button type="button" [class]="'pay-method-btn' + (emgPayMode === 'EFECTIVO' ? ' active' : '')"
+                            (click)="emgPayMode = 'EFECTIVO'">
+                      <mat-icon>money</mat-icon><span>Efectivo</span>
+                    </button>
+                  </div>
+
+                  <div class="pos-area" *ngIf="emgPayMode === 'TARJETA'">
+                    <div class="pos-device">
+                      <mat-icon>point_of_sale</mat-icon>
+                      <span>Terminal POS</span>
+                      <small>Presente la tarjeta en el lector y confirme</small>
+                    </div>
+                    <button mat-raised-button color="warn" style="width:100%;font-size:1.05rem;padding:14px"
+                            [disabled]="emgProcessing || !emgAmount || emgAmount <= 0" (click)="emgProcessPayment()">
+                      <mat-spinner *ngIf="emgProcessing" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                      <mat-icon *ngIf="!emgProcessing">point_of_sale</mat-icon>
+                      {{ emgProcessing ? 'Procesando...' : 'Cobrar Q' + (emgAmount || 0) + ' con POS' }}
+                    </button>
+                  </div>
+
+                  <div class="cash-area" *ngIf="emgPayMode === 'EFECTIVO'">
+                    <mat-form-field appearance="outline" class="wide">
+                      <mat-label>Efectivo recibido (Q)</mat-label>
+                      <mat-icon matPrefix>money</mat-icon>
+                      <input matInput type="number" [(ngModel)]="emgCashReceived" [ngModelOptions]="{standalone:true}"
+                             min="0" step="0.01" (ngModelChange)="emgComputeChange()">
+                    </mat-form-field>
+                    <div class="change-display" *ngIf="emgCashReceived !== null && emgAmount && emgCashReceived >= emgAmount">
+                      <mat-icon>change_circle</mat-icon>
+                      <span>Vuelto a entregar: <strong>Q{{ emgChange.toFixed(2) }}</strong></span>
+                    </div>
+                    <div class="insufficient-notice" *ngIf="emgCashReceived !== null && emgAmount && emgCashReceived < emgAmount">
+                      <mat-icon>warning</mat-icon>
+                      <span>Efectivo insuficiente. Faltan Q{{ (emgAmount - emgCashReceived).toFixed(2) }}</span>
+                    </div>
+                    <button mat-raised-button color="warn" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
+                            [disabled]="emgProcessing || !emgAmount || emgAmount <= 0 || emgCashReceived === null || emgCashReceived < emgAmount"
+                            (click)="emgProcessPayment()">
+                      <mat-spinner *ngIf="emgProcessing" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
+                      <mat-icon *ngIf="!emgProcessing">payments</mat-icon>
+                      {{ emgProcessing ? 'Procesando...' : 'Confirmar Pago en Efectivo' }}
+                    </button>
+                  </div>
+
+                  <div class="step-actions" style="margin-top:16px">
+                    <button mat-button (click)="emgStep = 'list'" [disabled]="emgProcessing">← Volver</button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+            <!-- LIST STEP -->
+            <ng-container *ngIf="emgStep === 'list'">
+              <mat-card>
+                <mat-card-header>
+                  <mat-icon mat-card-avatar style="color:#c62828">emergency</mat-icon>
+                  <mat-card-title>Órdenes de Pago — Emergencias</mat-card-title>
+                  <mat-card-subtitle>Órdenes pendientes de cobro (actualiza automáticamente)</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                  <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
+                    <mat-form-field appearance="outline" style="flex:1">
+                      <mat-label>Buscar por DPI o nombre</mat-label>
+                      <mat-icon matPrefix>search</mat-icon>
+                      <input matInput [(ngModel)]="emgSearch" [ngModelOptions]="{standalone:true}"
+                             (ngModelChange)="emgFilter()" placeholder="Escriba DPI o nombre...">
+                    </mat-form-field>
+                    <button mat-icon-button (click)="emgLoadOrders()" title="Actualizar">
+                      <mat-icon>refresh</mat-icon>
+                    </button>
+                  </div>
+
+                  <div *ngIf="emgFilteredOrders.length === 0" class="no-slots" style="padding:24px;justify-content:center">
+                    <mat-icon>inbox</mat-icon> No hay órdenes pendientes de pago
+                  </div>
+
+                  <div *ngFor="let order of emgFilteredOrders" class="emg-order-card">
+                    <div class="emg-order-left">
+                      <span class="emg-urgente-badge">URGENTE</span>
+                      <div class="emg-order-name">{{ order.patientName }}</div>
+                      <div class="emg-order-sub">
+                        <span *ngIf="order.patientDpi">DPI: {{ order.patientDpi }}</span>
+                        <span *ngIf="order.notes"> · {{ order.notes }}</span>
+                      </div>
+                      <div class="emg-order-time">
+                        <mat-icon style="font-size:14px;width:14px;height:14px">schedule</mat-icon>
+                        {{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                        · Turno: <strong>{{ order.ticketNumber }}</strong>
+                      </div>
+                    </div>
+                    <button mat-raised-button color="warn" (click)="emgSelectOrder(order)">
+                      <mat-icon>payments</mat-icon> Cobrar
+                    </button>
+                  </div>
+
+                </mat-card-content>
+              </mat-card>
+            </ng-container>
+
+          </div>
+        </mat-tab>
+
       </mat-tab-group>
     </div>
   `,
@@ -954,18 +1019,22 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
     .upload-errors { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
     .upload-error-item { display:flex; align-items:flex-start; gap:8px; background:#fce4ec; border-radius:6px; padding:6px 10px; font-size:0.82rem; color:#c62828; }
     .upload-error-item mat-icon { font-size:16px; width:16px; height:16px; flex-shrink:0; margin-top:1px; }
+
+    /* Emergency tab */
+    .emg-receipt-card { border-left:4px solid #c62828; }
+    .emg-icon { color:#c62828 !important; }
+    .emg-order-card { display:flex; align-items:center; justify-content:space-between; gap:16px; background:#fff5f5; border:1px solid #ef9a9a; border-left:4px solid #c62828; border-radius:8px; padding:14px 16px; margin-bottom:10px; }
+    .emg-order-left { flex:1; min-width:0; }
+    .emg-urgente-badge { background:#c62828; color:white; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:4px; letter-spacing:0.05em; display:inline-block; margin-bottom:4px; }
+    .emg-order-name { font-size:1rem; font-weight:600; color:#b71c1c; }
+    .emg-order-sub { font-size:0.85rem; color:#555; margin-top:2px; }
+    .emg-order-time { font-size:0.8rem; color:#9e9e9e; margin-top:4px; display:flex; align-items:center; gap:4px; }
+    .emg-order-info { background:#fff5f5; border:1px solid #ef9a9a; border-radius:8px; padding:14px 16px; margin-bottom:8px; display:flex; flex-direction:column; gap:8px; }
+    .emg-order-row { display:flex; align-items:center; gap:8px; font-size:0.92rem; }
+    .emg-order-row mat-icon { color:#c62828; font-size:20px; width:20px; height:20px; flex-shrink:0; }
   `]
 })
 export class PaymentsComponent implements OnInit, OnDestroy {
-
-  // ── Pagos Generales ────────────────────────────────────────────────────────
-  searchForm: FormGroup;
-  paymentForm: FormGroup;
-  patient: Patient | null = null;
-  pendingPayments: Payment[] = [];
-  paidPayments: Payment[] = [];
-  selectedMethods: Record<number, string> = {};
-  columns = ['invoice', 'type', 'amount', 'method', 'date'];
 
   // ── Citas Presenciales ─────────────────────────────────────────────────────
   citStep: CitStep = 'dpi';
@@ -1065,6 +1134,20 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   labBooking = false;
   labReceipt: any = null;
 
+  // ── Emergencias ────────────────────────────────────────────────────────────
+  emgStep: 'list' | 'payment' | 'receipt' = 'list';
+  emgPendingOrders: any[] = [];
+  emgFilteredOrders: any[] = [];
+  emgSearch = '';
+  emgSelectedOrder: any = null;
+  emgAmount: number | null = null;
+  emgPayMode: PayMode | null = null;
+  emgCashReceived: number | null = null;
+  emgChange = 0;
+  emgProcessing = false;
+  emgReceipt: any = null;
+  private emgPollTimer: any = null;
+
   constructor(
     private fb: FormBuilder,
     private patientService: PatientService,
@@ -1073,14 +1156,9 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     private clinicService: ClinicService,
     private insuranceService: InsuranceService,
     private labExamService: LabExamService,
+    private emergencyService: EmergencyService,
     private notification: NotificationService
-  ) {
-    this.searchForm = this.fb.group({ query: ['', Validators.required] });
-    this.paymentForm = this.fb.group({
-      type: ['CONSULTATION', Validators.required],
-      amount: [null, [Validators.required, Validators.min(0.01)]]
-    });
-  }
+  ) {}
 
   ngOnInit(): void {
     this.citDpiForm = this.fb.group({
@@ -1142,6 +1220,9 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.labCalYear = now.getFullYear();
     this.labCalMonth = now.getMonth();
     this.labBuildCalendar();
+
+    this.emgLoadOrders();
+    this.emgStartPolling();
   }
 
   ngOnDestroy(): void {
@@ -1155,66 +1236,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     }
     this.labClearReservationTimer();
     this.labStopSlotPolling();
-  }
-
-  // ── Pagos Generales methods ────────────────────────────────────────────────
-
-  searchPatient(): void {
-    const q = this.searchForm.value.query;
-    const obs = q.match(/^\d{13}$/)
-      ? this.patientService.getByDpi(q)
-      : this.patientService.search(q);
-    (obs as any).subscribe({
-      next: (res: any) => {
-        const p = Array.isArray(res.data) ? res.data[0] : res.data;
-        if (p) { this.patient = p; this.loadPayments(p.id); }
-        else this.notification.error('Paciente no encontrado');
-      },
-      error: () => this.notification.error('Paciente no encontrado')
-    });
-  }
-
-  loadPayments(patientId: number): void {
-    this.paymentService.getByPatient(patientId).subscribe(res => {
-      if (res.success) {
-        this.pendingPayments = res.data.filter(p => p.status === 'PENDING');
-        this.paidPayments   = res.data.filter(p => p.status === 'PAID');
-        this.selectedMethods = {};
-      }
-    });
-  }
-
-  getDiscount(): string {
-    const amount = this.paymentForm.value.amount || 0;
-    return (amount * (this.patient?.discountPercentage || 0) / 100).toFixed(2);
-  }
-
-  getNetAmount(): string {
-    return (+(this.paymentForm.value.amount || 0) - +this.getDiscount()).toFixed(2);
-  }
-
-  createPayment(): void {
-    if (!this.patient) return;
-    this.paymentService.create({ patientId: this.patient.id, ...this.paymentForm.value }).subscribe({
-      next: res => {
-        if (res.success) {
-          this.notification.success('Orden de pago generada');
-          this.loadPayments(this.patient!.id);
-          this.paymentForm.reset({ type: 'CONSULTATION' });
-        }
-      }
-    });
-  }
-
-  processPayment(payment: Payment): void {
-    this.paymentService.process(payment.id, this.selectedMethods[payment.id] as any).subscribe({
-      next: res => {
-        if (res.success) {
-          this.notification.success(`Pago procesado. Factura: ${res.data.invoiceNumber}`);
-          this.loadPayments(this.patient!.id);
-        }
-      }
-    });
+    this.emgStopPolling();
   }
 
   // ── Citas Presenciales: DPI ────────────────────────────────────────────────
@@ -1980,5 +2002,103 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.labCalYear = now.getFullYear();
     this.labCalMonth = now.getMonth();
     this.labBuildCalendar();
+  }
+
+  // ── Emergencias ────────────────────────────────────────────────────────────
+
+  emgLoadOrders(): void {
+    this.emergencyService.getPendingPayments().subscribe({
+      next: res => {
+        if (res.success) {
+          this.emgPendingOrders = res.data;
+          this.emgFilter();
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  emgStartPolling(): void {
+    this.emgStopPolling();
+    this.emgPollTimer = setInterval(() => {
+      if (this.emgStep === 'list') this.emgLoadOrders();
+    }, 5000);
+  }
+
+  emgStopPolling(): void {
+    if (this.emgPollTimer) { clearInterval(this.emgPollTimer); this.emgPollTimer = null; }
+  }
+
+  emgFilter(): void {
+    const q = this.emgSearch.trim().toLowerCase();
+    if (!q) {
+      this.emgFilteredOrders = [...this.emgPendingOrders];
+    } else {
+      this.emgFilteredOrders = this.emgPendingOrders.filter(o =>
+        (o.patientName ?? '').toLowerCase().includes(q) ||
+        (o.patientDpi ?? '').toLowerCase().includes(q) ||
+        (o.ticketNumber ?? '').toLowerCase().includes(q)
+      );
+    }
+  }
+
+  emgSelectOrder(order: any): void {
+    this.emgSelectedOrder = order;
+    this.emgAmount = null;
+    this.emgPayMode = null;
+    this.emgCashReceived = null;
+    this.emgChange = 0;
+    this.emgStep = 'payment';
+  }
+
+  emgComputeChange(): void {
+    this.emgChange = (this.emgCashReceived !== null && this.emgAmount !== null)
+      ? Math.max(0, this.emgCashReceived - this.emgAmount) : 0;
+  }
+
+  emgProcessPayment(): void {
+    if (!this.emgSelectedOrder || !this.emgAmount || this.emgAmount <= 0) return;
+    this.emgProcessing = true;
+    const method = this.emgPayMode === 'TARJETA' ? 'POS_CARD' : 'CASH';
+    this.emergencyService.processPayment(this.emgSelectedOrder.id, this.emgAmount, method).subscribe({
+      next: res => {
+        if (res.success) {
+          this.emgReceipt = {
+            ticketNumber:   res.data.ticketNumber,
+            patientName:    res.data.patientName,
+            invoiceNumber:  res.data.invoiceNumber,
+            amount:         res.data.amount,
+            discountAmount: res.data.discountAmount,
+            netAmount:      res.data.netAmount,
+            payMode:        this.emgPayMode,
+            cashReceived:   this.emgCashReceived,
+            change:         this.emgChange,
+            hasEmail:       res.data.hasEmail,
+            email:          res.data.email
+          };
+          this.emgStep = 'receipt';
+          this.notification.success('Pago de emergencia procesado.');
+        } else {
+          this.notification.error(res.message || 'Error al procesar pago');
+        }
+        this.emgProcessing = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al procesar pago');
+        this.emgProcessing = false;
+      }
+    });
+  }
+
+  emgReset(): void {
+    this.emgStep = 'list';
+    this.emgSelectedOrder = null;
+    this.emgAmount = null;
+    this.emgPayMode = null;
+    this.emgCashReceived = null;
+    this.emgChange = 0;
+    this.emgReceipt = null;
+    this.emgSearch = '';
+    this.emgLoadOrders();
   }
 }

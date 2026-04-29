@@ -213,16 +213,25 @@ public class AppointmentService {
             }
         }
 
-        BigDecimal fee;
+        BigDecimal grossFee;
         com.biocore.entity.LabExam labExam = null;
         if ("LABORATORIO".equals(type) && labExamId != null) {
             labExam = labExamRepository.findById(labExamId).orElse(null);
         }
         if (labExam != null && labExam.getPrice() != null && labExam.getPrice().compareTo(BigDecimal.ZERO) > 0) {
-            fee = labExam.getPrice();
+            grossFee = labExam.getPrice();
         } else {
-            fee = TYPE_FEE.getOrDefault(type, BigDecimal.valueOf(150.00));
+            grossFee = TYPE_FEE.getOrDefault(type, BigDecimal.valueOf(150.00));
         }
+
+        // Apply insurance discount automatically
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (patient.getInsurance() != null) {
+            BigDecimal pct = patient.getInsurance().getDiscountPercentage();
+            discountAmount = grossFee.multiply(pct).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        }
+        BigDecimal fee = grossFee.subtract(discountAmount);
+
         String voucherCode = generateVoucherCode();
 
         String finalNotes = notes;
@@ -244,7 +253,7 @@ public class AppointmentService {
             slotReservationRepository.deleteBySlot(clinicId, scheduledDate, scheduledTime, patientId);
         }
 
-        return buildBookResponse(saved, patient, clinic, assignedDoctor, fee, voucherCode, scheduledDate, scheduledTime, type);
+        return buildBookResponse(saved, patient, clinic, assignedDoctor, grossFee, discountAmount, fee, voucherCode, scheduledDate, scheduledTime, type);
     }
 
     /** Cashier confirms payment → appointment CONFIRMED → ticket enters queue. */
@@ -327,24 +336,28 @@ public class AppointmentService {
     }
 
     private Map<String, Object> buildBookResponse(Appointment saved, Patient patient, Clinic clinic,
-                                                    User doctor, BigDecimal fee, String voucherCode,
+                                                    User doctor, BigDecimal grossFee, BigDecimal discountAmount,
+                                                    BigDecimal netFee, String voucherCode,
                                                     LocalDate date, String time, String type) {
         Map<String, Object> r = new LinkedHashMap<>();
-        r.put("id",            saved.getId());
-        r.put("voucherCode",   voucherCode);
-        r.put("patientId",     patient.getId());
-        r.put("patientName",   patient.getFirstName() + " " + patient.getLastName());
-        r.put("patientCode",   patient.getPatientCode());
-        r.put("clinicId",      clinic.getId());
-        r.put("clinicName",    clinic.getName());
-        r.put("doctorId",      doctor != null ? doctor.getId() : null);
-        r.put("doctorName",    doctor != null ? doctor.getFirstName() + " " + doctor.getLastName() : null);
-        r.put("type",          type);
-        r.put("scheduledDate", date.toString());
-        r.put("scheduledTime", time);
-        r.put("amount",        fee);
-        r.put("status",        AppointmentStatus.PENDING_PAYMENT.name());
-        r.put("createdAt",     saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null);
+        r.put("id",                 saved.getId());
+        r.put("voucherCode",        voucherCode);
+        r.put("patientId",          patient.getId());
+        r.put("patientName",        patient.getFirstName() + " " + patient.getLastName());
+        r.put("patientCode",        patient.getPatientCode());
+        r.put("clinicId",           clinic.getId());
+        r.put("clinicName",         clinic.getName());
+        r.put("doctorId",           doctor != null ? doctor.getId() : null);
+        r.put("doctorName",         doctor != null ? doctor.getFirstName() + " " + doctor.getLastName() : null);
+        r.put("type",               type);
+        r.put("scheduledDate",      date.toString());
+        r.put("scheduledTime",      time);
+        r.put("grossAmount",        grossFee);
+        r.put("discountAmount",     discountAmount);
+        r.put("amount",             netFee);   // net fee (after discount)
+        r.put("discountPercentage", patient.getInsurance() != null ? patient.getInsurance().getDiscountPercentage() : BigDecimal.ZERO);
+        r.put("status",             AppointmentStatus.PENDING_PAYMENT.name());
+        r.put("createdAt",          saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null);
         return r;
     }
 

@@ -95,24 +95,22 @@ public class DataInitializer implements CommandLineRunner {
     // Clínicas
     // =========================================================
     private void initClinics() {
-        if (clinicRepository.count() == 0) {
-            clinicRepository.save(Clinic.builder()
-                    .name("Consulta Externa").type(ClinicType.EXTERNAL_CONSULTATION)
+        if (!clinicRepository.existsByType(ClinicType.EXTERNAL_CONSULTATION))
+            clinicRepository.save(Clinic.builder().name("Consulta Externa").type(ClinicType.EXTERNAL_CONSULTATION)
                     .maxDoctors(5).description("Clínica de consulta externa general").build());
-            clinicRepository.save(Clinic.builder()
-                    .name("Medicina General").type(ClinicType.GENERAL_MEDICINE)
+        if (!clinicRepository.existsByType(ClinicType.GENERAL_MEDICINE))
+            clinicRepository.save(Clinic.builder().name("Medicina General").type(ClinicType.GENERAL_MEDICINE)
                     .maxDoctors(3).description("Clínica de medicina general").build());
-            clinicRepository.save(Clinic.builder()
-                    .name("Laboratorio").type(ClinicType.LABORATORY)
+        if (!clinicRepository.existsByType(ClinicType.LABORATORY))
+            clinicRepository.save(Clinic.builder().name("Laboratorio").type(ClinicType.LABORATORY)
                     .maxDoctors(4).description("Laboratorio clínico").build());
-            clinicRepository.save(Clinic.builder()
-                    .name("Farmacia").type(ClinicType.PHARMACY)
+        if (!clinicRepository.existsByType(ClinicType.PHARMACY))
+            clinicRepository.save(Clinic.builder().name("Farmacia").type(ClinicType.PHARMACY)
                     .maxDoctors(2).description("Farmacia del hospital").build());
-            clinicRepository.save(Clinic.builder()
-                    .name("Emergencias").type(ClinicType.EMERGENCY)
+        if (!clinicRepository.existsByType(ClinicType.EMERGENCY))
+            clinicRepository.save(Clinic.builder().name("Emergencias").type(ClinicType.EMERGENCY)
                     .maxDoctors(6).description("Área de emergencias").build());
-            log.info("Clínicas por defecto inicializadas");
-        }
+        log.info("Clínicas verificadas/inicializadas");
     }
 
     // =========================================================

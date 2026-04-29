@@ -1,6 +1,7 @@
 package com.biocore.enums;
 
 public enum TicketStatus {
+    PENDING_PAYMENT,     // emergency: created but cashier hasn't paid yet
     WAITING,
     CALLED_TO_VITAL_SIGNS,  // health staff called patient to vital signs area
     READY_FOR_DOCTOR,       // vital signs done, doctor hasn't called yet

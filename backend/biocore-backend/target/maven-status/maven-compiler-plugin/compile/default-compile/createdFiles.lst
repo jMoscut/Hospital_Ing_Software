@@ -2,7 +2,6 @@ com\biocore\controller\DoctorScheduleController.class
 com\biocore\entity\LabExam$LabExamBuilder.class
 com\biocore\dto\LabOrderRequest.class
 com\biocore\repository\MedicineRepository.class
-com\biocore\controller\EmergencyController$EmergencyRequest.class
 com\biocore\BiocoreApplication.class
 com\biocore\controller\PaymentController.class
 com\biocore\dto\PatientCreateRequest.class
@@ -94,7 +93,6 @@ com\biocore\controller\ReportController.class
 com\biocore\entity\Medicine.class
 com\biocore\dto\PrescriptionRequest.class
 com\biocore\controller\PublicController$ChangeUsernameRequest.class
-com\biocore\service\EmergencyService.class
 com\biocore\enums\InsuranceName.class
 com\biocore\security\JwtUtil.class
 com\biocore\dto\LoginResponse$LoginResponseBuilder.class

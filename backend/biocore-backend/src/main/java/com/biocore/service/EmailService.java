@@ -212,6 +212,41 @@ public class EmailService {
     }
 
     /**
+     * CU7: Reporte médico de emergencia enviado al paciente al cerrar el reporte.
+     */
+    public void sendEmergencyMedicalReport(Patient patient, String ticketNumber,
+                                            String doctorName, String diagnosis,
+                                            String treatment, String medications) {
+        if (patient.getEmail() == null || patient.getEmail().isBlank()) return;
+        try {
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            StringBuilder body = new StringBuilder();
+            body.append(String.format("Estimado(a) %s %s,\n\n", patient.getFirstName(), patient.getLastName()));
+            body.append("Su reporte médico de emergencia ha sido cerrado. Detalle:\n\n");
+            body.append(String.format("Ticket N°: %s\n", ticketNumber));
+            body.append(String.format("Médico: %s\n", doctorName));
+            body.append(String.format("Fecha: %s\n\n", LocalDateTime.now().format(dtf)));
+            if (diagnosis != null && !diagnosis.isBlank())
+                body.append(String.format("DIAGNÓSTICO:\n%s\n\n", diagnosis));
+            if (treatment != null && !treatment.isBlank())
+                body.append(String.format("TRATAMIENTO:\n%s\n\n", treatment));
+            if (medications != null && !medications.isBlank())
+                body.append(String.format("MEDICAMENTOS INDICADOS:\n%s\n\n", medications));
+            body.append("Conserve este reporte para sus registros médicos.\n\n");
+            body.append("Atentamente,\nHospital BioCore Medical");
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(patient.getEmail());
+            message.setSubject("Reporte Médico de Emergencia — Hospital BioCore Medical");
+            message.setText(body.toString());
+            mailSender.send(message);
+            log.info("Reporte de emergencia enviado a {} ticket {}", patient.getEmail(), ticketNumber);
+        } catch (Exception e) {
+            log.error("Error al enviar reporte de emergencia: {}", e.getMessage());
+        }
+    }
+
+    /**
      * CU1/CU2: Confirmación de cita y número de ticket al paciente.
      */
     public void sendAppointmentSummaryEmail(Patient patient, Appointment appt, String ticketNumber) {

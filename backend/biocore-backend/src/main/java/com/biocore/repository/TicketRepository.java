@@ -72,4 +72,19 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     @Query("SELECT MAX(t.ticketNumber) FROM Ticket t")
     Optional<String> findMaxTicketNumber();
+
+    /** Emergency payment queue for cashier: EMERGENCIA tickets pending payment */
+    @Query("SELECT t FROM Ticket t WHERE t.type = 'EMERGENCIA' AND t.status = 'PENDING_PAYMENT' ORDER BY t.createdAt ASC")
+    List<Ticket> findPendingEmergencyPayments();
+
+    /** Count today's emergency tickets handled by a doctor — for equitable assignment */
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.doctor.id = :doctorId AND t.type = 'EMERGENCIA' " +
+           "AND t.createdAt >= :todayStart")
+    long countEmergencyTicketsByDoctorToday(@Param("doctorId") Long doctorId,
+                                             @Param("todayStart") LocalDateTime todayStart);
+
+    /** Today's COMPLETED emergency tickets (all, for emergency doctor portal) */
+    @Query("SELECT t FROM Ticket t WHERE t.type = 'EMERGENCIA' " +
+           "AND t.status = 'COMPLETED' AND t.createdAt >= :todayStart ORDER BY t.createdAt ASC")
+    List<Ticket> findTodayCompletedEmergency(@Param("todayStart") LocalDateTime todayStart);
 }
