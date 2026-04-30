@@ -82,7 +82,8 @@ function defaultSettings(): NotifSettings {
                   <mat-form-field appearance="outline">
                     <mat-label>Usuario *</mat-label>
                     <input matInput formControlName="username">
-                    <mat-error>Requerido</mat-error>
+                    <mat-hint>Mín. 4 caracteres, solo letras y números</mat-hint>
+                    <mat-error>Mín. 4 caracteres, solo letras y números, sin espacios</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Contraseña *</mat-label>
@@ -765,7 +766,7 @@ export class UserManagementComponent implements OnInit {
     this.userForm = this.fb.group({
       firstName:        ['', Validators.required],
       lastName:         ['', Validators.required],
-      username:         ['', Validators.required],
+      username:         ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^[a-zA-Z0-9]+$/)]],
       password:         ['', [Validators.required, Validators.minLength(8)]],
       email:            ['', [Validators.required, Validators.email]],
       role:             ['DOCTOR', Validators.required],

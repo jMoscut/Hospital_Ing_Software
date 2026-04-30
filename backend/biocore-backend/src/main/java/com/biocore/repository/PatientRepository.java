@@ -11,10 +11,10 @@ import java.util.Optional;
 
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, Long> {
-    Optional<Patient> findByDpi(String dpi);
+    Optional<Patient> findByDpiAndActiveTrue(String dpi);
     Optional<Patient> findByUserId(Long userId);
     Optional<Patient> findByPatientCode(String patientCode);
-    boolean existsByDpi(String dpi);
+    boolean existsByDpiAndActiveTrue(String dpi);
 
     @Query("SELECT p FROM Patient p WHERE p.active = true AND (" +
            "LOWER(p.firstName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -17,7 +18,7 @@ import { PatientService } from '../../../shared/services/patient.service';
 import { LabService } from '../../../shared/services/lab.service';
 import { environment } from '../../../../environments/environment';
 import { PaymentService, InsuranceService, EmergencyService, PharmacySaleService } from '../../../shared/services/payment.service';
-import { TicketService, PrescriptionService, VitalSignsService } from '../../../shared/services/ticket.service';
+import { TicketService, PrescriptionService, VitalSignsService, AppointmentService } from '../../../shared/services/ticket.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
 
@@ -242,14 +243,13 @@ import { Patient } from '../../../core/models/patient.model';
                 <div *ngIf="o.resultNotes" style="font-size:0.8rem;color:#555;margin-top:2px">{{ o.resultNotes }}</div>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
-                <a *ngIf="o.hasAttachment"
-                   [href]="apiUrl + '/lab-orders/' + o.id + '/result-file'"
-                   target="_blank"
-                   mat-icon-button
-                   style="color:#c62828"
-                   title="Ver PDF resultado">
+                <button *ngIf="o.hasAttachment"
+                        mat-icon-button
+                        style="color:#c62828"
+                        title="Ver PDF resultado"
+                        (click)="openLabPdf(o.id)">
                   <mat-icon>picture_as_pdf</mat-icon>
-                </a>
+                </button>
                 <span [style.background]="o.status==='COMPLETED'?'#e8f5e9':o.status==='EXPIRED'?'#ffebee':'#fff3e0'"
                       style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ o.status }}</span>
               </div>
@@ -261,29 +261,51 @@ import { Patient } from '../../../core/models/patient.model';
         <!-- ── Tab 4: Pagos ── -->
         <mat-tab label="Pagos">
           <div class="tab-content">
-            <div *ngIf="payments.length > 0">
-              <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Pagos de Consultas / Emergencias</p>
-              <div class="queue-ticket" *ngFor="let p of payments">
-                <mat-icon style="color:#2e7d32">payments</mat-icon>
-                <div class="ticket-info">
-                  <div class="ticket-patient">{{ p.type }} · Q{{ p.netAmount }}</div>
-                  <div class="ticket-meta">{{ p.createdAt | date:'dd/MM/yyyy' }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+            <ng-container *ngIf="appointments.length > 0 || payments.length > 0 || pharmacySales.length > 0; else noPagos">
+
+              <!-- Citas pagadas -->
+              <div *ngIf="appointments.length > 0" style="margin-bottom:16px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Citas y Consultas</p>
+                <div class="queue-ticket" *ngFor="let a of appointments">
+                  <mat-icon style="color:#1565c0">event</mat-icon>
+                  <div class="ticket-info">
+                    <div class="ticket-patient">{{ a.type }} · {{ a.clinicName }}</div>
+                    <div class="ticket-meta">{{ a.scheduledDate | date:'dd/MM/yyyy' }} · Q{{ a.amount }}<span *ngIf="a.voucherCode"> · {{ a.voucherCode }}</span></div>
+                  </div>
+                  <span style="padding:4px 12px;border-radius:12px;font-size:0.8rem;background:#e8f5e9;color:#2e7d32">Pagado</span>
                 </div>
-                <span [class]="p.status==='PAID'?'status-completed':'status-waiting'" style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ p.status }}</span>
               </div>
-            </div>
-            <div *ngIf="pharmacySales.length > 0" style="margin-top:16px">
-              <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
-              <div class="queue-ticket" *ngFor="let s of pharmacySales">
-                <mat-icon style="color:#6a1b9a">medication</mat-icon>
-                <div class="ticket-info">
-                  <div class="ticket-patient">{{ s.saleCode || 'Venta farmacia' }}<span *ngIf="s.invoiceNumber"> · Factura {{ s.invoiceNumber }}</span></div>
-                  <div class="ticket-meta">{{ s.paidAt ? (s.paidAt | date:'dd/MM/yyyy') : (s.createdAt | date:'dd/MM/yyyy') }} · Q{{ s.totalAmount }}</div>
+
+              <!-- Pagos caja -->
+              <div *ngIf="payments.length > 0" style="margin-bottom:16px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Pagos en Caja</p>
+                <div class="queue-ticket" *ngFor="let p of payments">
+                  <mat-icon style="color:#2e7d32">payments</mat-icon>
+                  <div class="ticket-info">
+                    <div class="ticket-patient">{{ p.type }} · Q{{ p.netAmount }}</div>
+                    <div class="ticket-meta">{{ p.createdAt | date:'dd/MM/yyyy' }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+                  </div>
+                  <span [class]="p.status==='PAID'?'status-completed':'status-waiting'" style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ p.status === 'PAID' ? 'Pagado' : p.status }}</span>
                 </div>
-                <span style="padding:4px 12px;border-radius:12px;font-size:0.8rem;background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
               </div>
-            </div>
-            <p *ngIf="payments.length === 0 && pharmacySales.length === 0" class="text-center" style="color:#9e9e9e;padding:24px">Sin pagos registrados</p>
+
+              <!-- Farmacia -->
+              <div *ngIf="pharmacySales.length > 0">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
+                <div class="queue-ticket" *ngFor="let s of pharmacySales">
+                  <mat-icon style="color:#6a1b9a">medication</mat-icon>
+                  <div class="ticket-info">
+                    <div class="ticket-patient">{{ s.saleCode || 'Venta farmacia' }}<span *ngIf="s.invoiceNumber"> · Factura {{ s.invoiceNumber }}</span></div>
+                    <div class="ticket-meta">{{ s.paidAt ? (s.paidAt | date:'dd/MM/yyyy') : (s.createdAt | date:'dd/MM/yyyy') }} · Q{{ s.totalAmount }}</div>
+                  </div>
+                  <span style="padding:4px 12px;border-radius:12px;font-size:0.8rem;background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
+                </div>
+              </div>
+
+            </ng-container>
+            <ng-template #noPagos>
+              <p class="text-center" style="color:#9e9e9e;padding:24px">Sin pagos registrados</p>
+            </ng-template>
           </div>
         </mat-tab>
 
@@ -378,6 +400,7 @@ export class PatientDetailComponent implements OnInit {
   labOrders: any[] = [];
   payments: any[] = [];
   pharmacySales: any[] = [];
+  appointments: any[] = [];
   prescriptions: any[] = [];
   emergencyReports: any[] = [];
   vitalsCache: Record<number, any> = {};
@@ -390,6 +413,7 @@ export class PatientDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private fb: FormBuilder,
+    private http: HttpClient,
     private patientService: PatientService,
     private ticketService: TicketService,
     private prescriptionService: PrescriptionService,
@@ -399,8 +423,20 @@ export class PatientDetailComponent implements OnInit {
     private insuranceService: InsuranceService,
     private emergencyService: EmergencyService,
     private pharmacySaleService: PharmacySaleService,
+    private appointmentService: AppointmentService,
     private notification: NotificationService
   ) {}
+
+  openLabPdf(orderId: number): void {
+    this.http.get(`${this.apiUrl}/lab-orders/${orderId}/result-file`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        win?.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      },
+      error: () => this.notification.error('No se pudo abrir el PDF')
+    });
+  }
 
   ngOnInit(): void {
     this.patientId = Number(this.route.snapshot.paramMap.get('id'));
@@ -430,6 +466,9 @@ export class PatientDetailComponent implements OnInit {
     });
     this.pharmacySaleService.getByPatient(id).subscribe(res => {
       if (res.success) this.pharmacySales = res.data;
+    });
+    this.appointmentService.getByPatient(id).subscribe(res => {
+      if (res.success) this.appointments = res.data.filter((a: any) => a.status === 'CONFIRMED');
     });
     this.prescriptionService.getByPatient(id).subscribe(res => {
       if (res.success) this.prescriptions = res.data;

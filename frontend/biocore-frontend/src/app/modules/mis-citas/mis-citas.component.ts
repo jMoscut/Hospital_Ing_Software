@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -16,11 +17,12 @@ import { AuthService } from '../../core/auth/auth.service';
 import { TicketService, AppointmentService, ClinicService } from '../../shared/services/ticket.service';
 import { PrescriptionService, LabService, LabExamService } from '../../shared/services/lab.service';
 import { PatientService } from '../../shared/services/patient.service';
-import { InsuranceService, EmergencyService, PharmacySaleService } from '../../shared/services/payment.service';
+import { InsuranceService, EmergencyService, PharmacySaleService, PaymentService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket, Clinic } from '../../core/models/ticket.model';
 import { Prescription, LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
 import { Patient } from '../../core/models/patient.model';
+import { environment } from '../../../environments/environment';
 
 type BookingStep = 'calendar' | 'payment' | 'confirmed';
 
@@ -495,7 +497,12 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                   <strong>{{ o.labExamName || sampleLabel(o.sampleType) }}</strong>
                   <span class="lab-code" *ngIf="o.labExamCode">{{ o.labExamCode }}</span>
                 </div>
-                <span [class]="getLabStatusClass(o.status)" class="status-chip">{{ labStatusLabel(o.status) }}</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button *ngIf="o.hasAttachment" mat-icon-button style="color:#c62828" title="Ver PDF resultado" (click)="openLabPdf(o.id)">
+                    <mat-icon>picture_as_pdf</mat-icon>
+                  </button>
+                  <span [class]="getLabStatusClass(o.status)" class="status-chip">{{ labStatusLabel(o.status) }}</span>
+                </div>
               </div>
               <div class="lab-details">
                 <div><mat-icon>calendar_today</mat-icon> {{ o.orderDate }}</div>
@@ -516,7 +523,41 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
             Pagos
           </ng-template>
           <div class="tab-content">
-            <div *ngIf="pharmacySales.length > 0 || payments.length > 0; else noPagos">
+            <ng-container *ngIf="confirmedAppointments().length > 0 || payments.length > 0 || pharmacySales.length > 0; else noPagos">
+
+              <!-- Citas pagadas (online / caja) -->
+              <div *ngIf="confirmedAppointments().length > 0" style="margin-bottom:20px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Citas y Consultas</p>
+                <div class="ticket-card" *ngFor="let a of confirmedAppointments()">
+                  <div class="ticket-left">
+                    <mat-icon style="color:#1565c0;font-size:32px;width:32px;height:32px">event</mat-icon>
+                    <div>
+                      <div class="ticket-clinic">{{ apptTypeLabel(a.type) }} · {{ a.clinicName }}</div>
+                      <div class="ticket-type">Q{{ a.amount }}</div>
+                      <div class="ticket-date">{{ a.scheduledDate | date:'dd/MM/yyyy' }}<span *ngIf="a.voucherCode"> · {{ a.voucherCode }}</span></div>
+                    </div>
+                  </div>
+                  <span class="status-chip status-appt-confirmed">Pagado</span>
+                </div>
+              </div>
+
+              <!-- Pagos caja (emergencias, lab, otros) -->
+              <div *ngIf="payments.length > 0" style="margin-bottom:20px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Pagos en Caja</p>
+                <div class="ticket-card" *ngFor="let p of payments">
+                  <div class="ticket-left">
+                    <mat-icon style="color:#2e7d32;font-size:32px;width:32px;height:32px">receipt_long</mat-icon>
+                    <div>
+                      <div class="ticket-clinic">{{ p.type }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+                      <div class="ticket-type">Q{{ p.netAmount }}</div>
+                      <div class="ticket-date">{{ p.createdAt | date:'dd/MM/yyyy' }}</div>
+                    </div>
+                  </div>
+                  <span class="status-chip" [class]="p.status==='PAID'?'status-appt-confirmed':'status-waiting'">{{ p.status === 'PAID' ? 'Pagado' : p.status }}</span>
+                </div>
+              </div>
+
+              <!-- Farmacia -->
               <div *ngIf="pharmacySales.length > 0">
                 <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
                 <div class="ticket-card" *ngFor="let s of pharmacySales" style="border-left-color:#6a1b9a">
@@ -531,7 +572,8 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                   <span class="status-chip" style="background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
                 </div>
               </div>
-            </div>
+
+            </ng-container>
             <ng-template #noPagos>
               <div class="empty-state">
                 <mat-icon>receipt_long</mat-icon>
@@ -1058,6 +1100,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
+    private http: HttpClient,
     private ticketService: TicketService,
     private appointmentService: AppointmentService,
     private clinicService: ClinicService,
@@ -1066,6 +1109,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     private labExamService: LabExamService,
     private patientService: PatientService,
     private insuranceService: InsuranceService,
+    private paymentService: PaymentService,
     private emergencyService: EmergencyService,
     private pharmacySaleService: PharmacySaleService,
     private notification: NotificationService,
@@ -1585,6 +1629,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     return m[s] ?? s;
   }
 
+  confirmedAppointments(): any[] {
+    return this.appointments.filter(a => a.status === 'CONFIRMED');
+  }
+
   getApptStatusClass(s: string): string {
     const m: Record<string, string> = { PENDING_PAYMENT: 'status-appt-pending', CONFIRMED: 'status-appt-confirmed', CANCELLED: 'status-appt-cancelled' };
     return m[s] ?? '';
@@ -1637,6 +1685,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       error: () => {}
     });
 
+    this.paymentService.getByPatient(patientId).subscribe({
+      next: res => { if (res.success) this.payments = res.data; },
+      error: () => {}
+    });
+
     this.labService.getByPatient(patientId).subscribe({
       next: res => { if (res.success) this.labOrders = res.data; this.loadingLab = false; },
       error: () => { this.loadingLab = false; }
@@ -1645,6 +1698,17 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.patientService.getById(patientId).subscribe({
       next: res => { if (res.success) this.patientProfile = res.data; this.loadingProfile = false; },
       error: () => { this.loadingProfile = false; }
+    });
+  }
+
+  openLabPdf(orderId: number): void {
+    this.http.get(`${environment.apiUrl}/lab-orders/${orderId}/result-file`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        win?.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      },
+      error: () => this.notification.error('No se pudo abrir el PDF')
     });
   }
 

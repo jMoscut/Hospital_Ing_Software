@@ -49,7 +49,7 @@ public class PatientService {
 
     @Transactional(readOnly = true)
     public Optional<PatientDTO> getByDpi(String dpi) {
-        return patientRepository.findByDpi(dpi).map(PatientDTO::from);
+        return patientRepository.findByDpiAndActiveTrue(dpi).map(PatientDTO::from);
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +62,7 @@ public class PatientService {
     @Transactional
     public PatientDTO create(PatientCreateRequest req) {
         // RN-01: validación de DPI
-        if (patientRepository.existsByDpi(req.getDpi())) {
+        if (patientRepository.existsByDpiAndActiveTrue(req.getDpi())) {
             throw new RuntimeException("Ya existe un paciente con el DPI: " + req.getDpi());
         }
 

@@ -170,8 +170,33 @@ public class TicketService {
                 TicketStatus.READY_FOR_DOCTOR, TicketStatus.BEING_CALLED,
                 TicketStatus.IN_CONSULTATION, TicketStatus.COMPLETED);
         return ticketRepository.findTodayAllActive(statuses, today(), todayStart()).stream()
-                .map(TicketDTO::from)
+                .map(this::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    private static final Pattern LAB_CODE_PATTERN = Pattern.compile("\\[([A-Z]+-\\d+)\\]");
+
+    private TicketDTO toDTO(Ticket t) {
+        if ("LABORATORIO".equals(t.getType())) {
+            // Try existing LabOrder first (post-collection)
+            List<LabOrder> orders = labOrderRepository.findByTicketId(t.getId());
+            if (!orders.isEmpty()) {
+                return TicketDTO.from(t, orders.get(0));
+            }
+            // Pre-collection: parse exam code from ticket notes [LAB-001] Name — desc
+            String notes = t.getNotes() != null ? t.getNotes() : "";
+            Matcher m = LAB_CODE_PATTERN.matcher(notes);
+            if (m.find()) {
+                LabExam exam = labExamRepository.findByCode(m.group(1)).orElse(null);
+                if (exam != null) {
+                    TicketDTO dto = TicketDTO.from(t);
+                    dto.setLabExamName(exam.getName());
+                    dto.setLabSampleType(exam.getSampleType() != null ? exam.getSampleType().name() : null);
+                    return dto;
+                }
+            }
+        }
+        return TicketDTO.from(t);
     }
 
     /** RN-C04: No puede llamarse nuevo paciente si hay consulta activa */

@@ -54,7 +54,7 @@ public class ReportController {
 
         // By DPI (13 digits)
         if (trimmed.matches("\\d{13}")) {
-            Optional<Patient> found = patientRepository.findByDpi(trimmed);
+            Optional<Patient> found = patientRepository.findByDpiAndActiveTrue(trimmed);
             if (found.isPresent()) return ResponseEntity.ok(ApiResponse.ok(buildExpedient(found.get())));
             return ResponseEntity.status(404).body(ApiResponse.error("No existe paciente con DPI: " + trimmed));
         }

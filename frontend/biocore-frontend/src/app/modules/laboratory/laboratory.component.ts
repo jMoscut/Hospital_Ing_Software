@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -232,9 +233,9 @@ import { environment } from '../../../environments/environment';
                 </div>
               </div>
               <div class="order-actions" *ngIf="o.hasAttachment">
-                <a mat-stroked-button color="primary" [href]="getResultFileUrl(o.id)" target="_blank">
+                <button mat-stroked-button color="primary" (click)="openLabPdf(o.id)">
                   <mat-icon>picture_as_pdf</mat-icon> Ver PDF
-                </a>
+                </button>
               </div>
             </div>
             <div class="empty-state" *ngIf="completed.length === 0">
@@ -392,6 +393,7 @@ export class LaboratoryComponent implements OnInit, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
+    private http: HttpClient,
     private labService: LabService,
     private labExamService: LabExamService,
     private ticketService: TicketService,
@@ -537,8 +539,15 @@ export class LaboratoryComponent implements OnInit, OnDestroy {
     });
   }
 
-  getResultFileUrl(id: number): string {
-    return this.labService.getResultFileUrl(id);
+  openLabPdf(id: number): void {
+    this.http.get(`${environment.apiUrl}/lab-orders/${id}/result-file`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        win?.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      },
+      error: () => this.notification.error('No se pudo abrir el PDF')
+    });
   }
 
   hasVitals(o: LabOrder): boolean {

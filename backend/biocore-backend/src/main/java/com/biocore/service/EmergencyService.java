@@ -54,7 +54,7 @@ public class EmergencyService {
         boolean isExisting = false;
 
         if (dpi != null && !dpi.isBlank()) {
-            Optional<Patient> existing = patientRepository.findByDpi(dpi);
+            Optional<Patient> existing = patientRepository.findByDpiAndActiveTrue(dpi);
             if (existing.isPresent()) {
                 patient = existing.get();
                 isExisting = true;
@@ -80,7 +80,7 @@ public class EmergencyService {
             req.setCreateAccount(false);
 
             patientService.create(req);
-            patient = patientRepository.findByDpi(effectiveDpi).orElseThrow();
+            patient = patientRepository.findByDpiAndActiveTrue(effectiveDpi).orElseThrow();
 
             report = EmergencyReport.builder()
                     .dpi(effectiveDpi)

@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -14,6 +14,15 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSelectModule } from '@angular/material/select';
 import { environment } from '../../../environments/environment';
 import { InsuranceService } from '../../shared/services/payment.service';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  if (!ctrl.value) return null;
+  const d = new Date(ctrl.value);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const year = d.getFullYear();
+  if (year < 1900 || d > new Date()) return { invalidDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-public-register',
@@ -89,12 +98,16 @@ import { InsuranceService } from '../../shared/services/payment.service';
                     <mat-form-field appearance="outline">
                       <mat-label>Fecha de Nacimiento</mat-label>
                       <mat-icon matPrefix>cake</mat-icon>
-                      <input matInput type="date" formControlName="birthDate">
+                      <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                      <mat-error>Fecha inválida (año entre 1900 y año actual)</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Teléfono</mat-label>
                       <mat-icon matPrefix>phone</mat-icon>
-                      <input matInput formControlName="phone">
+                      <input matInput formControlName="phone" type="tel" maxlength="8"
+                             (keypress)="onlyDigits($event)">
+                      <mat-hint>8 dígitos, no inicia en 0</mat-hint>
+                      <mat-error>Teléfono inválido (8 dígitos, no inicia en 0)</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Correo Electrónico *</mat-label>
@@ -147,8 +160,8 @@ import { InsuranceService } from '../../shared/services/payment.service';
                       <mat-label>Nombre de Usuario *</mat-label>
                       <mat-icon matPrefix>account_circle</mat-icon>
                       <input matInput formControlName="username" placeholder="ej: juan.garcia">
-                      <mat-hint>Sin espacios, solo letras, números y puntos</mat-hint>
-                      <mat-error>Mínimo 4 caracteres, sin espacios</mat-error>
+                      <mat-hint>Mín. 4 caracteres, solo letras y números</mat-hint>
+                      <mat-error>Mín. 4 caracteres, solo letras y números, sin espacios</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Contraseña *</mat-label>
@@ -269,6 +282,11 @@ export class PublicRegisterComponent implements OnInit {
   errorMsg = '';
   hidePassword = true;
   insurances: any[] = [];
+  today = new Date().toISOString().split('T')[0];
+
+  onlyDigits(e: KeyboardEvent): boolean {
+    return /[0-9]/.test(e.key);
+  }
 
   constructor(private fb: FormBuilder, private http: HttpClient, private insuranceService: InsuranceService) {}
 
@@ -280,8 +298,8 @@ export class PublicRegisterComponent implements OnInit {
     this.dataForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
-      birthDate:       [''],
-      phone:           [''],
+      birthDate:       ['', [birthDateValidator]],
+      phone:           ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
       dpi:             ['', [Validators.required, Validators.pattern(/^\d{13}$/)]],
@@ -289,7 +307,7 @@ export class PublicRegisterComponent implements OnInit {
       insuranceId:     [null]
     });
     this.credentialsForm = this.fb.group({
-      username: ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^\S+$/)]],
+      username: ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^[a-zA-Z0-9]+$/)]],
       password: ['', [
         Validators.required,
         Validators.minLength(8),

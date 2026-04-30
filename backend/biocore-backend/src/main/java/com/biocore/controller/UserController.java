@@ -3,6 +3,7 @@ package com.biocore.controller;
 import com.biocore.dto.ApiResponse;
 import com.biocore.dto.AssignClinicRequest;
 import com.biocore.dto.UserCreateRequest;
+import com.biocore.dto.UserUpdateRequest;
 import com.biocore.dto.UserDTO;
 import com.biocore.security.CustomUserDetails;
 import com.biocore.service.UserService;
@@ -52,7 +53,7 @@ public class UserController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserDTO>> update(@PathVariable Long id,
-                                                        @Valid @RequestBody UserCreateRequest req) {
+                                                        @Valid @RequestBody UserUpdateRequest req) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Usuario actualizado", userService.update(id, req)));
         } catch (Exception e) {

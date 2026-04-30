@@ -52,6 +52,7 @@ com\biocore\dto\PrescriptionRequest$PrescriptionItemRequest.class
 com\biocore\dto\AssignClinicRequest.class
 com\biocore\dto\DashboardDTO$DashboardDTOBuilder.class
 com\biocore\entity\DoctorClinicAssignment$DoctorClinicAssignmentBuilder.class
+com\biocore\dto\UserUpdateRequest.class
 com\biocore\controller\MedicineController.class
 com\biocore\dto\UserDTO.class
 com\biocore\controller\DocumentController.class

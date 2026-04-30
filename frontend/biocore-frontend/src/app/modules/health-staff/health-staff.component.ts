@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +18,15 @@ import { InsuranceService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Clinic, Ticket } from '../../core/models/ticket.model';
 import { Patient } from '../../core/models/patient.model';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  if (!ctrl.value) return null;
+  const d = new Date(ctrl.value);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const year = d.getFullYear();
+  if (year < 1900 || d > new Date()) return { invalidDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-health-staff',
@@ -128,11 +137,15 @@ import { Patient } from '../../core/models/patient.model';
                         <mat-form-field appearance="outline">
                           <mat-label>Fecha de Nacimiento</mat-label>
                           <mat-icon matPrefix>cake</mat-icon>
-                          <input matInput type="date" formControlName="birthDate">
+                          <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                          <mat-error>Fecha inválida (año entre 1900 y año actual)</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Teléfono</mat-label>
-                          <input matInput formControlName="phone">
+                          <input matInput formControlName="phone" type="tel" maxlength="8"
+                                 (keypress)="onlyDigits($event)">
+                          <mat-hint>8 dígitos, no inicia en 0</mat-hint>
+                          <mat-error>Teléfono inválido (8 dígitos, no inicia en 0)</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Correo Electrónico *</mat-label>
@@ -217,6 +230,10 @@ import { Patient } from '../../core/models/patient.model';
                   <div class="ticket-meta">
                     {{ t.clinicName }} · {{ t.type }}
                     <span *ngIf="t.doctorName"> · Dr. {{ t.doctorName }}</span>
+                  </div>
+                  <div class="ticket-lab-info" *ngIf="t.type === 'LABORATORIO' && (t.labExamName || t.labSampleType)">
+                    <span *ngIf="t.labExamName"><mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">science</mat-icon> {{ t.labExamName }}</span>
+                    <span *ngIf="t.labSampleType"><mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">colorize</mat-icon> {{ t.labSampleType }}</span>
                   </div>
                   <div class="ticket-time" *ngIf="t.scheduledTime" style="font-size:0.75rem;color:#1D6C61;margin-top:2px">
                     <mat-icon style="font-size:11px;width:11px;height:11px;vertical-align:middle">schedule</mat-icon>
@@ -386,6 +403,7 @@ import { Patient } from '../../core/models/patient.model';
     .ticket-info { flex: 1; }
     .ticket-patient { font-weight: 500; }
     .ticket-meta { font-size: 0.8rem; color: #757575; }
+    .ticket-lab-info { font-size: 0.78rem; color: #1D6C61; margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
     .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
 
     .credentials-box {
@@ -479,6 +497,12 @@ import { Patient } from '../../core/models/patient.model';
   `]
 })
 export class HealthStaffComponent implements OnInit, OnDestroy {
+  today = new Date().toISOString().split('T')[0];
+
+  onlyDigits(e: KeyboardEvent): boolean {
+    return /[0-9]/.test(e.key);
+  }
+
   // Recepción walk-in (Tab 1)
   recepDpiForm!: FormGroup;
   recepPatientForm!: FormGroup;
@@ -525,8 +549,8 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     this.recepPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
-      birthDate:       [''],
-      phone:           [''],
+      birthDate:       ['', [birthDateValidator]],
+      phone:           ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
       insuranceId:     [null],

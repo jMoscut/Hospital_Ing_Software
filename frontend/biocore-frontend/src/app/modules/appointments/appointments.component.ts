@@ -657,7 +657,7 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   }
 
   canManage(): boolean {
-    return this.authService.hasRole('ADMIN', 'HEALTH_STAFF', 'NURSE', 'DOCTOR');
+    return this.authService.hasRole('HEALTH_STAFF', 'NURSE', 'DOCTOR');
   }
 
   getStatusClass(s: string): string {

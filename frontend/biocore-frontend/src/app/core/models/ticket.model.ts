@@ -22,6 +22,8 @@ export interface Ticket {
   calledAt?: string;
   consultationStartAt?: string;
   completedAt?: string;
+  labExamName?: string;
+  labSampleType?: string;
 }
 
 export interface Clinic {

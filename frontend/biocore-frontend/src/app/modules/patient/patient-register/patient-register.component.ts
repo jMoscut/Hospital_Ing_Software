@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -15,6 +15,15 @@ import { PatientService } from '../../../shared/services/patient.service';
 import { InsuranceService } from '../../../shared/services/payment.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  if (!ctrl.value) return null;
+  const d = new Date(ctrl.value);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const year = d.getFullYear();
+  if (year < 1900 || d > new Date()) return { invalidDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-patient-register',
@@ -95,11 +104,15 @@ import { Patient } from '../../../core/models/patient.model';
                   <mat-form-field appearance="outline">
                     <mat-label>Fecha de Nacimiento</mat-label>
                     <mat-icon matPrefix>cake</mat-icon>
-                    <input matInput type="date" formControlName="birthDate">
+                    <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                    <mat-error>Fecha inválida (año entre 1900 y año actual)</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Teléfono</mat-label>
-                    <input matInput formControlName="phone">
+                    <input matInput formControlName="phone" type="tel" maxlength="8"
+                           (keypress)="onlyDigits($event)">
+                    <mat-hint>8 dígitos, no inicia en 0</mat-hint>
+                    <mat-error>Teléfono inválido (8 dígitos, no inicia en 0)</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Correo Electrónico</mat-label>
@@ -216,6 +229,11 @@ export class PatientRegisterComponent implements OnInit {
   submitting = false;
   registered = false;
   newCredentials: { username: string; tempPassword: string } | null = null;
+  today = new Date().toISOString().split('T')[0];
+
+  onlyDigits(e: KeyboardEvent): boolean {
+    return /[0-9]/.test(e.key);
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -232,8 +250,8 @@ export class PatientRegisterComponent implements OnInit {
     this.patientForm = this.fb.group({
       firstName:        ['', Validators.required],
       lastName:         ['', Validators.required],
-      birthDate:        [''],
-      phone:            [''],
+      birthDate:        ['', [birthDateValidator]],
+      phone:            ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
       email:            ['', Validators.email],
       address:          [''],
       emergencyContact: [''],
