@@ -7,6 +7,7 @@ import com.biocore.service.PatientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -61,6 +62,17 @@ public class PatientController {
                                                           @Valid @RequestBody PatientCreateRequest req) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Paciente actualizado", patientService.update(id, req)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('HEALTH_STAFF', 'ADMIN')")
+    public ResponseEntity<ApiResponse<String>> delete(@PathVariable Long id) {
+        try {
+            patientService.deactivate(id);
+            return ResponseEntity.ok(ApiResponse.ok("Paciente eliminado"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

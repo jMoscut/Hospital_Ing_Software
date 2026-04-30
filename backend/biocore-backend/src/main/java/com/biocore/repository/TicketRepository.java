@@ -87,4 +87,18 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("SELECT t FROM Ticket t WHERE t.type = 'EMERGENCIA' " +
            "AND t.status = 'COMPLETED' AND t.createdAt >= :todayStart ORDER BY t.createdAt ASC")
     List<Ticket> findTodayCompletedEmergency(@Param("todayStart") LocalDateTime todayStart);
+
+    /** Report: patients per clinic/area in date range */
+    @Query("SELECT t.clinic.name, COUNT(t) FROM Ticket t " +
+           "WHERE t.createdAt >= :from AND t.createdAt < :to " +
+           "GROUP BY t.clinic.name ORDER BY COUNT(t) DESC")
+    List<Object[]> countByClinicBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Report: completed consultations per doctor in date range */
+    @Query("SELECT CONCAT(t.doctor.firstName, ' ', t.doctor.lastName), COUNT(t), t.clinic.name " +
+           "FROM Ticket t WHERE t.createdAt >= :from AND t.createdAt < :to " +
+           "AND t.doctor IS NOT NULL AND t.status = 'COMPLETED' " +
+           "GROUP BY t.doctor.id, t.doctor.firstName, t.doctor.lastName, t.clinic.name " +
+           "ORDER BY COUNT(t) DESC")
+    List<Object[]> countByDoctorBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

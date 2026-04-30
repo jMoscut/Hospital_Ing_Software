@@ -16,7 +16,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { TicketService, AppointmentService, ClinicService } from '../../shared/services/ticket.service';
 import { PrescriptionService, LabService, LabExamService } from '../../shared/services/lab.service';
 import { PatientService } from '../../shared/services/patient.service';
-import { InsuranceService } from '../../shared/services/payment.service';
+import { InsuranceService, EmergencyService, PharmacySaleService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket, Clinic } from '../../core/models/ticket.model';
 import { Prescription, LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
@@ -446,22 +446,31 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
           <div class="tab-content">
             <div *ngIf="loadingPrescriptions" class="loading-state"><mat-spinner diameter="40"></mat-spinner></div>
 
-            <div class="diag-card" *ngFor="let rx of diagnoses">
+            <div [class]="'diag-card' + (rx._source==='emergency' ? ' diag-card-emergency' : '')" *ngFor="let rx of diagnoses">
               <div class="diag-header">
-                <mat-icon>stethoscope</mat-icon>
+                <mat-icon [style.color]="rx._source==='emergency'?'#c62828':'#1D6C61'">{{ rx._source==='emergency' ? 'emergency' : 'stethoscope' }}</mat-icon>
                 <div class="diag-meta">
-                  <span class="diag-date">{{ rx.createdAt | date:'dd/MM/yyyy' }}</span>
+                  <span class="diag-date">{{ rx.createdAt | date:'dd/MM/yyyy' }}
+                    <span *ngIf="rx._source==='emergency'" style="background:#ffebee;color:#c62828;padding:1px 8px;border-radius:8px;font-size:0.72rem;margin-left:6px;font-weight:700">EMERGENCIA</span>
+                  </span>
                   <span class="diag-doctor" *ngIf="rx.doctorName">Dr. {{ rx.doctorName }}</span>
                 </div>
               </div>
-              <div class="diag-notes">{{ rx.notes }}</div>
-              <div class="diag-meds" *ngIf="rx.items && rx.items.length > 0">
-                <div class="diag-meds-label"><mat-icon>medication</mat-icon> Medicamentos recetados</div>
-                <span class="med-chip" *ngFor="let item of rx.items">
-                  {{ item.medicineName }} ×{{ item.quantity }}
-                  <small *ngIf="item.dosage"> — {{ item.dosage }}</small>
-                </span>
-              </div>
+              <ng-container *ngIf="rx._source==='emergency'">
+                <div class="diag-notes" *ngIf="rx._diagnosis"><strong>Diagnóstico:</strong> {{ rx._diagnosis }}</div>
+                <div class="diag-notes" *ngIf="rx._treatment" style="margin-top:6px"><strong>Tratamiento:</strong> {{ rx._treatment }}</div>
+                <div class="diag-notes" *ngIf="rx._medications" style="margin-top:6px"><strong>Medicamentos:</strong> {{ rx._medications }}</div>
+              </ng-container>
+              <ng-container *ngIf="rx._source!=='emergency'">
+                <div class="diag-notes">{{ rx.notes }}</div>
+                <div class="diag-meds" *ngIf="rx.items && rx.items.length > 0">
+                  <div class="diag-meds-label"><mat-icon>medication</mat-icon> Medicamentos recetados</div>
+                  <span class="med-chip" *ngFor="let item of rx.items">
+                    {{ item.medicineName }} ×{{ item.quantity }}
+                    <small *ngIf="item.dosage"> — {{ item.dosage }}</small>
+                  </span>
+                </div>
+              </ng-container>
             </div>
 
             <div class="empty-state" *ngIf="!loadingPrescriptions && diagnoses.length === 0">
@@ -500,7 +509,39 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
           </div>
         </mat-tab>
 
-        <!-- TAB 6: Mi Perfil -->
+        <!-- TAB 6: Pagos -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">payments</mat-icon>
+            Pagos
+          </ng-template>
+          <div class="tab-content">
+            <div *ngIf="pharmacySales.length > 0 || payments.length > 0; else noPagos">
+              <div *ngIf="pharmacySales.length > 0">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
+                <div class="ticket-card" *ngFor="let s of pharmacySales" style="border-left-color:#6a1b9a">
+                  <div class="ticket-left">
+                    <mat-icon style="color:#6a1b9a;font-size:32px;width:32px;height:32px">medication</mat-icon>
+                    <div>
+                      <div class="ticket-clinic">{{ s.saleCode || 'Venta farmacia' }}<span *ngIf="s.invoiceNumber"> · Factura {{ s.invoiceNumber }}</span></div>
+                      <div class="ticket-type">Q{{ s.totalAmount }}</div>
+                      <div class="ticket-date">{{ s.paidAt ? (s.paidAt | date:'dd/MM/yyyy') : (s.createdAt | date:'dd/MM/yyyy') }}</div>
+                    </div>
+                  </div>
+                  <span class="status-chip" style="background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
+                </div>
+              </div>
+            </div>
+            <ng-template #noPagos>
+              <div class="empty-state">
+                <mat-icon>receipt_long</mat-icon>
+                <p>Sin pagos registrados</p>
+              </div>
+            </ng-template>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 7: Mi Perfil -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">account_circle</mat-icon>
@@ -876,6 +917,7 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
 
     /* Diagnósticos */
     .diag-card { background:white; border-radius:10px; padding:20px; margin-bottom:14px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #1D6C61; }
+    .diag-card-emergency { border-left-color:#c62828; }
     .diag-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
     .diag-header mat-icon { font-size:28px; width:28px; height:28px; color:#1D6C61; }
     .diag-meta { display:flex; flex-direction:column; }
@@ -940,8 +982,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   tickets: Ticket[] = [];
   appointments: any[] = [];
   prescriptions: Prescription[] = [];
-  diagnoses: Prescription[] = [];
+  diagnoses: any[] = [];
   labOrders: LabOrder[] = [];
+  emergencyReports: any[] = [];
+  pharmacySales: any[] = [];
+  payments: any[] = [];
   patientProfile: Patient | null = null;
   loadingTickets = true;
   loadingAppointments = true;
@@ -1021,6 +1066,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     private labExamService: LabExamService,
     private patientService: PatientService,
     private insuranceService: InsuranceService,
+    private emergencyService: EmergencyService,
+    private pharmacySaleService: PharmacySaleService,
     private notification: NotificationService,
     private fb: FormBuilder
   ) {}
@@ -1568,15 +1615,26 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       next: res => {
         if (res.success) {
           this.prescriptions = res.data;
-          // Diagnoses = prescriptions that have a doctor's notes
-          this.diagnoses = res.data
-            .filter((rx: Prescription) => rx.notes && rx.notes.trim().length > 0)
-            .sort((a: Prescription, b: Prescription) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          this.mergeDiagnoses();
         }
         this.loadingPrescriptions = false;
       },
       error: () => { this.loadingPrescriptions = false; }
+    });
+
+    this.emergencyService.getMedicalReportsByPatient(patientId).subscribe({
+      next: res => {
+        if (res.success) {
+          this.emergencyReports = res.data;
+          this.mergeDiagnoses();
+        }
+      },
+      error: () => {}
+    });
+
+    this.pharmacySaleService.getByPatient(patientId).subscribe({
+      next: res => { if (res.success) this.pharmacySales = res.data; },
+      error: () => {}
     });
 
     this.labService.getByPatient(patientId).subscribe({
@@ -1588,6 +1646,24 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       next: res => { if (res.success) this.patientProfile = res.data; this.loadingProfile = false; },
       error: () => { this.loadingProfile = false; }
     });
+  }
+
+  mergeDiagnoses(): void {
+    const fromRx = this.prescriptions
+      .filter((rx: any) => rx.notes && rx.notes.trim().length > 0)
+      .map((rx: any) => ({ ...rx, _source: 'rx' }));
+    const fromEm = this.emergencyReports.map((r: any) => ({
+      _source: 'emergency',
+      createdAt: r.createdAt,
+      doctorName: r.doctorName,
+      notes: [r.diagnosis, r.treatment, r.medications].filter(Boolean).join('\n\n'),
+      _diagnosis: r.diagnosis,
+      _treatment: r.treatment,
+      _medications: r.medications,
+      items: []
+    }));
+    this.diagnoses = [...fromRx, ...fromEm]
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   // --- Profile edit ---

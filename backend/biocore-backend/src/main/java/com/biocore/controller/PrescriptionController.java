@@ -55,6 +55,24 @@ public class PrescriptionController {
         return ResponseEntity.ok(ApiResponse.ok(dtos));
     }
 
+    @GetMapping("/by-code/{code}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
+    public ResponseEntity<ApiResponse<PrescriptionDTO>> getByCode(@PathVariable String code) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(PrescriptionDTO.from(prescriptionService.getByCode(code))));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/by-dpi/{dpi}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PrescriptionDTO>>> getByDpi(@PathVariable String dpi) {
+        List<PrescriptionDTO> dtos = prescriptionService.getByPatientDpi(dpi)
+                .stream().map(PrescriptionDTO::from).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok(dtos));
+    }
+
     /** CU8: Despachar medicamentos (RN-F01, RN-F02) */
     @PutMapping("/{id}/dispatch")
     @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")

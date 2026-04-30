@@ -30,7 +30,11 @@ public class PrescriptionService {
         Ticket ticket = req.getTicketId() != null
                 ? ticketRepository.findById(req.getTicketId()).orElse(null) : null;
 
+        int nextCode = prescriptionRepository.findMaxCodeNumber() + 1;
+        String code = String.format("REC-%05d", nextCode);
+
         Prescription prescription = Prescription.builder()
+                .code(code)
                 .patient(patient)
                 .doctor(doctor)
                 .ticket(ticket)
@@ -70,6 +74,17 @@ public class PrescriptionService {
     @Transactional(readOnly = true)
     public List<Prescription> getByPatient(Long patientId) {
         return prescriptionRepository.findByPatientIdOrderByCreatedAtDesc(patientId);
+    }
+
+    @Transactional(readOnly = true)
+    public Prescription getByCode(String code) {
+        return prescriptionRepository.findByCode(code)
+                .orElseThrow(() -> new RuntimeException("Receta no encontrada con código: " + code));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Prescription> getByPatientDpi(String dpi) {
+        return prescriptionRepository.findByPatientDpi(dpi);
     }
 
     @Transactional(readOnly = true)

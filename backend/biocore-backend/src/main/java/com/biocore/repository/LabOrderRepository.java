@@ -21,4 +21,10 @@ public interface LabOrderRepository extends JpaRepository<LabOrder, Long> {
     /** RN-L01: Órdenes expiradas (más de 30 días) */
     @Query("SELECT l FROM LabOrder l WHERE l.status NOT IN ('COMPLETED', 'EXPIRED') AND l.expirationDate < :today")
     List<LabOrder> findExpiredOrders(@Param("today") LocalDate today);
+
+    /** Report: most requested lab exams in date range */
+    @Query("SELECT COALESCE(l.labExam.name, CAST(l.sampleType AS string)), COUNT(l) " +
+           "FROM LabOrder l WHERE l.orderDate >= :from AND l.orderDate <= :to " +
+           "GROUP BY l.labExam.name, l.sampleType ORDER BY COUNT(l) DESC")
+    List<Object[]> countByExamBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

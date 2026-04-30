@@ -4,12 +4,18 @@ import com.biocore.entity.Appointment;
 import com.biocore.entity.LabOrder;
 import com.biocore.entity.Patient;
 import com.biocore.entity.Payment;
+import com.biocore.entity.PharmacySale;
+import com.biocore.entity.PharmacySaleItem;
 import com.biocore.entity.Prescription;
 import com.biocore.entity.Ticket;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+
+import jakarta.mail.internet.MimeMessage;
+import java.io.File;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -55,10 +61,10 @@ public class EmailService {
     }
 
     /**
-     * CU4 FA01: Notificación de resultados de laboratorio
+     * CU4 FA01: Notificación de resultados de laboratorio con PDF adjunto
      * RN-L02: Fecha DD/MM/AAAA y hora en formato 24 horas
      */
-    public void sendLabResultNotification(Patient patient, LabOrder order, LocalDateTime availableAt) {
+    public void sendLabResultNotification(Patient patient, LabOrder order, LocalDateTime availableAt, File pdfFile) {
         if (patient.getEmail() == null || patient.getEmail().isBlank()) {
             log.warn("RN-L03: No se puede notificar, correo no registrado para paciente {}", patient.getPatientCode());
             return;
@@ -68,14 +74,16 @@ public class EmailService {
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-            String subject = "Notificación de Resultados - Laboratorio Hospital BioCore";
+            String examName = order.getLabExam() != null ? order.getLabExam().getName() : order.getSampleType().name();
+
             String body = String.format(
                 "Estimado(a) %s %s,\n\n" +
                 "Le informamos que sus resultados de laboratorio fueron culminados el día %s " +
-                "a las %s horas y adjuntamos el resultado de dichos exámenes en este correo.\n\n" +
+                "a las %s horas. Adjuntamos el PDF con los resultados en este correo.\n\n" +
+                "Examen: %s\n" +
                 "Tipo de muestra: %s\n" +
                 "Código de paciente: %s\n\n" +
-                "Para cualquier consulta, agendar una nueva cita en la página y adjuntar laboratorios. " +
+                "Para cualquier consulta, agende una nueva cita y adjunte sus laboratorios. " +
                 "Favor presentar su ticket o código de paciente.\n\n" +
                 "Atentamente,\n" +
                 "Hospital BioCore Medical",
@@ -83,17 +91,22 @@ public class EmailService {
                 patient.getLastName(),
                 availableAt.format(dateFormatter),
                 availableAt.format(timeFormatter),
+                examName,
                 order.getSampleType().name(),
                 patient.getPatientCode()
             );
 
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(patient.getEmail());
-            message.setSubject(subject);
-            message.setText(body);
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setTo(patient.getEmail());
+            helper.setSubject("Resultados de Laboratorio - Hospital BioCore Medical");
+            helper.setText(body);
+            if (pdfFile != null && pdfFile.exists()) {
+                helper.addAttachment("Resultado_Laboratorio_" + order.getId() + ".pdf", pdfFile);
+            }
 
-            mailSender.send(message);
-            log.info("Notificación enviada a {} para orden {}", patient.getEmail(), order.getId());
+            mailSender.send(mimeMessage);
+            log.info("Notificación con PDF enviada a {} para orden {}", patient.getEmail(), order.getId());
         } catch (Exception e) {
             log.error("Error al enviar notificación de laboratorio: {}", e.getMessage());
         }
@@ -243,6 +256,55 @@ public class EmailService {
             log.info("Reporte de emergencia enviado a {} ticket {}", patient.getEmail(), ticketNumber);
         } catch (Exception e) {
             log.error("Error al enviar reporte de emergencia: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Farmacia: Comprobante de venta con detalle de medicamentos.
+     */
+    public void sendPharmacyReceiptEmail(PharmacySale sale) {
+        Patient patient = sale.getPatient();
+        if (patient == null || patient.getEmail() == null || patient.getEmail().isBlank()) return;
+        try {
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            StringBuilder body = new StringBuilder();
+            body.append(String.format("Estimado(a) %s %s,\n\n",
+                    patient.getFirstName(), patient.getLastName()));
+            body.append("Su compra en Farmacia BioCore Medical ha sido procesada exitosamente.\n\n");
+            body.append(String.format("N° Factura:     %s\n", sale.getInvoiceNumber()));
+            body.append(String.format("Código venta:   %s\n", sale.getSaleCode()));
+            if (sale.getPrescription() != null && sale.getPrescription().getCode() != null) {
+                body.append(String.format("Receta:         %s\n", sale.getPrescription().getCode()));
+            }
+            body.append(String.format("Método de pago: %s\n",
+                    sale.getPaymentMethod() != null ? sale.getPaymentMethod().name() : "-"));
+            body.append(String.format("Fecha:          %s\n\n",
+                    sale.getPaidAt() != null ? sale.getPaidAt().format(dtf) : "-"));
+
+            body.append("DETALLE DE MEDICAMENTOS:\n");
+            for (PharmacySaleItem item : sale.getItems()) {
+                body.append(String.format("  - %s | Cantidad: %d | Precio: Q%.2f | Subtotal: Q%.2f\n",
+                        item.getMedicine().getName(),
+                        item.getQuantity(),
+                        item.getUnitPrice(),
+                        item.getSubtotal()));
+            }
+
+            body.append(String.format("\nTotal:          Q%.2f\n", sale.getTotalAmount()));
+            if (sale.getDiscountAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                body.append(String.format("Descuento:      Q%.2f\n", sale.getDiscountAmount()));
+                body.append(String.format("Total pagado:   Q%.2f\n", sale.getNetAmount()));
+            }
+            body.append("\nGracias por su preferencia.\n\nAtentamente,\nFarmacia BioCore Medical");
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(patient.getEmail());
+            message.setSubject("Comprobante Farmacia — Hospital BioCore Medical");
+            message.setText(body.toString());
+            mailSender.send(message);
+            log.info("Comprobante farmacia enviado a {} venta {}", patient.getEmail(), sale.getSaleCode());
+        } catch (Exception e) {
+            log.error("Error al enviar comprobante de farmacia: {}", e.getMessage());
         }
     }
 

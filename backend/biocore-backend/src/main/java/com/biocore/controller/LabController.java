@@ -8,14 +8,19 @@ import com.biocore.service.LabService;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/lab-orders")
@@ -26,17 +31,13 @@ public class LabController {
 
     @GetMapping("/patient/{patientId}")
     public ResponseEntity<ApiResponse<List<LabOrderDTO>>> getByPatient(@PathVariable Long patientId) {
-        List<LabOrderDTO> dtos = labService.getByPatient(patientId)
-                .stream().map(LabOrderDTO::from).collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.ok(dtos));
+        return ResponseEntity.ok(ApiResponse.ok(labService.getByPatient(patientId)));
     }
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<LabOrderDTO>>> getPending() {
-        List<LabOrderDTO> dtos = labService.getPending()
-                .stream().map(LabOrderDTO::from).collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.ok(dtos));
+        return ResponseEntity.ok(ApiResponse.ok(labService.getPending()));
     }
 
     @PostMapping
@@ -71,27 +72,37 @@ public class LabController {
         }
     }
 
-    @PutMapping("/{id}/complete")
+    @PutMapping(value = "/{id}/complete", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'ADMIN')")
-    public ResponseEntity<ApiResponse<LabOrderDTO>> complete(@PathVariable Long id,
-                                                              @RequestBody CompleteLabRequest req,
-                                                              @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<LabOrderDTO>> complete(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(value = "notes", required = false) String notes,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Resultado registrado y notificación enviada",
-                    LabOrderDTO.from(labService.complete(id, req.getNotes(), req.getResultAvailableAt(), userDetails.getUser().getId()))));
+                    LabOrderDTO.from(labService.complete(id, notes, file, userDetails.getUser().getId()))));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/result-file")
+    public ResponseEntity<Resource> getResultFile(@PathVariable Long id) {
+        try {
+            File file = labService.getResultFile(id);
+            Resource resource = new FileSystemResource(file);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"resultado_lab_" + id + ".pdf\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
         }
     }
 
     @Data
     static class ScheduleRequest {
         private LocalDateTime scheduledAt;
-    }
-
-    @Data
-    static class CompleteLabRequest {
-        private String notes;
-        private LocalDateTime resultAvailableAt;
     }
 }

@@ -15,6 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { PatientService } from '../../../shared/services/patient.service';
 import { InsuranceService } from '../../../shared/services/payment.service';
 import { NotificationService } from '../../../shared/services/notification.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { Patient } from '../../../core/models/patient.model';
 
 @Component({
@@ -84,6 +85,12 @@ import { Patient } from '../../../core/models/patient.model';
                 <button mat-icon-button color="accent" (click)="openEdit(p); $event.stopPropagation()" title="Editar">
                   <mat-icon>edit</mat-icon>
                 </button>
+                <button mat-icon-button color="warn"
+                        *ngIf="canDelete"
+                        (click)="confirmDelete(p); $event.stopPropagation()"
+                        title="Eliminar paciente">
+                  <mat-icon>delete</mat-icon>
+                </button>
               </td>
             </ng-container>
 
@@ -97,6 +104,27 @@ import { Patient } from '../../../core/models/patient.model';
             <p style="color:#9e9e9e">No se encontraron pacientes</p>
           </div>
         </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Delete confirm dialog -->
+    <div class="edit-overlay" *ngIf="deleteDialogOpen">
+      <mat-card class="edit-dialog" style="width:400px;max-height:unset">
+        <mat-card-header>
+          <mat-icon mat-card-avatar style="color:#c62828">warning</mat-icon>
+          <mat-card-title>Eliminar Paciente</mat-card-title>
+          <mat-card-subtitle *ngIf="deletingPatient">{{ deletingPatient.firstName }} {{ deletingPatient.lastName }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content style="padding:16px">
+          <p>¿Está seguro que desea eliminar a este paciente? Esta acción desactivará su cuenta y no podrá acceder al sistema.</p>
+          <p style="color:#9e9e9e;font-size:0.85rem">Código: {{ deletingPatient?.patientCode }} · DPI: {{ deletingPatient?.dpi }}</p>
+        </mat-card-content>
+        <mat-card-actions style="display:flex;gap:8px;padding:16px">
+          <button mat-raised-button color="warn" (click)="deletePatient()" [disabled]="deleting">
+            <mat-icon>delete</mat-icon> {{ deleting ? 'Eliminando...' : 'Eliminar' }}
+          </button>
+          <button mat-button (click)="deleteDialogOpen = false">Cancelar</button>
+        </mat-card-actions>
       </mat-card>
     </div>
 
@@ -191,14 +219,21 @@ export class PatientListComponent implements OnInit {
   saving = false;
   insurances: any[] = [];
 
+  deleteDialogOpen = false;
+  deletingPatient: Patient | null = null;
+  deleting = false;
+  canDelete = false;
+
   constructor(
     private fb: FormBuilder,
     private patientService: PatientService,
     private insuranceService: InsuranceService,
-    private notification: NotificationService
+    private notification: NotificationService,
+    private auth: AuthService
   ) {}
 
   ngOnInit(): void {
+    this.canDelete = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
     this.loadAll();
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
     this.searchCtrl.valueChanges.pipe(
@@ -244,6 +279,30 @@ export class PatientListComponent implements OnInit {
       insuranceNumber:  [p.insuranceNumber     || '']
     });
     this.editDialogOpen = true;
+  }
+
+  confirmDelete(p: Patient): void {
+    this.deletingPatient = p;
+    this.deleteDialogOpen = true;
+  }
+
+  deletePatient(): void {
+    if (!this.deletingPatient) return;
+    this.deleting = true;
+    this.patientService.delete(this.deletingPatient.id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Paciente eliminado exitosamente');
+          this.deleteDialogOpen = false;
+          this.loadAll();
+        }
+        this.deleting = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al eliminar paciente');
+        this.deleting = false;
+      }
+    });
   }
 
   saveEdit(): void {

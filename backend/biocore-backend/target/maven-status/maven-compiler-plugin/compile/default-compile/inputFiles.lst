@@ -14,6 +14,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\MedicineController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\PatientController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\PaymentController.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\PharmacySaleController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\PrescriptionController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\PublicController.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\controller\ReportController.java
@@ -34,6 +35,8 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PatientCreateRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PatientDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PaymentCreateRequest.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PharmacySaleDTO.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PharmacySaleRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PrescriptionDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PrescriptionRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\TicketCreateRequest.java
@@ -55,6 +58,8 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Medicine.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Patient.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Payment.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\PharmacySale.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\PharmacySaleItem.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\Prescription.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\PrescriptionItem.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\entity\SlotReservation.java
@@ -69,6 +74,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\PaymentMethod.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\PaymentStatus.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\PaymentType.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\PharmacySaleStatus.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\PrescriptionStatus.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\Role.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\enums\SampleType.java
@@ -88,6 +94,8 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\MedicineRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\PatientRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\PaymentRepository.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\PharmacySaleItemRepository.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\PharmacySaleRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\PrescriptionItemRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\PrescriptionRepository.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\repository\SlotReservationRepository.java
@@ -107,6 +115,7 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\LabService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\PatientService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\PaymentService.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\PharmacySaleService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\PrescriptionService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\ReportService.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\service\TicketService.java

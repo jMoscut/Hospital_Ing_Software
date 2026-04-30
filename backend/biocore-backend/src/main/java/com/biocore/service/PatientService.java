@@ -30,6 +30,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public List<PatientDTO> getAll() {
         return patientRepository.findAll().stream()
+                .filter(p -> p.isActive())
                 .map(PatientDTO::from)
                 .collect(Collectors.toList());
     }
@@ -166,6 +167,14 @@ public class PatientService {
         patient.setInsuranceNumber(req.getInsuranceNumber());
 
         return PatientDTO.from(patientRepository.save(patient));
+    }
+
+    @Transactional
+    public void deactivate(Long id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + id));
+        patient.setActive(false);
+        patientRepository.save(patient);
     }
 
     /** RN-P001: mín 8 chars, 1 mayúscula, 1 número. RN-P003: contraseña temporal */

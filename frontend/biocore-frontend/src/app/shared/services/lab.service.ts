@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LabExam, LabOrder, Medicine, Prescription } from '../../core/models/lab.model';
+import { LabExam, LabOrder, Medicine, Prescription, PharmacySale } from '../../core/models/lab.model';
 import { ApiResponse } from '../../core/models/api-response.model';
 
 @Injectable({ providedIn: 'root' })
@@ -31,8 +31,15 @@ export class LabService {
     return this.http.put<ApiResponse<LabOrder>>(`${this.url}/${id}/schedule`, { scheduledAt });
   }
 
-  complete(id: number, notes: string, resultAvailableAt: string): Observable<ApiResponse<LabOrder>> {
-    return this.http.put<ApiResponse<LabOrder>>(`${this.url}/${id}/complete`, { notes, resultAvailableAt });
+  complete(id: number, notes: string, file: File): Observable<ApiResponse<LabOrder>> {
+    const form = new FormData();
+    form.append('file', file);
+    if (notes) form.append('notes', notes);
+    return this.http.put<ApiResponse<LabOrder>>(`${this.url}/${id}/complete`, form);
+  }
+
+  getResultFileUrl(id: number): string {
+    return `${this.url}/${id}/result-file`;
   }
 }
 
@@ -80,6 +87,10 @@ export class MedicineService {
   getLowStock(threshold: number = 10): Observable<ApiResponse<Medicine[]>> {
     return this.http.get<ApiResponse<Medicine[]>>(`${this.url}/low-stock?threshold=${threshold}`);
   }
+
+  delete(id: number): Observable<ApiResponse<string>> {
+    return this.http.delete<ApiResponse<string>>(`${this.url}/${id}`);
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -106,5 +117,38 @@ export class PrescriptionService {
 
   dispatch(id: number, itemIds: number[]): Observable<ApiResponse<Prescription>> {
     return this.http.put<ApiResponse<Prescription>>(`${this.url}/${id}/dispatch`, itemIds);
+  }
+
+  getByCode(code: string): Observable<ApiResponse<Prescription>> {
+    return this.http.get<ApiResponse<Prescription>>(`${this.url}/by-code/${code}`);
+  }
+
+  getByDpi(dpi: string): Observable<ApiResponse<Prescription[]>> {
+    return this.http.get<ApiResponse<Prescription[]>>(`${this.url}/by-dpi/${dpi}`);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class PharmacySaleService {
+  private url = `${environment.apiUrl}/pharmacy/sales`;
+
+  constructor(private http: HttpClient) {}
+
+  reserve(req: { patientId?: number; prescriptionId?: number; items: { medicineId: number; quantity: number }[] }): Observable<ApiResponse<PharmacySale>> {
+    return this.http.post<ApiResponse<PharmacySale>>(this.url, req);
+  }
+
+  getById(id: number): Observable<ApiResponse<PharmacySale>> {
+    return this.http.get<ApiResponse<PharmacySale>>(`${this.url}/${id}`);
+  }
+
+  cancel(id: number): Observable<ApiResponse<PharmacySale>> {
+    return this.http.post<ApiResponse<PharmacySale>>(`${this.url}/${id}/cancel`, {});
+  }
+
+  complete(id: number, method: string, patientId?: number): Observable<ApiResponse<PharmacySale>> {
+    let params = `method=${method}`;
+    if (patientId) params += `&patientId=${patientId}`;
+    return this.http.post<ApiResponse<PharmacySale>>(`${this.url}/${id}/complete?${params}`, {});
   }
 }

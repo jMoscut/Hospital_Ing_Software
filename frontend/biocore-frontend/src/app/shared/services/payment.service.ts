@@ -38,8 +38,28 @@ export class ReportService {
     return this.http.get<ApiResponse<Dashboard>>(`${this.url}/dashboard`);
   }
 
+  searchExpedient(q: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/expedient/search?q=${encodeURIComponent(q)}`);
+  }
+
   getPatientExpedient(patientCode: string): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.url}/patient/${patientCode}`);
+  }
+
+  getPatientsPerArea(period: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/patients-by-area?period=${period}`);
+  }
+
+  getPharmacySales(period: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/pharmacy-sales?period=${period}`);
+  }
+
+  getDoctorProductivity(period: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/doctor-productivity?period=${period}`);
+  }
+
+  getLabExams(period: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/lab-exams?period=${period}`);
   }
 }
 
@@ -114,6 +134,20 @@ export class EmergencyService {
 
   submitMedicalReport(ticketId: number, data: { diagnosis: string; treatment: string; medications: string }): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.url}/tickets/${ticketId}/medical-report`, data);
+  }
+
+  getMedicalReportsByPatient(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/patient/${patientId}/medical-reports`);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class PharmacySaleService {
+  private url = `${environment.apiUrl}/pharmacy/sales`;
+  constructor(private http: HttpClient) {}
+
+  getByPatient(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/patient/${patientId}`);
   }
 }
 

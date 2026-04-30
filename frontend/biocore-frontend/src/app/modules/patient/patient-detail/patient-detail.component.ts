@@ -15,7 +15,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { PatientService } from '../../../shared/services/patient.service';
 import { LabService } from '../../../shared/services/lab.service';
-import { PaymentService, InsuranceService } from '../../../shared/services/payment.service';
+import { environment } from '../../../../environments/environment';
+import { PaymentService, InsuranceService, EmergencyService, PharmacySaleService } from '../../../shared/services/payment.service';
 import { TicketService, PrescriptionService, VitalSignsService } from '../../../shared/services/ticket.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
@@ -212,6 +213,18 @@ import { Patient } from '../../../core/models/patient.model';
                   <ng-template #noLab><p class="no-data">Sin órdenes de laboratorio</p></ng-template>
                 </div>
 
+                <!-- ── Emergency Medical Report ── -->
+                <ng-container *ngIf="t.type === 'EMERGENCIA' && getEmergencyReport(t.id) as er">
+                  <mat-divider></mat-divider>
+                  <div class="detail-section">
+                    <div class="section-title"><mat-icon>emergency</mat-icon> Reporte de Emergencia</div>
+                    <div class="diagnosis-text" *ngIf="er.diagnosis"><strong>Diagnóstico:</strong> {{ er.diagnosis }}</div>
+                    <div class="diagnosis-text" *ngIf="er.treatment" style="margin-top:8px"><strong>Tratamiento:</strong> {{ er.treatment }}</div>
+                    <div class="diagnosis-text" *ngIf="er.medications" style="margin-top:8px"><strong>Medicamentos:</strong> {{ er.medications }}</div>
+                    <p class="no-data" *ngIf="!er.diagnosis && !er.treatment && !er.medications">Sin detalles en el reporte</p>
+                  </div>
+                </ng-container>
+
               </mat-expansion-panel>
             </mat-accordion>
 
@@ -224,11 +237,22 @@ import { Patient } from '../../../core/models/patient.model';
             <div class="queue-ticket" *ngFor="let o of labOrders">
               <mat-icon style="color:#1565c0">science</mat-icon>
               <div class="ticket-info">
-                <div class="ticket-patient">{{ o.sampleType }} · Dr. {{ o.doctorName }}</div>
+                <div class="ticket-patient">{{ o.labExamName || o.sampleType }} · Dr. {{ o.doctorName }}</div>
                 <div class="ticket-meta">{{ o.orderDate }} · Vence: {{ o.expirationDate }}</div>
+                <div *ngIf="o.resultNotes" style="font-size:0.8rem;color:#555;margin-top:2px">{{ o.resultNotes }}</div>
               </div>
-              <span [style.background]="o.status==='COMPLETED'?'#e8f5e9':o.status==='EXPIRED'?'#ffebee':'#fff3e0'"
-                    style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ o.status }}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <a *ngIf="o.hasAttachment"
+                   [href]="apiUrl + '/lab-orders/' + o.id + '/result-file'"
+                   target="_blank"
+                   mat-icon-button
+                   style="color:#c62828"
+                   title="Ver PDF resultado">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                </a>
+                <span [style.background]="o.status==='COMPLETED'?'#e8f5e9':o.status==='EXPIRED'?'#ffebee':'#fff3e0'"
+                      style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ o.status }}</span>
+              </div>
             </div>
             <p *ngIf="labOrders.length === 0" class="text-center" style="color:#9e9e9e;padding:24px">Sin órdenes de laboratorio</p>
           </div>
@@ -237,15 +261,29 @@ import { Patient } from '../../../core/models/patient.model';
         <!-- ── Tab 4: Pagos ── -->
         <mat-tab label="Pagos">
           <div class="tab-content">
-            <div class="queue-ticket" *ngFor="let p of payments">
-              <mat-icon style="color:#2e7d32">payments</mat-icon>
-              <div class="ticket-info">
-                <div class="ticket-patient">{{ p.type }} · Q{{ p.netAmount }}</div>
-                <div class="ticket-meta">{{ p.createdAt | date:'dd/MM/yyyy' }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+            <div *ngIf="payments.length > 0">
+              <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Pagos de Consultas / Emergencias</p>
+              <div class="queue-ticket" *ngFor="let p of payments">
+                <mat-icon style="color:#2e7d32">payments</mat-icon>
+                <div class="ticket-info">
+                  <div class="ticket-patient">{{ p.type }} · Q{{ p.netAmount }}</div>
+                  <div class="ticket-meta">{{ p.createdAt | date:'dd/MM/yyyy' }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+                </div>
+                <span [class]="p.status==='PAID'?'status-completed':'status-waiting'" style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ p.status }}</span>
               </div>
-              <span [class]="p.status==='PAID'?'status-completed':'status-waiting'" style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ p.status }}</span>
             </div>
-            <p *ngIf="payments.length === 0" class="text-center" style="color:#9e9e9e;padding:24px">Sin pagos registrados</p>
+            <div *ngIf="pharmacySales.length > 0" style="margin-top:16px">
+              <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
+              <div class="queue-ticket" *ngFor="let s of pharmacySales">
+                <mat-icon style="color:#6a1b9a">medication</mat-icon>
+                <div class="ticket-info">
+                  <div class="ticket-patient">{{ s.saleCode || 'Venta farmacia' }}<span *ngIf="s.invoiceNumber"> · Factura {{ s.invoiceNumber }}</span></div>
+                  <div class="ticket-meta">{{ s.paidAt ? (s.paidAt | date:'dd/MM/yyyy') : (s.createdAt | date:'dd/MM/yyyy') }} · Q{{ s.totalAmount }}</div>
+                </div>
+                <span style="padding:4px 12px;border-radius:12px;font-size:0.8rem;background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
+              </div>
+            </div>
+            <p *ngIf="payments.length === 0 && pharmacySales.length === 0" class="text-center" style="color:#9e9e9e;padding:24px">Sin pagos registrados</p>
           </div>
         </mat-tab>
 
@@ -333,12 +371,15 @@ import { Patient } from '../../../core/models/patient.model';
   `]
 })
 export class PatientDetailComponent implements OnInit {
+  apiUrl = environment.apiUrl;
   patient: Patient | null = null;
   tickets: any[] = [];
   completedTickets: any[] = [];
   labOrders: any[] = [];
   payments: any[] = [];
+  pharmacySales: any[] = [];
   prescriptions: any[] = [];
+  emergencyReports: any[] = [];
   vitalsCache: Record<number, any> = {};
   patientId!: number;
   editMode = false;
@@ -356,6 +397,8 @@ export class PatientDetailComponent implements OnInit {
     private labService: LabService,
     private paymentService: PaymentService,
     private insuranceService: InsuranceService,
+    private emergencyService: EmergencyService,
+    private pharmacySaleService: PharmacySaleService,
     private notification: NotificationService
   ) {}
 
@@ -385,9 +428,19 @@ export class PatientDetailComponent implements OnInit {
     this.paymentService.getByPatient(id).subscribe(res => {
       if (res.success) this.payments = res.data;
     });
+    this.pharmacySaleService.getByPatient(id).subscribe(res => {
+      if (res.success) this.pharmacySales = res.data;
+    });
     this.prescriptionService.getByPatient(id).subscribe(res => {
       if (res.success) this.prescriptions = res.data;
     });
+    this.emergencyService.getMedicalReportsByPatient(id).subscribe(res => {
+      if (res.success) this.emergencyReports = res.data;
+    });
+  }
+
+  getEmergencyReport(ticketId: number): any | null {
+    return this.emergencyReports.find(r => r.ticketId === ticketId) ?? null;
   }
 
   onExpandTicket(ticket: any): void {

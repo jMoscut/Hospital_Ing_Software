@@ -20,8 +20,11 @@ import java.util.stream.Collectors;
 public class PrescriptionDTO {
 
     private Long id;
+    private String code;
     private Long patientId;
     private String patientName;
+    private String patientDpi;
+    private String patientEmail;
     private Long doctorId;
     private String doctorName;
     private Long ticketId;
@@ -33,8 +36,11 @@ public class PrescriptionDTO {
     public static PrescriptionDTO from(Prescription p) {
         return PrescriptionDTO.builder()
                 .id(p.getId())
+                .code(p.getCode())
                 .patientId(p.getPatient().getId())
                 .patientName(p.getPatient().getFirstName() + " " + p.getPatient().getLastName())
+                .patientDpi(p.getPatient().getDpi())
+                .patientEmail(p.getPatient().getEmail())
                 .doctorId(p.getDoctor().getId())
                 .doctorName(p.getDoctor().getFirstName() + " " + p.getDoctor().getLastName())
                 .ticketId(p.getTicket() != null ? p.getTicket().getId() : null)

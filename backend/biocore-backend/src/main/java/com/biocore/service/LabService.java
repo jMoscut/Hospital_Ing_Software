@@ -1,5 +1,6 @@
 package com.biocore.service;
 
+import com.biocore.dto.LabOrderDTO;
 import com.biocore.dto.LabOrderRequest;
 import com.biocore.entity.LabExam;
 import com.biocore.entity.LabOrder;
@@ -7,6 +8,7 @@ import com.biocore.entity.LabResult;
 import com.biocore.entity.Patient;
 import com.biocore.entity.Ticket;
 import com.biocore.entity.User;
+import com.biocore.entity.VitalSigns;
 import com.biocore.enums.LabOrderStatus;
 import com.biocore.enums.SampleType;
 import com.biocore.repository.LabExamRepository;
@@ -15,16 +17,25 @@ import com.biocore.repository.LabResultRepository;
 import com.biocore.repository.PatientRepository;
 import com.biocore.repository.TicketRepository;
 import com.biocore.repository.UserRepository;
+import com.biocore.repository.VitalSignsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,17 +48,32 @@ public class LabService {
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
+    private final VitalSignsRepository vitalSignsRepository;
     private final EmailService emailService;
 
+    @Value("${app.upload.dir}")
+    private String uploadDir;
+
     @Transactional(readOnly = true)
-    public List<LabOrder> getByPatient(Long patientId) {
-        return labOrderRepository.findByPatientIdOrderByOrderDateDesc(patientId);
+    public List<LabOrderDTO> getByPatient(Long patientId) {
+        return labOrderRepository.findByPatientIdOrderByOrderDateDesc(patientId)
+                .stream().map(o -> {
+                    LabResult r = labResultRepository.findByLabOrderId(o.getId()).orElse(null);
+                    return LabOrderDTO.from(o, null, r);
+                }).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<LabOrder> getPending() {
+    public List<LabOrderDTO> getPending() {
         return labOrderRepository.findByStatusIn(List.of(
-                LabOrderStatus.PENDING, LabOrderStatus.SAMPLE_COLLECTED, LabOrderStatus.SCHEDULED));
+                LabOrderStatus.PENDING, LabOrderStatus.SAMPLE_COLLECTED, LabOrderStatus.SCHEDULED))
+                .stream().map(o -> {
+                    VitalSigns v = o.getTicket() != null
+                            ? vitalSignsRepository.findByTicketId(o.getTicket().getId()).orElse(null)
+                            : null;
+                    LabResult r = labResultRepository.findByLabOrderId(o.getId()).orElse(null);
+                    return LabOrderDTO.from(o, v, r);
+                }).collect(Collectors.toList());
     }
 
     @Transactional
@@ -111,7 +137,7 @@ public class LabService {
     }
 
     @Transactional
-    public LabOrder complete(Long orderId, String notes, LocalDateTime resultAvailableAt, Long technicianId) {
+    public LabOrder complete(Long orderId, String notes, MultipartFile file, Long technicianId) {
         LabOrder order = getOrThrow(orderId);
 
         // RN-L03: Verificar correo registrado
@@ -120,24 +146,72 @@ public class LabService {
             throw new RuntimeException("RN-L03: El correo electrónico del paciente no está registrado. Actualícelo antes de completar.");
         }
 
+        // Validar PDF
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Debe adjuntar el PDF con los resultados.");
+        }
+        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
+        if (!originalName.toLowerCase().endsWith(".pdf") &&
+                !"application/pdf".equalsIgnoreCase(file.getContentType())) {
+            throw new RuntimeException("El archivo debe ser un PDF.");
+        }
+
+        // Guardar archivo en disco
+        String attachmentPath = saveFile(file, orderId);
+
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("America/Guatemala"));
         order.setStatus(LabOrderStatus.COMPLETED);
-        order.setResultAvailableAt(resultAvailableAt);
+        order.setResultAvailableAt(now);
         labOrderRepository.save(order);
 
-        // Guardar resultado
         User technician = userRepository.findById(technicianId).orElse(null);
-        LabResult result = LabResult.builder()
-                .labOrder(order)
-                .technician(technician)
-                .resultNotes(notes)
-                .resultDate(resultAvailableAt.toLocalDate())
-                .build();
+        LabResult result = labResultRepository.findByLabOrderId(orderId).orElse(null);
+        if (result == null) {
+            result = LabResult.builder()
+                    .labOrder(order)
+                    .technician(technician)
+                    .resultNotes(notes)
+                    .resultDate(now.toLocalDate())
+                    .attachmentPath(attachmentPath)
+                    .notificationSentAt(now)
+                    .build();
+        } else {
+            result.setTechnician(technician);
+            result.setResultNotes(notes);
+            result.setResultDate(now.toLocalDate());
+            result.setAttachmentPath(attachmentPath);
+            result.setNotificationSentAt(now);
+        }
         labResultRepository.save(result);
 
-        // CU4 FA01: Enviar notificación por email
-        emailService.sendLabResultNotification(patient, order, resultAvailableAt);
+        // CU4 FA01: Enviar notificación con PDF adjunto
+        emailService.sendLabResultNotification(patient, order, now, new File(attachmentPath));
 
         return order;
+    }
+
+    public File getResultFile(Long orderId) {
+        LabResult result = labResultRepository.findByLabOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("No hay resultado para esta orden"));
+        if (result.getAttachmentPath() == null) {
+            throw new RuntimeException("Esta orden no tiene PDF adjunto");
+        }
+        File file = new File(result.getAttachmentPath());
+        if (!file.exists()) throw new RuntimeException("Archivo no encontrado en servidor");
+        return file;
+    }
+
+    private String saveFile(MultipartFile file, Long orderId) {
+        try {
+            Path dir = Paths.get(uploadDir, "lab-orders", orderId.toString());
+            Files.createDirectories(dir);
+            String safe = System.currentTimeMillis() + "_resultado_lab.pdf";
+            Path dest = dir.resolve(safe);
+            Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+            return dest.toAbsolutePath().toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Error al guardar el archivo: " + e.getMessage());
+        }
     }
 
     /** RN-L01: Scheduled job que marca órdenes expiradas (>30 días) */

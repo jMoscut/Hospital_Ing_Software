@@ -4,6 +4,8 @@ import com.biocore.dto.ApiResponse;
 import com.biocore.dto.EmergencyDoctorTicketDTO;
 import com.biocore.dto.EmergencyReportDTO;
 import com.biocore.dto.TicketDTO;
+import com.biocore.entity.EmergencyMedicalReport;
+import com.biocore.repository.EmergencyMedicalReportRepository;
 import com.biocore.security.CustomUserDetails;
 import com.biocore.service.EmergencyService;
 import lombok.Data;
@@ -15,8 +17,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -25,6 +30,7 @@ import java.util.Map;
 public class EmergencyController {
 
     private final EmergencyService emergencyService;
+    private final EmergencyMedicalReportRepository emergencyReportRepository;
 
     /** CU7: Register emergency — creates ticket PENDING_PAYMENT + URGENT */
     @PostMapping("/register")
@@ -124,6 +130,28 @@ public class EmergencyController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    /** Emergency medical reports for a patient (Diagnósticos tab) */
+    @GetMapping("/patient/{patientId}/medical-reports")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'HEALTH_STAFF', 'NURSE', 'PATIENT')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPatientMedicalReports(
+            @PathVariable Long patientId) {
+        List<Map<String, Object>> result = emergencyReportRepository
+                .findByTicketPatientIdOrderByCreatedAtDesc(patientId)
+                .stream().map(r -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("ticketId", r.getTicket().getId());
+                    m.put("diagnosis", r.getDiagnosis());
+                    m.put("treatment", r.getTreatment());
+                    m.put("medications", r.getMedications());
+                    m.put("doctorName", r.getDoctor().getFirstName() + " " + r.getDoctor().getLastName());
+                    m.put("closedAt", r.getClosedAt());
+                    m.put("createdAt", r.getCreatedAt());
+                    return m;
+                }).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     /** Health staff marks emergency as attended → COMPLETED */
