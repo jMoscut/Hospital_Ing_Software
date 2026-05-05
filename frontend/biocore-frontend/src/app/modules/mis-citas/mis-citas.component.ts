@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormsModule, FormBuilder, FormGroup, ValidationErrors, Validators, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -32,6 +32,22 @@ const ALL_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:0
 const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
 const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00' };
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-mis-citas',
@@ -232,7 +248,7 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                       ← Volver
                     </button>
                     <button mat-raised-button color="primary"
-                            [disabled]="!cardValid() || paying"
+                            [disabled]="!cardValid() || paying || uploadErrors.length > 0"
                             (click)="pay()">
                       <mat-spinner *ngIf="paying" diameter="20" style="display:inline-block;margin-right:8px"></mat-spinner>
                       <mat-icon *ngIf="!paying">lock</mat-icon>
@@ -677,7 +693,10 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                     <mat-form-field appearance="outline">
                       <mat-label>Fecha de Nacimiento</mat-label>
                       <mat-icon matPrefix>cake</mat-icon>
-                      <input matInput type="date" formControlName="birthDate">
+                      <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                      <mat-error *ngIf="profileForm.get('birthDate')?.errors?.['yearTooEarly']">Año mínimo 1900</mat-error>
+                      <mat-error *ngIf="profileForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error>
+                      <mat-error *ngIf="profileForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Teléfono</mat-label>
@@ -1090,6 +1109,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   profileEditMode = false;
   profileSaving = false;
   profileForm!: FormGroup;
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
   insurances: any[] = [];
 
   // Credentials
@@ -1468,7 +1488,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         resolve(null);
       };
       reader.onerror = () => resolve('no se pudo leer el archivo.');
-      reader.readAsArrayBuffer(file.slice(0, 4096));
+      reader.readAsArrayBuffer(file);
     });
   }
 
@@ -1738,7 +1758,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       firstName:        [p.firstName,         Validators.required],
       lastName:         [p.lastName,          Validators.required],
       dpi:              [p.dpi,               Validators.required],
-      birthDate:        [p.birthDate          || ''],
+      birthDate:        [p.birthDate          || '', [birthDateValidator]],
       phone:            [p.phone             || ''],
       email:            [p.email             || ''],
       address:          [p.address           || ''],

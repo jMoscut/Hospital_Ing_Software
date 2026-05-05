@@ -997,7 +997,14 @@ export class UserManagementComponent implements OnInit {
   onScheduleDoctorChange(): void {
     this.doctorSchedules = [];
     this.clearSelection();
-    if (this.scheduleDoctor) this.loadSchedules();
+    if (this.scheduleDoctor) {
+      this.scheduleForm.patchValue({
+        clinicId: this.scheduleDoctor.assignedClinicId ?? null
+      });
+      this.loadSchedules();
+    } else {
+      this.scheduleForm.patchValue({ clinicId: null });
+    }
   }
 
   loadSchedules(): void {

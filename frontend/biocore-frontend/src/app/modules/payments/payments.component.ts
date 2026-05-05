@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -30,6 +30,22 @@ const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 type CitStep = 'dpi' | 'patient' | 'calendar' | 'payment' | 'receipt';
 type LabStep = 'dpi' | 'patient' | 'calendar' | 'payment' | 'receipt';
 type PayMode = 'TARJETA' | 'EFECTIVO';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-payments',
@@ -157,7 +173,10 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                       <mat-form-field appearance="outline">
                         <mat-label>Fecha de Nacimiento</mat-label>
                         <mat-icon matPrefix>cake</mat-icon>
-                        <input matInput type="date" formControlName="birthDate">
+                        <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                        <mat-error *ngIf="citPatientForm.get('birthDate')?.errors?.['yearTooEarly'] || citPatientForm.get('birthDate')?.errors?.['yearInvalid']">Año debe ser 4 dígitos y mínimo 1900</mat-error>
+                        <mat-error *ngIf="citPatientForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error>
+                        <mat-error *ngIf="citPatientForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error>
                       </mat-form-field>
                       <mat-form-field appearance="outline">
                         <mat-label>Teléfono</mat-label>
@@ -329,7 +348,7 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                         <small>Presente la tarjeta en el lector y confirme</small>
                       </div>
                       <button mat-raised-button color="primary" style="width:100%;font-size:1.05rem;padding:14px"
-                              [disabled]="citBooking" (click)="citBookAndPay()">
+                              [disabled]="citBooking || citUploadErrors.length > 0" (click)="citBookAndPay()">
                         <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                         <mat-icon *ngIf="!citBooking">point_of_sale</mat-icon>
                         {{ citBooking ? 'Procesando...' : 'Cobrar Q' + citFee + ' con POS' }}
@@ -353,7 +372,7 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                         <span>Efectivo insuficiente. Faltan Q{{ (citFee - citCashReceived).toFixed(2) }}</span>
                       </div>
                       <button mat-raised-button color="primary" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
-                              [disabled]="citBooking || citCashReceived === null || citCashReceived < citFee"
+                              [disabled]="citBooking || citCashReceived === null || citCashReceived < citFee || citUploadErrors.length > 0"
                               (click)="citBookAndPay()">
                         <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                         <mat-icon *ngIf="!citBooking">payments</mat-icon>
@@ -526,7 +545,10 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
                       <mat-form-field appearance="outline">
                         <mat-label>Fecha de Nacimiento</mat-label>
                         <mat-icon matPrefix>cake</mat-icon>
-                        <input matInput type="date" formControlName="birthDate">
+                        <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                        <mat-error *ngIf="labPatientForm.get('birthDate')?.errors?.['yearTooEarly'] || labPatientForm.get('birthDate')?.errors?.['yearInvalid']">Año debe ser 4 dígitos y mínimo 1900</mat-error>
+                        <mat-error *ngIf="labPatientForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error>
+                        <mat-error *ngIf="labPatientForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error>
                       </mat-form-field>
                       <mat-form-field appearance="outline">
                         <mat-label>Teléfono</mat-label>
@@ -1036,6 +1058,8 @@ type PayMode = 'TARJETA' | 'EFECTIVO';
 })
 export class PaymentsComponent implements OnInit, OnDestroy {
 
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+
   // ── Citas Presenciales ─────────────────────────────────────────────────────
   citStep: CitStep = 'dpi';
   citDpiForm!: FormGroup;
@@ -1167,7 +1191,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.citPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
-      birthDate:       [''],
+      birthDate:       ['', [birthDateValidator]],
       phone:           [''],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
@@ -1181,7 +1205,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.labPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
-      birthDate:       [''],
+      birthDate:       ['', [birthDateValidator]],
       phone:           [''],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
@@ -1623,7 +1647,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         if (/\/Encrypt\s/.test(text)) { resolve('el archivo está cifrado o protegido con contraseña.'); return; }
         resolve(null);
       };
-      reader.readAsArrayBuffer(file.slice(0, 4096));
+      reader.readAsArrayBuffer(file);
     });
   }
 

@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +21,22 @@ import { PaymentService, InsuranceService, EmergencyService, PharmacySaleService
 import { TicketService, PrescriptionService, VitalSignsService, AppointmentService } from '../../../shared/services/ticket.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-patient-detail',
@@ -68,7 +84,7 @@ import { Patient } from '../../../core/models/patient.model';
               <mat-form-field appearance="outline"><mat-label>Nombres *</mat-label><input matInput formControlName="firstName"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Apellidos *</mat-label><input matInput formControlName="lastName"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>DPI *</mat-label><input matInput formControlName="dpi"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Fecha de Nacimiento</mat-label><mat-icon matPrefix>cake</mat-icon><input matInput type="date" formControlName="birthDate"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Fecha de Nacimiento</mat-label><mat-icon matPrefix>cake</mat-icon><input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today"><mat-error *ngIf="editForm.get('birthDate')?.errors?.['yearTooEarly']">Año mínimo 1900</mat-error><mat-error *ngIf="editForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error><mat-error *ngIf="editForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Teléfono</mat-label><input matInput formControlName="phone"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Correo Electrónico</mat-label><input matInput formControlName="email"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Dirección</mat-label><input matInput formControlName="address"></mat-form-field>
@@ -408,6 +424,7 @@ export class PatientDetailComponent implements OnInit {
   editMode = false;
   saving = false;
   editForm!: FormGroup;
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
   insurances: any[] = [];
 
   constructor(
@@ -520,7 +537,7 @@ export class PatientDetailComponent implements OnInit {
       firstName:        [this.patient.firstName,        Validators.required],
       lastName:         [this.patient.lastName,         Validators.required],
       dpi:              [this.patient.dpi,              Validators.required],
-      birthDate:        [this.patient.birthDate         || ''],
+      birthDate:        [this.patient.birthDate         || '', [birthDateValidator]],
       phone:            [this.patient.phone             || ''],
       email:            [this.patient.email             || ''],
       address:          [this.patient.address           || ''],

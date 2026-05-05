@@ -17,11 +17,18 @@ import { NotificationService } from '../../../shared/services/notification.servi
 import { Patient } from '../../../core/models/patient.model';
 
 function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
-  if (!ctrl.value) return null;
-  const d = new Date(ctrl.value);
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
   if (isNaN(d.getTime())) return { invalidDate: true };
-  const year = d.getFullYear();
-  if (year < 1900 || d > new Date()) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
   return null;
 }
 
@@ -229,7 +236,7 @@ export class PatientRegisterComponent implements OnInit {
   submitting = false;
   registered = false;
   newCredentials: { username: string; tempPassword: string } | null = null;
-  today = new Date().toISOString().split('T')[0];
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
 
   onlyDigits(e: KeyboardEvent): boolean {
     return /[0-9]/.test(e.key);

@@ -203,6 +203,7 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   private emgLastAnnounced = new Map<number, number>();
   private readonly EMG_REPEAT_MS = 25000; // 25s between each of the 3 calls
   private readonly EMG_MAX_CALLS = 3;
+  private announceId = 0; // incremented each announce/cancel to abort stale onend loops
 
   constructor(private http: HttpClient) {}
 
@@ -219,7 +220,7 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   }
 
   private poll(): void {
-    this.http.get<any>(`${environment.apiUrl}/tickets`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/tickets/queue/today`).subscribe({
       next: res => {
         if (!res.success) return;
         const all = res.data as any[];
@@ -283,11 +284,12 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   }
 
   private autoMarkAttended(ticketId: number): void {
-    // Set count above MAX so subsequent polls skip this ticket until backend confirms COMPLETED
     this.emgAnnounceCount.set(ticketId, this.EMG_MAX_CALLS + 1);
     this.emgLastAnnounced.delete(ticketId);
+    this.announceId++; // abort any running speech loop
+    window.speechSynthesis.cancel();
     this.http.put(`${environment.apiUrl}/emergency/tickets/${ticketId}/mark-attended`, {})
-      .subscribe({ error: () => {} });
+      .subscribe({ error: (err) => console.warn('autoMarkAttended failed for ticket', ticketId, err) });
   }
 
   private announce(ticket: any): void {
@@ -306,10 +308,12 @@ export class CallScreenComponent implements OnInit, OnDestroy {
         + `${ticket.patientName}, `
         + `favor dirigirse a ${destination}.`;
 
+      const myId = ++this.announceId; // capture current ID; stale onend callbacks check this
       window.speechSynthesis.cancel();
       const repetitions = settings.repetitions ?? 2;
       let count = 0;
       const speak = () => {
+        if (myId !== this.announceId) return; // aborted by newer announce or autoMarkAttended
         if (count >= repetitions) return;
         const u = new SpeechSynthesisUtterance(text);
         const voices = window.speechSynthesis.getVoices();
@@ -318,11 +322,16 @@ export class CallScreenComponent implements OnInit, OnDestroy {
         u.lang = 'es-ES';
         u.volume = (settings.volume ?? 80) / 100;
         u.rate = 0.85;
-        u.onend = () => { count++; setTimeout(speak, 800); };
+        u.onend = () => {
+          if (myId !== this.announceId) return; // double-check on resume
+          count++;
+          setTimeout(speak, 800);
+        };
         if (window.speechSynthesis.paused) window.speechSynthesis.resume();
         window.speechSynthesis.speak(u);
       };
       const doSpeak = () => {
+        if (myId !== this.announceId) return;
         if (window.speechSynthesis.getVoices().length === 0) {
           window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; setTimeout(speak, 150); };
           window.speechSynthesis.getVoices();
