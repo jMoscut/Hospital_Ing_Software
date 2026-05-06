@@ -1,6 +1,7 @@
 package com.biocore.service;
 
 import com.biocore.dto.PaymentCreateRequest;
+import com.biocore.dto.PaymentDTO;
 import com.biocore.entity.Patient;
 import com.biocore.entity.Payment;
 import com.biocore.entity.Ticket;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,14 +30,16 @@ public class PaymentService {
     private final EmailService emailService;
 
     @Transactional(readOnly = true)
-    public List<Payment> getByPatient(Long patientId) {
-        return paymentRepository.findByPatientIdOrderByCreatedAtDesc(patientId);
+    public List<PaymentDTO> getByPatient(Long patientId) {
+        return paymentRepository.findByPatientIdOrderByCreatedAtDesc(patientId)
+                .stream().map(PaymentDTO::from).collect(Collectors.toList());
     }
 
     /** RN-P03: Verificar pagos pendientes */
     @Transactional(readOnly = true)
-    public List<Payment> getPendingByPatient(Long patientId) {
-        return paymentRepository.findByPatientIdAndStatus(patientId, PaymentStatus.PENDING);
+    public List<PaymentDTO> getPendingByPatient(Long patientId) {
+        return paymentRepository.findByPatientIdAndStatus(patientId, PaymentStatus.PENDING)
+                .stream().map(PaymentDTO::from).collect(Collectors.toList());
     }
 
     @Transactional

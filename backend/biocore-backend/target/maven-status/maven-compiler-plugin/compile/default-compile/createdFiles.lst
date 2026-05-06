@@ -11,6 +11,7 @@ com\biocore\dto\PatientCreateRequest.class
 com\biocore\config\SchemaMigrationRunner.class
 com\biocore\dto\LoginRequest.class
 com\biocore\dto\PatientDTO.class
+com\biocore\dto\PaymentDTO.class
 com\biocore\enums\SampleType.class
 com\biocore\controller\VitalSignsController.class
 com\biocore\controller\AppointmentController$BookRequest.class
@@ -119,6 +120,7 @@ com\biocore\security\JwtUtil.class
 com\biocore\service\PharmacySaleService.class
 com\biocore\dto\LoginResponse$LoginResponseBuilder.class
 com\biocore\controller\InsuranceController.class
+com\biocore\dto\RescheduleRequest.class
 com\biocore\controller\LabController$ScheduleRequest.class
 com\biocore\entity\PharmacySaleItem.class
 com\biocore\entity\VitalSigns$VitalSignsBuilder.class
@@ -163,6 +165,7 @@ com\biocore\dto\UserDTO$UserDTOBuilder.class
 com\biocore\repository\LabExamRepository.class
 com\biocore\entity\EmergencyMedicalReport.class
 com\biocore\controller\LabExamController.class
+com\biocore\dto\PaymentDTO$PaymentDTOBuilder.class
 com\biocore\dto\DoctorScheduleDTO$DoctorScheduleDTOBuilder.class
 com\biocore\entity\PrescriptionItem.class
 com\biocore\repository\UserRepository.class

@@ -353,7 +353,11 @@ public class TicketService {
     @Transactional
     public TicketDTO markAbsent(Long ticketId) {
         Ticket ticket = getTicketOrThrow(ticketId);
-        ticket.setStatus(TicketStatus.ABSENT);
+        // Second absence (rescheduled ticket) → final ABSENT; first → allow reschedule
+        TicketStatus newStatus = Boolean.TRUE.equals(ticket.getRescheduled())
+                ? TicketStatus.ABSENT
+                : TicketStatus.ABSENT_PENDING_RESCHEDULE;
+        ticket.setStatus(newStatus);
         // Free the assigned doctor so the next patient can be called
         if (ticket.getDoctor() != null) {
             userRepository.findById(ticket.getDoctor().getId()).ifPresent(doc -> {
@@ -362,6 +366,70 @@ public class TicketService {
             });
         }
         return TicketDTO.from(ticketRepository.save(ticket));
+    }
+
+    @Transactional
+    public TicketDTO reschedule(Long ticketId, java.time.LocalDate newDate, String newTime) {
+        Ticket original = getTicketOrThrow(ticketId);
+        if (original.getStatus() != TicketStatus.ABSENT_PENDING_RESCHEDULE) {
+            throw new RuntimeException("Este ticket no puede reagendarse (estado: " + original.getStatus() + ")");
+        }
+
+        // Build a new confirmed appointment to block the slot in real-time availability
+        Appointment appt = Appointment.builder()
+                .patient(original.getPatient())
+                .clinic(original.getClinic())
+                .type(original.getType())
+                .scheduledDate(newDate)
+                .scheduledTime(newTime)
+                .status(com.biocore.enums.AppointmentStatus.CONFIRMED)
+                .amount(java.math.BigDecimal.ZERO)
+                .notes("Reagendado desde ticket #" + original.getTicketNumber())
+                .build();
+        Appointment savedAppt = appointmentRepository.save(appt);
+
+        String ticketNumber = generateTicketNumber();
+
+        Ticket newTicket = Ticket.builder()
+                .patient(original.getPatient())
+                .clinic(original.getClinic())
+                .doctor(null)
+                .status(TicketStatus.WAITING)
+                .priority(original.getPriority())
+                .appointment(savedAppt)
+                .type(original.getType())
+                .notes("Reagendado desde " + original.getTicketNumber())
+                .scheduledDate(newDate)
+                .scheduledTime(newTime)
+                .ticketNumber(ticketNumber)
+                .rescheduled(true)
+                .build();
+        ticketRepository.save(newTicket);
+
+        original.setStatus(TicketStatus.RESCHEDULED);
+        ticketRepository.save(original);
+
+        return TicketDTO.from(newTicket);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketDTO> getPendingReschedule(Long patientId) {
+        return ticketRepository.findByPatientId(patientId).stream()
+                .filter(t -> t.getStatus() == TicketStatus.ABSENT_PENDING_RESCHEDULE)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(TicketDTO::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketDTO> getPendingRescheduleByDpi(String dpi) {
+        Patient patient = patientRepository.findByDpiAndActiveTrue(dpi)
+                .orElseThrow(() -> new RuntimeException("Paciente no encontrado con DPI: " + dpi));
+        return ticketRepository.findByPatientId(patient.getId()).stream()
+                .filter(t -> t.getStatus() == TicketStatus.ABSENT_PENDING_RESCHEDULE)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(TicketDTO::from)
+                .collect(Collectors.toList());
     }
 
     private Ticket getTicketOrThrow(Long id) {

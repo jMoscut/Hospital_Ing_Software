@@ -78,4 +78,9 @@ public class Ticket {
     private LocalDateTime consultationStartAt;
 
     private LocalDateTime completedAt;
+
+    /** True when this ticket was created as a reschedule of an absent ticket */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean rescheduled = false;
 }

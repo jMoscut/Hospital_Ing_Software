@@ -99,7 +99,7 @@ public class LabService {
                 sampleType = labExam.getSampleType();
             }
         }
-        if (sampleType == null) {
+        if (sampleType == null && labExam == null) {
             throw new RuntimeException("Se requiere tipo de muestra o examen del catálogo");
         }
 

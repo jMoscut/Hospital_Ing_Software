@@ -35,10 +35,12 @@ C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PatientCreateRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PatientDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PaymentCreateRequest.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PaymentDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PharmacySaleDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PharmacySaleRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PrescriptionDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\PrescriptionRequest.java
+C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\RescheduleRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\TicketCreateRequest.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\TicketDTO.java
 C:\Users\sanch\Documents\Hospital_Ing_Software\backend\biocore-backend\src\main\java\com\biocore\dto\UserCreateRequest.java

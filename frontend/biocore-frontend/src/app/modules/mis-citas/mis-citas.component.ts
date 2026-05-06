@@ -395,6 +395,66 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
             <div *ngIf="loadingTickets" class="loading-state">
               <mat-spinner diameter="40"></mat-spinner><p>Cargando...</p>
             </div>
+            <!-- Reschedule inline panel -->
+            <mat-card class="reschedule-panel" *ngIf="rescheduleTicket">
+              <mat-card-header>
+                <mat-icon mat-card-avatar>event_repeat</mat-icon>
+                <mat-card-title>Reagendar Turno {{ rescheduleTicket.ticketNumber }}</mat-card-title>
+                <mat-card-subtitle>{{ rescheduleTicket.clinicName }} · {{ rescheduleTicket.type }} · Sin costo adicional</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <!-- Calendar navigation -->
+                <div class="calendar-nav">
+                  <button class="nav-btn" type="button" (click)="rscdPrevMonth()">&#8249;</button>
+                  <span class="month-label">{{ rscdMonthLabel }}</span>
+                  <button class="nav-btn" type="button" (click)="rscdNextMonth()">&#8250;</button>
+                </div>
+                <!-- Calendar grid -->
+                <div class="calendar-grid">
+                  <div class="cal-weekday" *ngFor="let d of weekDays">{{ d }}</div>
+                  <ng-container *ngFor="let day of rscdCalDays">
+                    <div *ngIf="!day" class="cal-day empty"></div>
+                    <div *ngIf="day"
+                         [class]="getRscdDayClass(day)"
+                         (click)="!isPastDay(day) && selectRscdDate(day)">
+                      {{ day.getDate() }}
+                    </div>
+                  </ng-container>
+                </div>
+                <!-- Time slots -->
+                <ng-container *ngIf="rscdDate">
+                  <div class="slots-label">
+                    <mat-icon>access_time</mat-icon>
+                    Horarios — {{ formatDate(rscdDate) }}
+                    <mat-spinner *ngIf="rscdLoadingSlots" diameter="16" style="margin-left:8px"></mat-spinner>
+                  </div>
+                  <div class="slots-grid" *ngIf="!rscdLoadingSlots">
+                    <button *ngFor="let slot of rscdSlots"
+                            type="button"
+                            [class]="'slot-btn' + (rscdSlot === slot ? ' selected' : '')"
+                            (click)="rscdSlot = slot">
+                      {{ slot }}
+                    </button>
+                    <div *ngIf="rscdSlots.length === 0" class="no-slots">
+                      <mat-icon>event_busy</mat-icon>
+                      No hay horarios disponibles para este día
+                    </div>
+                  </div>
+                </ng-container>
+                <div class="error-msg" *ngIf="rscdError" style="margin-top:12px;color:#c62828">{{ rscdError }}</div>
+              </mat-card-content>
+              <mat-card-actions>
+                <button mat-raised-button color="primary"
+                        [disabled]="!rscdDate || !rscdSlot || rescheduling"
+                        (click)="confirmReschedule()">
+                  <mat-spinner *ngIf="rescheduling" diameter="18" style="margin-right:6px"></mat-spinner>
+                  <mat-icon *ngIf="!rescheduling">check_circle</mat-icon>
+                  Confirmar Reagendamiento
+                </button>
+                <button mat-button (click)="closeReschedule()" [disabled]="rescheduling">Cancelar</button>
+              </mat-card-actions>
+            </mat-card>
+
             <div class="ticket-card" *ngFor="let t of tickets">
               <div class="ticket-left">
                 <div class="ticket-num">{{ t.ticketNumber }}</div>
@@ -410,7 +470,15 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                   <div class="ticket-doctor" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
                 </div>
               </div>
-              <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+                <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
+                <button *ngIf="t.status === 'ABSENT_PENDING_RESCHEDULE'"
+                        mat-raised-button color="accent"
+                        style="font-size:0.75rem"
+                        (click)="openReschedule(t)">
+                  <mat-icon>event_repeat</mat-icon> Reagendar
+                </button>
+              </div>
             </div>
             <div class="empty-state" *ngIf="!loadingTickets && tickets.length === 0">
               <mat-icon>event_available</mat-icon>
@@ -480,11 +548,12 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                 <div class="diag-notes" *ngIf="rx._medications" style="margin-top:6px"><strong>Medicamentos:</strong> {{ rx._medications }}</div>
               </ng-container>
               <ng-container *ngIf="rx._source!=='emergency'">
-                <div class="diag-notes">{{ rx.notes }}</div>
+                <div class="diag-notes" *ngIf="rx.clinicName" style="color:#757575;font-size:0.85rem;margin-bottom:4px">{{ rx.clinicName }}</div>
+                <div class="diag-notes" *ngIf="rx.notes">{{ rx.notes }}</div>
                 <div class="diag-meds" *ngIf="rx.items && rx.items.length > 0">
                   <div class="diag-meds-label"><mat-icon>medication</mat-icon> Medicamentos recetados</div>
                   <span class="med-chip" *ngFor="let item of rx.items">
-                    {{ item.medicineName }} ×{{ item.quantity }}
+                    {{ item.medicineName || item.customMedicineName }} ×{{ item.quantity }}
                     <small *ngIf="item.dosage"> — {{ item.dosage }}</small>
                   </span>
                 </div>
@@ -954,6 +1023,9 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     .status-completed { background:#f5f5f5; color:#616161; }
     .status-absent { background:#ffebee; color:#c62828; }
 
+    /* Reschedule */
+    .reschedule-panel { margin-bottom:20px; border-left:4px solid #e65100; }
+
     /* Recetas */
     .rx-card { margin-bottom:16px; }
     .rx-items { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
@@ -1105,6 +1177,20 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   get reservationSeconds(): string { return (this.reservationTimeLeft % 60).toString().padStart(2, '0'); }
   get reservationLow(): boolean { return this.reservationTimeLeft > 0 && this.reservationTimeLeft <= 120; }
 
+  // Reschedule
+  rescheduleTicket: any | null = null;
+  rscdDate: Date | null = null;
+  rscdSlot: string | null = null;
+  rscdSlots: string[] = [];
+  rscdLoadingSlots = false;
+  rscdYear = 0;
+  rscdMonth = 0;
+  rscdCalDays: (Date | null)[] = [];
+  rescheduling = false;
+  rscdError = '';
+
+  get rscdMonthLabel(): string { return `${MONTH_NAMES[this.rscdMonth]} ${this.rscdYear}`; }
+
   // Profile edit
   profileEditMode = false;
   profileSaving = false;
@@ -1244,6 +1330,92 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     if (day.getTime() === today.getTime()) cls += ' today';
     if (this.selectedDate && day.getTime() === this.selectedDate.getTime()) cls += ' selected';
     return cls;
+  }
+
+  // --- Reschedule ---
+  openReschedule(ticket: any): void {
+    this.rescheduleTicket = ticket;
+    this.rscdError = '';
+    this.rscdDate = null;
+    this.rscdSlot = null;
+    this.rscdSlots = [];
+    const now = new Date();
+    this.rscdYear = now.getFullYear();
+    this.rscdMonth = now.getMonth();
+    this.rscdBuildCalendar();
+  }
+
+  closeReschedule(): void {
+    this.rescheduleTicket = null;
+    this.rscdDate = null;
+    this.rscdSlot = null;
+  }
+
+  rscdBuildCalendar(): void {
+    const firstDay = new Date(this.rscdYear, this.rscdMonth, 1).getDay();
+    const daysInMonth = new Date(this.rscdYear, this.rscdMonth + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(this.rscdYear, this.rscdMonth, i));
+    this.rscdCalDays = days;
+  }
+
+  rscdPrevMonth(): void {
+    if (this.rscdMonth === 0) { this.rscdMonth = 11; this.rscdYear--; }
+    else { this.rscdMonth--; }
+    this.rscdBuildCalendar();
+  }
+
+  rscdNextMonth(): void {
+    if (this.rscdMonth === 11) { this.rscdMonth = 0; this.rscdYear++; }
+    else { this.rscdMonth++; }
+    this.rscdBuildCalendar();
+  }
+
+  getRscdDayClass(day: Date): string {
+    let cls = 'cal-day';
+    if (this.isPastDay(day)) { cls += ' past'; return cls; }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (day.getTime() === today.getTime()) cls += ' today';
+    if (this.rscdDate && day.getTime() === this.rscdDate.getTime()) cls += ' selected';
+    return cls;
+  }
+
+  selectRscdDate(day: Date): void {
+    this.rscdDate = day;
+    this.rscdSlot = null;
+    this.rscdSlots = [];
+    if (!this.rescheduleTicket?.clinicId) return;
+    this.rscdLoadingSlots = true;
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    this.appointmentService.getAvailableSlots(dateStr, this.rescheduleTicket.clinicId).subscribe({
+      next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
+      error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
+    });
+  }
+
+  confirmReschedule(): void {
+    if (!this.rescheduleTicket || !this.rscdDate || !this.rscdSlot) return;
+    this.rescheduling = true;
+    this.rscdError = '';
+    const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+    this.http.put<any>(`${environment.apiUrl}/tickets/${this.rescheduleTicket.id}/reschedule`,
+      { newDate: dateStr, newTime: this.rscdSlot }).subscribe({
+      next: res => {
+        this.rescheduling = false;
+        if (res.success) {
+          this.notification.success('Cita reagendada correctamente');
+          this.closeReschedule();
+          if (this.patientId) this.loadData(this.patientId);
+        } else {
+          this.rscdError = res.message || 'Error al reagendar';
+        }
+      },
+      error: err => {
+        this.rescheduling = false;
+        this.rscdError = err?.error?.message || 'Error al reagendar';
+      }
+    });
   }
 
   selectDate(day: Date): void {
@@ -1668,11 +1840,12 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       error: () => { this.loadingAppointments = false; }
     });
 
-    this.ticketService.getAll().subscribe({
+    this.ticketService.getByPatient(patientId).subscribe({
       next: res => {
         if (res.success) {
-          this.tickets = res.data.filter(t => t.patientId === patientId)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          this.tickets = res.data
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          this.mergeDiagnoses();
         }
         this.loadingTickets = false;
       },
@@ -1734,8 +1907,21 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   mergeDiagnoses(): void {
     const fromRx = this.prescriptions
-      .filter((rx: any) => rx.notes && rx.notes.trim().length > 0)
       .map((rx: any) => ({ ...rx, _source: 'rx' }));
+
+    const rxTicketIds = new Set(this.prescriptions.map((rx: any) => rx.ticketId).filter(Boolean));
+    const fromTickets = this.tickets
+      .filter((t: any) => t.status === 'COMPLETED' && !rxTicketIds.has(t.id))
+      .map((t: any) => ({
+        _source: 'ticket',
+        createdAt: t.createdAt,
+        doctorName: t.doctorName,
+        notes: null,
+        items: [],
+        ticketNumber: t.ticketNumber,
+        clinicName: t.clinicName
+      }));
+
     const fromEm = this.emergencyReports.map((r: any) => ({
       _source: 'emergency',
       createdAt: r.createdAt,
@@ -1746,7 +1932,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       _medications: r.medications,
       items: []
     }));
-    this.diagnoses = [...fromRx, ...fromEm]
+    this.diagnoses = [...fromRx, ...fromTickets, ...fromEm]
       .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
@@ -1846,7 +2032,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     const m: Record<string, string> = {
       WAITING: 'status-waiting', BEING_CALLED: 'status-being-called',
       IN_CONSULTATION: 'status-in-consultation', COMPLETED: 'status-completed',
-      ABSENT: 'status-absent', CANCELLED_NO_PAYMENT: 'status-absent'
+      ABSENT: 'status-absent', CANCELLED_NO_PAYMENT: 'status-absent',
+      ABSENT_PENDING_RESCHEDULE: 'status-being-called', RESCHEDULED: 'status-completed',
+      CALLED_TO_VITAL_SIGNS: 'status-being-called', READY_FOR_DOCTOR: 'status-in-consultation',
+      PENDING_PAYMENT: 'status-waiting'
     };
     return m[s] ?? '';
   }
@@ -1855,7 +2044,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     const m: Record<string, string> = {
       WAITING: 'En Espera', BEING_CALLED: 'Siendo Llamado',
       IN_CONSULTATION: 'En Consulta', COMPLETED: 'Atendido',
-      ABSENT: 'Ausente', CANCELLED_NO_PAYMENT: 'Cancelado'
+      ABSENT: 'Ausente', CANCELLED_NO_PAYMENT: 'Cancelado',
+      ABSENT_PENDING_RESCHEDULE: 'Pendiente Reagendar', RESCHEDULED: 'Reagendado',
+      CALLED_TO_VITAL_SIGNS: 'Signos Vitales', READY_FOR_DOCTOR: 'Esperando Doctor',
+      PENDING_PAYMENT: 'Pendiente Pago'
     };
     return m[s] ?? s;
   }

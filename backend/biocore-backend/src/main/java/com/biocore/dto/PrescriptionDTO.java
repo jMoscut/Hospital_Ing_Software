@@ -1,6 +1,5 @@
 package com.biocore.dto;
 
-import com.biocore.entity.Medicine;
 import com.biocore.entity.Prescription;
 import com.biocore.entity.PrescriptionItem;
 import com.biocore.enums.PrescriptionStatus;
@@ -64,7 +63,6 @@ public class PrescriptionDTO {
         private String dosage;
         private String instructions;
         private boolean dispatched;
-        private Medicine medicine;
 
         public static ItemDTO from(PrescriptionItem item) {
             boolean hasMed = item.getMedicine() != null;
@@ -77,7 +75,6 @@ public class PrescriptionDTO {
                     .dosage(item.getDosage())
                     .instructions(item.getInstructions())
                     .dispatched(item.isDispatched())
-                    .medicine(item.getMedicine())
                     .build();
         }
     }

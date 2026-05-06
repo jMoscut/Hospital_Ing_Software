@@ -16,7 +16,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pharmacy/sales")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
 public class PharmacySaleController {
 
     private final PharmacySaleService saleService;
@@ -31,6 +30,7 @@ public class PharmacySaleController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
     public ResponseEntity<ApiResponse<PharmacySaleDTO>> reserve(@RequestBody PharmacySaleRequest req) {
         try {
             return ResponseEntity.status(201).body(
@@ -41,6 +41,7 @@ public class PharmacySaleController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
     public ResponseEntity<ApiResponse<PharmacySaleDTO>> getById(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(ApiResponse.ok(PharmacySaleDTO.from(saleService.getById(id))));
@@ -50,6 +51,7 @@ public class PharmacySaleController {
     }
 
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
     public ResponseEntity<ApiResponse<PharmacySaleDTO>> cancel(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(ApiResponse.ok("Venta cancelada", PharmacySaleDTO.from(saleService.cancel(id))));
@@ -59,6 +61,7 @@ public class PharmacySaleController {
     }
 
     @PostMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
     public ResponseEntity<ApiResponse<PharmacySaleDTO>> complete(
             @PathVariable Long id,
             @RequestParam PaymentMethod method,

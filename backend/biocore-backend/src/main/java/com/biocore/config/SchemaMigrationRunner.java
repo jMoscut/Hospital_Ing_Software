@@ -68,9 +68,14 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             jdbcTemplate.execute("ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check");
             jdbcTemplate.execute(
                 "ALTER TABLE tickets ADD CONSTRAINT tickets_status_check CHECK (" +
-                "status IN ('PENDING_PAYMENT','WAITING','CALLED','IN_CONSULTATION','COMPLETED','CANCELLED','NO_SHOW'))"
+                "status IN ('PENDING_PAYMENT','WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR'," +
+                "'BEING_CALLED','IN_CONSULTATION','COMPLETED','ABSENT','ABSENT_PENDING_RESCHEDULE'," +
+                "'RESCHEDULED','CANCELLED_NO_PAYMENT'))"
             );
-            log.info("Schema: tickets_status_check constraint updated to include PENDING_PAYMENT");
+            jdbcTemplate.execute(
+                "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rescheduled boolean NOT NULL DEFAULT false"
+            );
+            log.info("Schema: tickets_status_check updated + rescheduled column added");
         } catch (Exception e) {
             log.warn("Schema migration warning for tickets_status_check: {}", e.getMessage());
         }

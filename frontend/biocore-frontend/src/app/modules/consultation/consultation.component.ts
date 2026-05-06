@@ -73,9 +73,9 @@ import { environment } from '../../../environments/environment';
                   <div class="ticket-meta">{{ t.type }}</div>
                 </div>
                 <button mat-raised-button color="primary" style="flex-shrink:0"
-                        [disabled]="!!currentTicket"
+                        [disabled]="!!currentTicket || callingToConsult"
                         (click)="callToConsultation(t)">
-                  <mat-icon>campaign</mat-icon> Llamar
+                  <mat-icon>campaign</mat-icon> {{ callingToConsult ? 'Llamando...' : 'Llamar' }}
                 </button>
               </div>
               <p *ngIf="readyPatients.length === 0" class="empty-msg">
@@ -220,8 +220,8 @@ import { environment } from '../../../environments/environment';
                   <strong>Signos Vitales registrados — Paciente listo</strong>
                   <p>Revise los signos vitales y llame al paciente a su consultorio.</p>
                 </div>
-                <button mat-raised-button color="primary" (click)="callToConsultation(currentTicket)">
-                  <mat-icon>campaign</mat-icon> Llamar al Consultorio
+                <button mat-raised-button color="primary" [disabled]="callingToConsult" (click)="callToConsultation(currentTicket)">
+                  <mat-icon>campaign</mat-icon> {{ callingToConsult ? 'Llamando...' : 'Llamar al Consultorio' }}
                 </button>
               </div>
 
@@ -233,8 +233,8 @@ import { environment } from '../../../environments/environment';
                   <strong style="color:#1565c0">Paciente en camino al consultorio</strong>
                   <p>Confirme su llegada para iniciar la consulta.</p>
                 </div>
-                <button mat-raised-button color="accent" (click)="startConsultation()">
-                  <mat-icon>play_circle</mat-icon> Iniciar Consulta
+                <button mat-raised-button color="accent" [disabled]="starting" (click)="startConsultation()">
+                  <mat-icon>play_circle</mat-icon> {{ starting ? 'Iniciando...' : 'Iniciar Consulta' }}
                 </button>
               </div>
 
@@ -396,8 +396,8 @@ import { environment } from '../../../environments/environment';
                 </form>
 
                 <div class="action-buttons">
-                  <button mat-raised-button color="primary" (click)="completeDiagnosis()">
-                    <mat-icon>check_circle</mat-icon> Completar Consulta
+                  <button mat-raised-button color="primary" [disabled]="completing" (click)="completeDiagnosis()">
+                    <mat-icon>check_circle</mat-icon> {{ completing ? 'Guardando...' : 'Completar Consulta' }}
                   </button>
                 </div>
               </div>
@@ -517,6 +517,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   currentTicket: Ticket | null = null;
   lastCalledTicket: Ticket | null = null;
   currentVitals: VitalSigns | null = null;
+  vitalsNotFound = false;
   medicines: Medicine[] = [];
   labExams: LabExam[] = [];
   labCategories: string[] = [];
@@ -525,6 +526,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   labOrderItems: any[] = [];
   consultationForm!: FormGroup;
   calling = false;
+  callingToConsult = false;
+  starting = false;
+  completing = false;
+  justCompletedTicketId: number | null = null;
   doctorAvailable = false;
   assignedClinicId: number | null = null;
   assignedClinicName = '';
@@ -602,12 +607,26 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           this.assignedClinicName = myTicket.clinicName;
         }
 
+        const statusRank: Record<string, number> = {
+          'WAITING': 0, 'CALLED_TO_VITAL_SIGNS': 1, 'READY_FOR_DOCTOR': 2,
+          'BEING_CALLED': 3, 'IN_CONSULTATION': 4, 'COMPLETED': 5
+        };
         const isNew     = !this.currentTicket || this.currentTicket.id !== myTicket.id;
-        const changed   = this.currentTicket && this.currentTicket.status !== myTicket.status;
+        const curRank   = statusRank[this.currentTicket?.status ?? ''] ?? -1;
+        const newRank   = statusRank[myTicket.status] ?? -1;
+        // Ignore stale poll responses that would downgrade status (race condition)
+        const changed   = this.currentTicket && myTicket.status !== this.currentTicket.status && newRank >= curRank;
+
+        if (isNew) {
+          // Stale poll after finalize() — don't re-show the form for the ticket we just completed
+          if (myTicket.id === this.justCompletedTicketId) return;
+          this.justCompletedTicketId = null;
+        }
 
         if (isNew || changed) {
           this.currentTicket = myTicket;
           this.currentVitals = null;
+          this.vitalsNotFound = false;
           this.loadCurrentVitals();
           if (isNew) {
             this.appointmentDocs = [];
@@ -621,8 +640,8 @@ export class ConsultationComponent implements OnInit, OnDestroy {
 
       if (this.assignedClinicId) this.loadClinicQueue();
 
-      // Keep retrying vitals until they arrive
-      if (this.currentTicket && !this.currentVitals) {
+      // Keep retrying vitals until they arrive (stop if 404 — ticket has no vitals)
+      if (this.currentTicket && !this.currentVitals && !this.vitalsNotFound) {
         this.loadCurrentVitals();
       }
     });
@@ -656,31 +675,49 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   callToConsultation(ticket: Ticket): void {
+    if (this.callingToConsult) return;
+    this.callingToConsult = true;
     this.ticketService.callToConsultation(ticket.id).subscribe({
       next: res => {
+        this.callingToConsult = false;
         if (res.success) {
           this.currentTicket = res.data;
           this.currentVitals = null;
+          this.vitalsNotFound = false;
           this.appointmentDocs = [];
           this.loadCurrentVitals();
           this.loadAppointmentDocs();
           this.notification.info(`${res.data.ticketNumber} llamado al consultorio`);
         }
       },
-      error: err => this.notification.error(err.error?.message || 'Error al llamar paciente')
+      error: err => {
+        this.callingToConsult = false;
+        this.notification.error(err.error?.message || 'Error al llamar paciente');
+      }
     });
   }
 
   startConsultation(): void {
-    if (!this.currentTicket) return;
+    if (!this.currentTicket || this.starting) return;
+    this.starting = true;
     this.ticketService.confirmArrival(this.currentTicket.id).subscribe({
       next: res => {
+        this.starting = false;
         if (res.success) {
           this.currentTicket = res.data;
           this.notification.success('Consulta iniciada');
         }
       },
-      error: err => this.notification.error(err.error?.message || 'Error al iniciar consulta')
+      error: err => {
+        this.starting = false;
+        const msg: string = err?.error?.message || '';
+        // Backend already transitioned (network glitch) — sync state silently
+        if (msg.includes('IN_CONSULTATION')) {
+          if (this.currentTicket) this.currentTicket = { ...this.currentTicket, status: 'IN_CONSULTATION' as any };
+          return;
+        }
+        this.notification.error(msg || 'Error al iniciar consulta');
+      }
     });
   }
 
@@ -725,10 +762,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   private loadCurrentVitals(): void {
-    if (!this.currentTicket) return;
+    if (!this.currentTicket || this.vitalsNotFound) return;
     this.vitalSignsService.getByTicket(this.currentTicket.id).subscribe({
       next: res => { if (res.success) this.currentVitals = res.data; },
-      error: () => {}
+      error: () => { this.vitalsNotFound = true; }
     });
   }
 
@@ -746,21 +783,30 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   completeDiagnosis(): void {
-    if (!this.currentTicket) return;
+    if (!this.currentTicket || this.completing) return;
     const userId = this.authService.getUserId();
+    if (!userId) { this.notification.error('Sesión expirada. Cierre sesión y vuelva a entrar.'); return; }
+    this.completing = true;
 
     const finalize = () => {
       this.ticketService.complete(this.currentTicket!.id).subscribe({
         next: () => {
-          this.notification.success('Consulta completada');
-          this.doctorAvailable = false;
+          this.notification.success('Consulta completada — notificación enviada al paciente');
+          this.completing = false;
+          this.doctorAvailable = true;
+          this.justCompletedTicketId = this.currentTicket!.id;
           this.currentTicket = null;
           this.currentVitals = null;
+          this.vitalsNotFound = false;
           this.prescriptionItems = [];
           this.customMedItems = [];
           this.labOrderItems = [];
           this.consultationForm.reset();
           this.loadClinicQueue();
+        },
+        error: err => {
+          this.completing = false;
+          this.notification.error(err?.error?.message || 'Error al completar la consulta');
         }
       });
     };
@@ -779,17 +825,20 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           notes: l.notes
         }).subscribe({
           next: () => { if (--pending === 0) { this.notification.success('Órdenes de laboratorio generadas'); onDone(); } },
-          error: () => { if (--pending === 0) onDone(); }
+          error: err => { this.notification.error(err?.error?.message || 'Error al guardar orden de laboratorio'); if (--pending === 0) onDone(); }
         });
       });
     };
 
     const allItems = [
-      ...this.prescriptionItems,
+      ...this.prescriptionItems.map((item: any) => ({
+        ...item,
+        quantity: (item.quantity != null && item.quantity > 0) ? item.quantity : 1
+      })),
       ...this.customMedItems.filter(c => c.name?.trim()).map(c => ({
         medicineId: null,
         customMedicineName: c.name.trim(),
-        quantity: c.quantity || 1,
+        quantity: (c.quantity != null && c.quantity > 0) ? c.quantity : 1,
         dosage: c.dosage,
         instructions: c.instructions
       }))
@@ -805,7 +854,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         items: allItems
       }).subscribe({
         next: () => { this.notification.success('Receta generada'); createLabOrders(finalize); },
-        error: () => createLabOrders(finalize)
+        error: err => { this.notification.error(err?.error?.message || 'Error al guardar receta'); createLabOrders(finalize); }
       });
     } else {
       createLabOrders(finalize);

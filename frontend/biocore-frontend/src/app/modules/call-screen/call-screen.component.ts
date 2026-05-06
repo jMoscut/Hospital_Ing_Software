@@ -198,11 +198,11 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   private clockInterval: any;
   private lastCalledIds = new Set<number>();
 
-  // Auto-announce emergency state
-  private emgAnnounceCount = new Map<number, number>();
-  private emgLastAnnounced = new Map<number, number>();
-  private readonly EMG_REPEAT_MS = 25000; // 25s between each of the 3 calls
+  // Auto-announce emergency state (sessionStorage-backed — survives component refresh within tab)
+  private readonly EMG_REPEAT_MS = 25000;
   private readonly EMG_MAX_CALLS = 3;
+  private readonly SS_COUNT = 'emg_announce_count';
+  private readonly SS_TIME  = 'emg_last_announced';
   private announceId = 0; // incremented each announce/cancel to abort stale onend loops
 
   constructor(private http: HttpClient) {}
@@ -237,30 +237,32 @@ export class CallScreenComponent implements OnInit, OnDestroy {
         const now = Date.now();
 
         urgentWaiting.forEach(t => {
-          const count = this.emgAnnounceCount.get(t.id) ?? 0;
-          const lastTime = this.emgLastAnnounced.get(t.id) ?? 0;
+          const count = this.emgGetCount(t.id);
+          const lastTime = this.emgGetTime(t.id);
 
           if (count > this.EMG_MAX_CALLS) {
-            // Already marked attended — waiting for backend to flip status, skip
             return;
           }
           if (count === this.EMG_MAX_CALLS) {
-            // 3 calls done → auto-mark attended (sets count to MAX+1 to block re-entry)
             this.autoMarkAttended(t.id);
             return;
           }
           if (count === 0 || (now - lastTime) >= this.EMG_REPEAT_MS) {
-            this.emgAnnounceCount.set(t.id, count + 1);
-            this.emgLastAnnounced.set(t.id, now);
+            this.emgSetCount(t.id, count + 1);
+            this.emgSetTime(t.id, now);
             this.announce(t);
           }
         });
 
         // Clean tracking for tickets no longer urgent-waiting
-        for (const id of this.emgAnnounceCount.keys()) {
-          if (!urgentIds.has(id)) {
-            this.emgAnnounceCount.delete(id);
-            this.emgLastAnnounced.delete(id);
+        const counts = this.emgLoadAll(this.SS_COUNT);
+        for (const idStr of Object.keys(counts)) {
+          if (!urgentIds.has(+idStr)) {
+            delete counts[+idStr];
+            const times = this.emgLoadAll(this.SS_TIME);
+            delete times[+idStr];
+            sessionStorage.setItem(this.SS_COUNT, JSON.stringify(counts));
+            sessionStorage.setItem(this.SS_TIME, JSON.stringify(times));
           }
         }
 
@@ -284,12 +286,28 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   }
 
   private autoMarkAttended(ticketId: number): void {
-    this.emgAnnounceCount.set(ticketId, this.EMG_MAX_CALLS + 1);
-    this.emgLastAnnounced.delete(ticketId);
-    this.announceId++; // abort any running speech loop
+    this.emgSetCount(ticketId, this.EMG_MAX_CALLS + 1);
+    const times = this.emgLoadAll(this.SS_TIME);
+    delete times[ticketId];
+    sessionStorage.setItem(this.SS_TIME, JSON.stringify(times));
+    this.announceId++;
     window.speechSynthesis.cancel();
     this.http.put(`${environment.apiUrl}/emergency/tickets/${ticketId}/mark-attended`, {})
       .subscribe({ error: (err) => console.warn('autoMarkAttended failed for ticket', ticketId, err) });
+  }
+
+  private emgLoadAll(key: string): Record<number, number> {
+    try { return JSON.parse(sessionStorage.getItem(key) ?? '{}'); } catch { return {}; }
+  }
+  private emgGetCount(id: number): number { return this.emgLoadAll(this.SS_COUNT)[id] ?? 0; }
+  private emgGetTime(id: number): number  { return this.emgLoadAll(this.SS_TIME)[id]  ?? 0; }
+  private emgSetCount(id: number, v: number): void {
+    const d = this.emgLoadAll(this.SS_COUNT); d[id] = v;
+    sessionStorage.setItem(this.SS_COUNT, JSON.stringify(d));
+  }
+  private emgSetTime(id: number, v: number): void {
+    const d = this.emgLoadAll(this.SS_TIME); d[id] = v;
+    sessionStorage.setItem(this.SS_TIME, JSON.stringify(d));
   }
 
   private announce(ticket: any): void {

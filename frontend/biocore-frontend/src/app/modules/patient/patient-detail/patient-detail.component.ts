@@ -193,7 +193,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <div class="medicine-item" *ngFor="let item of rx.items">
                         <mat-icon style="font-size:16px;color:#1D6C61">medication</mat-icon>
                         <div class="med-info">
-                          <span class="med-name">{{ item.medicineName }}</span>
+                          <span class="med-name">{{ item.medicineName || item.customMedicineName }}</span>
                           <span class="med-detail">Cant: {{ item.quantity }} · {{ item.dosage }}</span>
                           <span class="med-instructions" *ngIf="item.instructions">{{ item.instructions }}</span>
                         </div>

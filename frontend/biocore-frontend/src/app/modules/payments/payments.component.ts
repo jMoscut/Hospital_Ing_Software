@@ -1,6 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -922,6 +924,133 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
           </div>
         </mat-tab>
 
+        <!-- TAB: Reagendar Cita -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle">event_repeat</mat-icon>
+            Reagendar Cita
+          </ng-template>
+          <div class="tab-content">
+
+            <!-- DPI search -->
+            <mat-card *ngIf="!rscdPatient" style="max-width:480px">
+              <mat-card-header>
+                <mat-icon mat-card-avatar>manage_search</mat-icon>
+                <mat-card-title>Buscar Paciente Ausente</mat-card-title>
+                <mat-card-subtitle>Ingrese el DPI del paciente para ver sus citas pendientes de reagendamiento</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <form [formGroup]="rscdDpiForm" (ngSubmit)="rscdSearch()">
+                  <div class="search-row" style="margin-top:12px">
+                    <mat-form-field appearance="outline" style="flex:1">
+                      <mat-label>DPI del paciente</mat-label>
+                      <mat-icon matPrefix>badge</mat-icon>
+                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                    </mat-form-field>
+                    <button mat-raised-button color="primary" type="submit"
+                            [disabled]="rscdDpiForm.invalid || rscdSearching">
+                      <mat-spinner *ngIf="rscdSearching" diameter="18" style="margin-right:6px"></mat-spinner>
+                      Buscar
+                    </button>
+                  </div>
+                  <div style="color:#c62828;margin-top:8px" *ngIf="rscdSearchError">{{ rscdSearchError }}</div>
+                </form>
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Patient + tickets -->
+            <ng-container *ngIf="rscdPatient">
+              <div class="found-box" style="margin-bottom:16px;max-width:560px">
+                <mat-icon>person</mat-icon>
+                <div>
+                  <strong>{{ rscdPatient.firstName }} {{ rscdPatient.lastName }}</strong>
+                  <div style="font-size:0.85rem;color:#555">DPI: {{ rscdPatient.dpi }}</div>
+                </div>
+                <button mat-icon-button (click)="rscdReset()" style="margin-left:auto" title="Nueva búsqueda">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div *ngIf="rscdTickets.length === 0" class="new-patient-notice" style="max-width:560px">
+                <mat-icon>info</mat-icon>
+                Este paciente no tiene citas pendientes de reagendamiento.
+              </div>
+
+              <!-- Ticket list -->
+              <div *ngFor="let t of rscdTickets" style="max-width:560px;margin-bottom:12px">
+                <mat-card [style.border-left]="rscdSelectedTicket?.id === t.id ? '4px solid #1D6C61' : '4px solid #ef9a9a'"
+                          style="cursor:pointer" (click)="rscdSelectTicket(t)">
+                  <mat-card-content style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+                    <div>
+                      <div style="font-weight:700;font-size:1.1rem;color:#1D6C61">{{ t.ticketNumber }}</div>
+                      <div style="font-size:0.9rem;color:#333">{{ t.clinicName }} · {{ t.type }}</div>
+                      <div style="font-size:0.8rem;color:#9e9e9e" *ngIf="t.scheduledDate">{{ t.scheduledDate | date:'dd/MM/yyyy' }}<span *ngIf="t.scheduledTime"> a las {{ t.scheduledTime }}</span></div>
+                    </div>
+                    <mat-icon color="warn">event_busy</mat-icon>
+                  </mat-card-content>
+                </mat-card>
+
+                <!-- Calendar inline for selected ticket -->
+                <mat-card *ngIf="rscdSelectedTicket?.id === t.id" style="margin-top:8px">
+                  <mat-card-header>
+                    <mat-icon mat-card-avatar>calendar_month</mat-icon>
+                    <mat-card-title>Seleccionar nueva fecha</mat-card-title>
+                    <mat-card-subtitle>Sin costo adicional</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="calendar-nav">
+                      <button class="nav-btn" type="button" (click)="rscdPrevMonth()">&#8249;</button>
+                      <span class="month-label">{{ rscdMonthLabel }}</span>
+                      <button class="nav-btn" type="button" (click)="rscdNextMonth()">&#8250;</button>
+                    </div>
+                    <div class="calendar-grid">
+                      <div class="cal-weekday" *ngFor="let d of weekDays">{{ d }}</div>
+                      <ng-container *ngFor="let day of rscdCalDays">
+                        <div *ngIf="!day" class="cal-day empty"></div>
+                        <div *ngIf="day"
+                             [class]="getRscdDayClass(day)"
+                             (click)="!citIsPastDay(day) && rscdSelectDate(day)">
+                          {{ day.getDate() }}
+                        </div>
+                      </ng-container>
+                    </div>
+                    <ng-container *ngIf="rscdDate">
+                      <div class="slots-label">
+                        <mat-icon>access_time</mat-icon>
+                        Horarios disponibles
+                        <mat-spinner *ngIf="rscdLoadingSlots" diameter="16" style="margin-left:8px"></mat-spinner>
+                      </div>
+                      <div class="slots-grid" *ngIf="!rscdLoadingSlots">
+                        <button *ngFor="let slot of rscdSlots"
+                                type="button"
+                                [class]="'slot-btn' + (rscdSlot === slot ? ' selected' : '')"
+                                (click)="rscdSlot = slot">
+                          {{ slot }}
+                        </button>
+                        <div *ngIf="rscdSlots.length === 0" class="no-slots">
+                          <mat-icon>event_busy</mat-icon>
+                          No hay horarios disponibles
+                        </div>
+                      </div>
+                    </ng-container>
+                    <div style="color:#c62828;margin-top:8px" *ngIf="rscdConfirmError">{{ rscdConfirmError }}</div>
+                  </mat-card-content>
+                  <mat-card-actions>
+                    <button mat-raised-button color="primary"
+                            [disabled]="!rscdDate || !rscdSlot || rscdConfirming"
+                            (click)="rscdConfirm()">
+                      <mat-spinner *ngIf="rscdConfirming" diameter="18" style="margin-right:6px"></mat-spinner>
+                      <mat-icon *ngIf="!rscdConfirming">check_circle</mat-icon>
+                      Confirmar Reagendamiento
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
+              </div>
+            </ng-container>
+
+          </div>
+        </mat-tab>
+
       </mat-tab-group>
     </div>
   `,
@@ -1172,8 +1301,28 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   emgReceipt: any = null;
   private emgPollTimer: any = null;
 
+  // ── Reagendar Cita ─────────────────────────────────────────────────────────
+  rscdDpiForm!: FormGroup;
+  rscdSearching = false;
+  rscdSearchError = '';
+  rscdPatient: Patient | null = null;
+  rscdTickets: any[] = [];
+  rscdSelectedTicket: any | null = null;
+  rscdDate: Date | null = null;
+  rscdSlot: string | null = null;
+  rscdSlots: string[] = [];
+  rscdLoadingSlots = false;
+  rscdCalYear = 0;
+  rscdCalMonth = 0;
+  rscdCalDays: (Date | null)[] = [];
+  rscdConfirming = false;
+  rscdConfirmError = '';
+
+  get rscdMonthLabel(): string { return `${MONTH_NAMES[this.rscdCalMonth]} ${this.rscdCalYear}`; }
+
   constructor(
     private fb: FormBuilder,
+    private http: HttpClient,
     private patientService: PatientService,
     private paymentService: PaymentService,
     private appointmentService: AppointmentService,
@@ -1247,6 +1396,14 @@ export class PaymentsComponent implements OnInit, OnDestroy {
 
     this.emgLoadOrders();
     this.emgStartPolling();
+
+    this.rscdDpiForm = this.fb.group({
+      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+    });
+    const now2 = new Date();
+    this.rscdCalYear = now2.getFullYear();
+    this.rscdCalMonth = now2.getMonth();
+    this.rscdBuildCalendar();
   }
 
   ngOnDestroy(): void {
@@ -2124,5 +2281,126 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.emgReceipt = null;
     this.emgSearch = '';
     this.emgLoadOrders();
+  }
+
+  // ── Reagendar Cita ─────────────────────────────────────────────────────────
+
+  rscdSearch(): void {
+    const dpi = this.rscdDpiForm.value.dpi;
+    this.rscdSearching = true;
+    this.rscdSearchError = '';
+    this.http.get<any>(`${environment.apiUrl}/tickets/pending-reschedule/by-dpi/${dpi}`).subscribe({
+      next: res => {
+        this.rscdSearching = false;
+        if (res.success && res.data !== null) {
+          // Fetch patient info separately
+          this.patientService.getByDpi(dpi).subscribe({
+            next: pr => {
+              this.rscdPatient = pr.success ? pr.data : { firstName: '?', lastName: '?', dpi } as any;
+              this.rscdTickets = res.data;
+              if (this.rscdTickets.length === 0) this.rscdSearchError = '';
+            },
+            error: () => { this.rscdPatient = { firstName: '?', lastName: '?', dpi } as any; this.rscdTickets = res.data; }
+          });
+        } else {
+          this.rscdSearchError = res.message || 'Paciente no encontrado';
+        }
+      },
+      error: err => {
+        this.rscdSearching = false;
+        this.rscdSearchError = err?.error?.message || 'Paciente no encontrado con ese DPI';
+      }
+    });
+  }
+
+  rscdReset(): void {
+    this.rscdPatient = null;
+    this.rscdTickets = [];
+    this.rscdSelectedTicket = null;
+    this.rscdDate = null;
+    this.rscdSlot = null;
+    this.rscdSearchError = '';
+    this.rscdDpiForm.reset();
+  }
+
+  rscdSelectTicket(ticket: any): void {
+    if (this.rscdSelectedTicket?.id === ticket.id) {
+      this.rscdSelectedTicket = null;
+    } else {
+      this.rscdSelectedTicket = ticket;
+      this.rscdDate = null;
+      this.rscdSlot = null;
+      this.rscdConfirmError = '';
+    }
+  }
+
+  rscdBuildCalendar(): void {
+    const firstDay = new Date(this.rscdCalYear, this.rscdCalMonth, 1).getDay();
+    const daysInMonth = new Date(this.rscdCalYear, this.rscdCalMonth + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(this.rscdCalYear, this.rscdCalMonth, i));
+    this.rscdCalDays = days;
+  }
+
+  rscdPrevMonth(): void {
+    if (this.rscdCalMonth === 0) { this.rscdCalMonth = 11; this.rscdCalYear--; }
+    else { this.rscdCalMonth--; }
+    this.rscdBuildCalendar();
+  }
+
+  rscdNextMonth(): void {
+    if (this.rscdCalMonth === 11) { this.rscdCalMonth = 0; this.rscdCalYear++; }
+    else { this.rscdCalMonth++; }
+    this.rscdBuildCalendar();
+  }
+
+  getRscdDayClass(day: Date): string {
+    let cls = 'cal-day';
+    if (this.citIsPastDay(day)) { cls += ' past'; return cls; }
+    const today = this.getCATodayStr();
+    const ds = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    if (ds === today) cls += ' today';
+    if (this.rscdDate && day.getTime() === this.rscdDate.getTime()) cls += ' selected';
+    return cls;
+  }
+
+  rscdSelectDate(day: Date): void {
+    this.rscdDate = day;
+    this.rscdSlot = null;
+    this.rscdSlots = [];
+    if (!this.rscdSelectedTicket?.clinicId) return;
+    this.rscdLoadingSlots = true;
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    this.appointmentService.getAvailableSlots(dateStr, this.rscdSelectedTicket.clinicId).subscribe({
+      next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
+      error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
+    });
+  }
+
+  rscdConfirm(): void {
+    if (!this.rscdSelectedTicket || !this.rscdDate || !this.rscdSlot) return;
+    this.rscdConfirming = true;
+    this.rscdConfirmError = '';
+    const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+    this.http.put<any>(`${environment.apiUrl}/tickets/${this.rscdSelectedTicket.id}/reschedule`,
+      { newDate: dateStr, newTime: this.rscdSlot }).subscribe({
+      next: res => {
+        this.rscdConfirming = false;
+        if (res.success) {
+          this.notification.success('Cita reagendada correctamente');
+          this.rscdTickets = this.rscdTickets.filter(t => t.id !== this.rscdSelectedTicket!.id);
+          this.rscdSelectedTicket = null;
+          this.rscdDate = null;
+          this.rscdSlot = null;
+        } else {
+          this.rscdConfirmError = res.message || 'Error al reagendar';
+        }
+      },
+      error: err => {
+        this.rscdConfirming = false;
+        this.rscdConfirmError = err?.error?.message || 'Error al reagendar';
+      }
+    });
   }
 }

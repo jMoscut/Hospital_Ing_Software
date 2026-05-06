@@ -2,6 +2,7 @@ package com.biocore.controller;
 
 import com.biocore.dto.ApiResponse;
 import com.biocore.dto.PaymentCreateRequest;
+import com.biocore.dto.PaymentDTO;
 import com.biocore.entity.Payment;
 import com.biocore.enums.PaymentMethod;
 import com.biocore.service.PaymentService;
@@ -21,12 +22,12 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @GetMapping("/patient/{patientId}")
-    public ResponseEntity<ApiResponse<List<Payment>>> getByPatient(@PathVariable Long patientId) {
+    public ResponseEntity<ApiResponse<List<PaymentDTO>>> getByPatient(@PathVariable Long patientId) {
         return ResponseEntity.ok(ApiResponse.ok(paymentService.getByPatient(patientId)));
     }
 
     @GetMapping("/pending/{patientId}")
-    public ResponseEntity<ApiResponse<List<Payment>>> getPending(@PathVariable Long patientId) {
+    public ResponseEntity<ApiResponse<List<PaymentDTO>>> getPending(@PathVariable Long patientId) {
         return ResponseEntity.ok(ApiResponse.ok(paymentService.getPendingByPatient(patientId)));
     }
 

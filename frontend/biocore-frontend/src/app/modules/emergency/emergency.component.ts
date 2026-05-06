@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +17,7 @@ import { PatientService } from '../../shared/services/patient.service';
 import { EmergencyService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Patient } from '../../core/models/patient.model';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-emergency',
@@ -320,6 +322,50 @@ import { Patient } from '../../core/models/patient.model';
           </div>
         </mat-tab>
 
+        <!-- TAB 3: Cola en Espera -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon style="font-size:18px;margin-right:6px;vertical-align:middle;color:#c62828">emergency</mat-icon>
+            Cola Emergencias ({{ waitingQueue.length }})
+          </ng-template>
+
+          <div style="padding:24px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <h3 style="margin:0;color:#c62828">Pacientes esperando atención</h3>
+              <button mat-stroked-button color="warn" type="button" (click)="loadQueue()">
+                <mat-icon>refresh</mat-icon> Actualizar
+              </button>
+            </div>
+
+            <div *ngIf="loadingQueue" style="text-align:center;padding:32px">
+              <mat-spinner diameter="40" style="margin:0 auto"></mat-spinner>
+            </div>
+
+            <div *ngIf="!loadingQueue && waitingQueue.length === 0" class="empty-state">
+              <mat-icon style="color:#c8e6c9">check_circle</mat-icon>
+              <p>Sin pacientes de emergencia en espera.</p>
+            </div>
+
+            <div *ngFor="let t of waitingQueue" class="queue-card">
+              <div class="queue-card-left">
+                <div class="queue-number">{{ t.ticketNumber }}</div>
+                <div class="queue-info">
+                  <div class="queue-patient">{{ t.patientName }}</div>
+                  <div class="queue-clinic">{{ t.clinicName }}</div>
+                  <div class="queue-time">{{ t.createdAt | date:'HH:mm' }}</div>
+                </div>
+              </div>
+              <button mat-raised-button color="warn"
+                      [disabled]="markingAttended[t.id]"
+                      (click)="markAttended(t.id)">
+                <mat-spinner *ngIf="markingAttended[t.id]" diameter="18" style="display:inline-block;margin-right:6px"></mat-spinner>
+                <mat-icon *ngIf="!markingAttended[t.id]">how_to_reg</mat-icon>
+                {{ markingAttended[t.id] ? 'Marcando...' : 'Paciente Atendido' }}
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+
       </mat-tab-group>
     </div>
   `,
@@ -363,9 +409,15 @@ import { Patient } from '../../core/models/patient.model';
     .reg-actions { display:flex; gap:12px; margin-top:8px; }
     .reg-note { display:flex; align-items:center; gap:6px; font-size:0.8rem; color:#757575; margin-top:8px; }
     .registered-badge { display:flex; align-items:center; gap:6px; color:#2e7d32; font-size:0.87rem; margin-top:8px; }
+    .queue-card { display:flex; align-items:center; justify-content:space-between; border:2px solid #ffcdd2; border-radius:10px; padding:16px; margin-bottom:12px; background:#fff8f8; }
+    .queue-card-left { display:flex; align-items:center; gap:16px; }
+    .queue-number { font-size:1.6rem; font-weight:700; color:#c62828; min-width:64px; }
+    .queue-patient { font-weight:600; color:#212121; font-size:1rem; }
+    .queue-clinic { font-size:0.82rem; color:#757575; margin-top:2px; }
+    .queue-time { font-size:0.78rem; color:#9e9e9e; margin-top:2px; }
   `]
 })
-export class EmergencyComponent implements OnInit {
+export class EmergencyComponent implements OnInit, OnDestroy {
   // Registration flow
   searchDpi = '';
   searching = false;
@@ -383,8 +435,15 @@ export class EmergencyComponent implements OnInit {
   regForm: any = { firstName: '', lastName: '', dpi: '', email: '', phone: '', address: '' };
   registering = false;
 
+  // Queue tab
+  waitingQueue: any[] = [];
+  loadingQueue = false;
+  markingAttended: Record<number, boolean> = {};
+  private queuePoll: any;
+
   constructor(
     private fb: FormBuilder,
+    private http: HttpClient,
     private patientService: PatientService,
     private emergencyService: EmergencyService,
     private notification: NotificationService
@@ -407,6 +466,12 @@ export class EmergencyComponent implements OnInit {
       oxygenSaturation: [null]
     });
     this.loadReports();
+    this.loadQueue();
+    this.queuePoll = setInterval(() => this.loadQueue(), 10000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.queuePoll);
   }
 
   searchPatient(): void {
@@ -505,6 +570,36 @@ export class EmergencyComponent implements OnInit {
       error: err => {
         this.notification.error(err.error?.message || 'Error al registrar paciente');
         this.registering = false;
+      }
+    });
+  }
+
+  loadQueue(): void {
+    this.loadingQueue = this.waitingQueue.length === 0;
+    this.http.get<any>(`${environment.apiUrl}/tickets/queue/today`).subscribe({
+      next: res => {
+        if (res.success) {
+          this.waitingQueue = (res.data as any[])
+            .filter(t => t.status === 'WAITING' && t.priority === 'URGENT')
+            .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        }
+        this.loadingQueue = false;
+      },
+      error: () => { this.loadingQueue = false; }
+    });
+  }
+
+  markAttended(ticketId: number): void {
+    this.markingAttended[ticketId] = true;
+    this.emergencyService.markAttended(ticketId).subscribe({
+      next: () => {
+        this.notification.success('Paciente marcado como atendido');
+        this.waitingQueue = this.waitingQueue.filter(t => t.id !== ticketId);
+        delete this.markingAttended[ticketId];
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al marcar como atendido');
+        delete this.markingAttended[ticketId];
       }
     });
   }

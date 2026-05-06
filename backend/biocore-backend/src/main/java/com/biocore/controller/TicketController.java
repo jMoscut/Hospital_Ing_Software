@@ -1,6 +1,7 @@
 package com.biocore.controller;
 
 import com.biocore.dto.ApiResponse;
+import com.biocore.dto.RescheduleRequest;
 import com.biocore.dto.TicketCreateRequest;
 import com.biocore.dto.TicketDTO;
 import com.biocore.security.CustomUserDetails;
@@ -148,5 +149,31 @@ public class TicketController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    /** Reagendar ticket ABSENT_PENDING_RESCHEDULE — no payment required */
+    @PutMapping("/{ticketId}/reschedule")
+    public ResponseEntity<ApiResponse<TicketDTO>> reschedule(
+            @PathVariable Long ticketId,
+            @Valid @RequestBody RescheduleRequest req) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Cita reagendada",
+                    ticketService.reschedule(ticketId, req.getNewDate(), req.getNewTime())));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /** Get all ABSENT_PENDING_RESCHEDULE tickets for a patient — for portal */
+    @GetMapping("/patient/{patientId}/pending-reschedule")
+    public ResponseEntity<ApiResponse<List<TicketDTO>>> getPendingReschedule(@PathVariable Long patientId) {
+        return ResponseEntity.ok(ApiResponse.ok(ticketService.getPendingReschedule(patientId)));
+    }
+
+    /** Cashier: search absent tickets by patient DPI */
+    @GetMapping("/pending-reschedule/by-dpi/{dpi}")
+    @PreAuthorize("hasAnyRole('CASHIER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<TicketDTO>>> getPendingRescheduleByDpi(@PathVariable String dpi) {
+        return ResponseEntity.ok(ApiResponse.ok(ticketService.getPendingRescheduleByDpi(dpi)));
     }
 }

@@ -56,6 +56,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
            "ORDER BY p.createdAt DESC")
     List<Prescription> findByPatientDpi(@Param("dpi") String dpi);
 
-    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(p.code, 5) AS int)), 0) FROM Prescription p WHERE p.code IS NOT NULL")
+    @Query(value = "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 5) AS INTEGER)), 0) FROM prescriptions WHERE code IS NOT NULL AND code ~ '^REC-[0-9]+$'", nativeQuery = true)
     int findMaxCodeNumber();
 }
