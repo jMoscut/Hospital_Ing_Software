@@ -63,6 +63,8 @@ public class PrescriptionDTO {
         private String dosage;
         private String instructions;
         private boolean dispatched;
+        private java.math.BigDecimal unitPrice;
+        private Integer medicineStock;
 
         public static ItemDTO from(PrescriptionItem item) {
             boolean hasMed = item.getMedicine() != null;
@@ -75,6 +77,8 @@ public class PrescriptionDTO {
                     .dosage(item.getDosage())
                     .instructions(item.getInstructions())
                     .dispatched(item.isDispatched())
+                    .unitPrice(hasMed ? item.getMedicine().getPrice() : null)
+                    .medicineStock(hasMed ? item.getMedicine().getStock() : null)
                     .build();
         }
     }

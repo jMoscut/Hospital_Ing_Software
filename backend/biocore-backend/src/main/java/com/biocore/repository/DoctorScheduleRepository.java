@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DoctorScheduleRepository extends JpaRepository<DoctorSchedule, Long> {
@@ -24,6 +25,12 @@ public interface DoctorScheduleRepository extends JpaRepository<DoctorSchedule, 
     @Query("SELECT s FROM DoctorSchedule s JOIN FETCH s.clinic " +
            "WHERE s.doctor.id = :doctorId ORDER BY s.dayOfWeek, s.specificDate, s.startTime")
     List<DoctorSchedule> findByDoctorId(@Param("doctorId") Long doctorId);
+
+    /** Upsert lookup: find existing recurring schedule for doctor+dayOfWeek */
+    Optional<DoctorSchedule> findByDoctorIdAndDayOfWeekAndActiveTrue(Long doctorId, DayOfWeek dayOfWeek);
+
+    /** Upsert lookup: find existing specific-date schedule for doctor+date */
+    Optional<DoctorSchedule> findByDoctorIdAndSpecificDateAndActiveTrue(Long doctorId, LocalDate specificDate);
 
     @Query("SELECT s FROM DoctorSchedule s JOIN FETCH s.doctor JOIN FETCH s.clinic " +
            "WHERE s.clinic.id = :clinicId AND s.active = true " +

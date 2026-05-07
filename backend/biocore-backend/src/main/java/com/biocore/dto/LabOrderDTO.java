@@ -51,6 +51,11 @@ public class LabOrderDTO {
     private String resultNotes;
     private Boolean hasAttachment;
 
+    // Reference booking
+    private boolean isUsed;
+    private java.math.BigDecimal labExamPrice;
+
+
     public static LabOrderDTO from(LabOrder o) {
         return from(o, null, null);
     }
@@ -74,7 +79,9 @@ public class LabOrderDTO {
                 .expirationDate(o.getExpirationDate())
                 .resultAvailableAt(o.getResultAvailableAt())
                 .scheduledAt(o.getScheduledAt())
-                .notes(o.getNotes());
+                .notes(o.getNotes())
+                .isUsed(Boolean.TRUE.equals(o.getUsed()))
+                .labExamPrice(o.getLabExam() != null ? o.getLabExam().getPrice() : null);
 
         if (v != null) {
             b.bloodPressure(v.getBloodPressure())

@@ -295,13 +295,11 @@ function defaultSettings(): NotifSettings {
                       <strong>{{ selectedDays.length }} día(s) seleccionado(s):</strong>
                       <span class="day-chip" *ngFor="let d of selectedDays">{{ formatSelectedDay(d) }}</span>
                     </div>
+                    <div style="margin-bottom:8px;font-size:0.85rem;color:#555">
+                      <mat-icon style="font-size:16px;vertical-align:middle">business</mat-icon>
+                      Clínica: <strong>{{ scheduleDoctor?.assignedClinic || 'Sin asignar' }}</strong>
+                    </div>
                     <div class="apply-form-row">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Clínica *</mat-label>
-                        <mat-select [(ngModel)]="applyClinicId" [ngModelOptions]="{standalone:true}">
-                          <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
-                        </mat-select>
-                      </mat-form-field>
                       <mat-form-field appearance="outline">
                         <mat-label>Hora inicio *</mat-label>
                         <mat-select [(ngModel)]="applyStartTime" [ngModelOptions]="{standalone:true}">
@@ -311,6 +309,21 @@ function defaultSettings(): NotifSettings {
                       <mat-form-field appearance="outline">
                         <mat-label>Hora fin *</mat-label>
                         <mat-select [(ngModel)]="applyEndTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Almuerzo inicio</mat-label>
+                        <mat-select [(ngModel)]="applyLunchStartTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option [value]="null">— Sin almuerzo —</mat-option>
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Almuerzo fin</mat-label>
+                        <mat-select [(ngModel)]="applyLunchEndTime" [ngModelOptions]="{standalone:true}"
+                                    [disabled]="!applyLunchStartTime">
+                          <mat-option [value]="null">—</mat-option>
                           <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
                         </mat-select>
                       </mat-form-field>
@@ -335,6 +348,10 @@ function defaultSettings(): NotifSettings {
                       <mat-card-subtitle>Se aplica cada semana en el día indicado</mat-card-subtitle>
                     </mat-card-header>
                     <mat-card-content>
+                      <div style="margin-bottom:8px;font-size:0.85rem;color:#555">
+                        <mat-icon style="font-size:16px;vertical-align:middle">business</mat-icon>
+                        Clínica: <strong>{{ scheduleDoctor?.assignedClinic || 'Sin asignar' }}</strong>
+                      </div>
                       <form [formGroup]="scheduleForm" class="form-grid" style="margin-top:8px">
                         <mat-form-field appearance="outline">
                           <mat-label>Día de la semana *</mat-label>
@@ -349,12 +366,6 @@ function defaultSettings(): NotifSettings {
                           </mat-select>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
-                          <mat-label>Clínica *</mat-label>
-                          <mat-select formControlName="clinicId">
-                            <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
                           <mat-label>Hora inicio *</mat-label>
                           <mat-select formControlName="startTime">
                             <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
@@ -363,6 +374,21 @@ function defaultSettings(): NotifSettings {
                         <mat-form-field appearance="outline">
                           <mat-label>Hora fin *</mat-label>
                           <mat-select formControlName="endTime">
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Almuerzo inicio</mat-label>
+                          <mat-select formControlName="lunchStartTime">
+                            <mat-option [value]="null">— Sin almuerzo —</mat-option>
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Almuerzo fin</mat-label>
+                          <mat-select formControlName="lunchEndTime"
+                                      [attr.disabled]="!scheduleForm.get('lunchStartTime')?.value ? true : null">
+                            <mat-option [value]="null">—</mat-option>
                             <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
                           </mat-select>
                         </mat-form-field>
@@ -395,7 +421,12 @@ function defaultSettings(): NotifSettings {
                     </ng-container>
                     <ng-container matColumnDef="time">
                       <th mat-header-cell *matHeaderCellDef>Horario</th>
-                      <td mat-cell *matCellDef="let s">{{ s.startTime }} – {{ s.endTime }}</td>
+                      <td mat-cell *matCellDef="let s">
+                        {{ s.startTime }} – {{ s.endTime }}
+                        <span *ngIf="s.lunchStartTime" style="font-size:0.75rem;color:#888;margin-left:6px">
+                          (almuerzo {{ s.lunchStartTime }}–{{ s.lunchEndTime }})
+                        </span>
+                      </td>
                     </ng-container>
                     <ng-container matColumnDef="clinic">
                       <th mat-header-cell *matHeaderCellDef>Área / Clínica</th>
@@ -748,6 +779,8 @@ export class UserManagementComponent implements OnInit {
   applyClinicId: number | null = null;
   applyStartTime: string | null = null;
   applyEndTime: string | null = null;
+  applyLunchStartTime: string | null = null;
+  applyLunchEndTime: string | null = null;
   applyError = '';
   applyLoading = false;
 
@@ -786,10 +819,12 @@ export class UserManagementComponent implements OnInit {
     });
 
     this.scheduleForm = this.fb.group({
-      dayOfWeek: [null],
-      clinicId:  [null, Validators.required],
-      startTime: [null, Validators.required],
-      endTime:   [null, Validators.required]
+      dayOfWeek:      [null],
+      clinicId:       [null, Validators.required],
+      startTime:      [null, Validators.required],
+      endTime:        [null, Validators.required],
+      lunchStartTime: [null],
+      lunchEndTime:   [null]
     });
 
     this.load();
@@ -997,10 +1032,10 @@ export class UserManagementComponent implements OnInit {
   onScheduleDoctorChange(): void {
     this.doctorSchedules = [];
     this.clearSelection();
+    const cid = this.scheduleDoctor?.assignedClinicId ?? null;
+    this.applyClinicId = cid;
     if (this.scheduleDoctor) {
-      this.scheduleForm.patchValue({
-        clinicId: this.scheduleDoctor.assignedClinicId ?? null
-      });
+      this.scheduleForm.patchValue({ clinicId: cid });
       this.loadSchedules();
     } else {
       this.scheduleForm.patchValue({ clinicId: null });
@@ -1024,21 +1059,24 @@ export class UserManagementComponent implements OnInit {
     const v = this.scheduleForm.value;
     this.scheduleError = '';
     if (!v.dayOfWeek) { this.scheduleError = 'Seleccione el día de la semana'; return; }
-    if (!v.clinicId)  { this.scheduleError = 'Seleccione la clínica'; return; }
+    if (!v.clinicId)  { this.scheduleError = 'El médico no tiene clínica asignada'; return; }
     if (!v.startTime || !v.endTime) { this.scheduleError = 'Ingrese hora inicio y fin'; return; }
+    if (v.lunchStartTime && !v.lunchEndTime) { this.scheduleError = 'Ingrese hora fin de almuerzo'; return; }
 
     this.savingSchedule = true;
     this.scheduleService.create({
-      doctorId:  this.scheduleDoctor.id,
-      clinicId:  v.clinicId,
-      dayOfWeek: v.dayOfWeek,
-      startTime: v.startTime,
-      endTime:   v.endTime
+      doctorId:       this.scheduleDoctor.id,
+      clinicId:       v.clinicId,
+      dayOfWeek:      v.dayOfWeek,
+      startTime:      v.startTime,
+      endTime:        v.endTime,
+      lunchStartTime: v.lunchStartTime || null,
+      lunchEndTime:   v.lunchEndTime || null
     }).subscribe({
       next: res => {
         if (res.success) {
           this.notification.success('Patrón semanal agregado');
-          this.scheduleForm.patchValue({ dayOfWeek: null, startTime: null, endTime: null });
+          this.scheduleForm.patchValue({ dayOfWeek: null, startTime: null, endTime: null, lunchStartTime: null, lunchEndTime: null });
           this.loadSchedules();
         } else {
           this.scheduleError = res.message || 'Error al guardar';
@@ -1054,18 +1092,21 @@ export class UserManagementComponent implements OnInit {
 
   applySchedule(): void {
     this.applyError = '';
-    if (!this.applyClinicId) { this.applyError = 'Seleccione la clínica'; return; }
+    if (!this.applyClinicId) { this.applyError = 'El médico no tiene clínica asignada'; return; }
     if (!this.applyStartTime || !this.applyEndTime) { this.applyError = 'Ingrese hora inicio y fin'; return; }
+    if (this.applyLunchStartTime && !this.applyLunchEndTime) { this.applyError = 'Ingrese hora fin de almuerzo'; return; }
     if (!this.scheduleDoctor) return;
 
     this.applyLoading = true;
     const requests = this.selectedDays.map(date =>
       this.scheduleService.create({
-        doctorId:     this.scheduleDoctor.id,
-        clinicId:     this.applyClinicId,
-        specificDate: date,
-        startTime:    this.applyStartTime,
-        endTime:      this.applyEndTime
+        doctorId:       this.scheduleDoctor.id,
+        clinicId:       this.applyClinicId,
+        specificDate:   date,
+        startTime:      this.applyStartTime,
+        endTime:        this.applyEndTime,
+        lunchStartTime: this.applyLunchStartTime || null,
+        lunchEndTime:   this.applyLunchEndTime || null
       })
     );
 
@@ -1088,7 +1129,7 @@ export class UserManagementComponent implements OnInit {
     if (!confirm('¿Eliminar este horario?')) return;
     this.scheduleService.delete(id).subscribe({
       next: () => { this.notification.success('Horario eliminado'); this.loadSchedules(); },
-      error: () => this.notification.error('Error al eliminar horario')
+      error: err => this.notification.error(err.error?.message || 'Error al eliminar horario')
     });
   }
 

@@ -34,6 +34,21 @@ public class LabController {
         return ResponseEntity.ok(ApiResponse.ok(labService.getByPatient(patientId)));
     }
 
+    @GetMapping("/patient/{patientId}/available-references")
+    public ResponseEntity<ApiResponse<List<LabOrderDTO>>> getAvailableReferences(@PathVariable Long patientId) {
+        return ResponseEntity.ok(ApiResponse.ok(labService.getAvailableReferences(patientId)));
+    }
+
+    @PutMapping("/{id}/mark-used")
+    @PreAuthorize("hasAnyRole('CASHIER', 'PATIENT', 'ADMIN')")
+    public ResponseEntity<ApiResponse<LabOrderDTO>> markUsed(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Referencia utilizada", LabOrderDTO.from(labService.markUsed(id))));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('LAB_TECHNICIAN', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<LabOrderDTO>>> getPending() {

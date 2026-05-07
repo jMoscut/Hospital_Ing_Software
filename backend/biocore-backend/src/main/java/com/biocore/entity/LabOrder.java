@@ -61,4 +61,9 @@ public class LabOrder {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    /** True once a cashier/patient has booked an appointment from this reference. Single-use. */
+    @Column(name = "is_used")
+    @Builder.Default
+    private Boolean used = Boolean.FALSE;
 }

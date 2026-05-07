@@ -17,4 +17,6 @@ public class DoctorScheduleRequest {
     private LocalDate specificDate;
     private String startTime;
     private String endTime;
+    private String lunchStartTime;
+    private String lunchEndTime;
 }

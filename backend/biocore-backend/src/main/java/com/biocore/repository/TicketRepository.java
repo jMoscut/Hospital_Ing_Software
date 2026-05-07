@@ -20,12 +20,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByPatientId(Long patientId);
     List<Ticket> findByDoctorId(Long doctorId);
 
-    /** RN-C01: Cola ordenada: URGENT primero, luego por creación.
-     *  Scheduled tickets: solo scheduledDate = today.
-     *  Walk-in (scheduledDate IS NULL): solo createdAt >= todayStart (Guatemala midnight). */
+    /** RN-C01: Cola ordenada: URGENT primero, luego por scheduledTime ASC. */
     @Query("SELECT t FROM Ticket t WHERE t.clinic.id = :clinicId AND t.status IN :statuses " +
            "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
-           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
+           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.scheduledTime ASC")
     List<Ticket> findQueueByClinic(@Param("clinicId") Long clinicId,
                                    @Param("statuses") List<TicketStatus> statuses,
                                    @Param("today") LocalDate today,
@@ -42,7 +40,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("SELECT t FROM Ticket t WHERE t.clinic.id = :clinicId AND t.doctor.id = :doctorId " +
            "AND t.status IN :statuses " +
            "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
-           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
+           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.scheduledTime ASC")
     List<Ticket> findQueueByClinicAndDoctor(@Param("clinicId") Long clinicId,
                                              @Param("doctorId") Long doctorId,
                                              @Param("statuses") List<TicketStatus> statuses,

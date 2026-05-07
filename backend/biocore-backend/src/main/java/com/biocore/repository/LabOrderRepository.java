@@ -22,6 +22,13 @@ public interface LabOrderRepository extends JpaRepository<LabOrder, Long> {
     @Query("SELECT l FROM LabOrder l WHERE l.status NOT IN ('COMPLETED', 'EXPIRED') AND l.expirationDate < :today")
     List<LabOrder> findExpiredOrders(@Param("today") LocalDate today);
 
+    /** Available references: PENDING, not used, not expired */
+    @Query("SELECT l FROM LabOrder l LEFT JOIN FETCH l.labExam " +
+           "WHERE l.patient.id = :patientId AND (l.used IS NULL OR l.used = false) " +
+           "AND l.status = 'PENDING' AND l.expirationDate >= :today")
+    List<LabOrder> findAvailableReferences(@Param("patientId") Long patientId,
+                                            @Param("today") LocalDate today);
+
     /** Report: most requested lab exams in date range */
     @Query("SELECT COALESCE(l.labExam.name, CAST(l.sampleType AS string)), COUNT(l) " +
            "FROM LabOrder l WHERE l.orderDate >= :from AND l.orderDate <= :to " +

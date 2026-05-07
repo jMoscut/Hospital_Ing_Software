@@ -633,9 +633,23 @@ export class ConsultationComponent implements OnInit, OnDestroy {
             this.loadAppointmentDocs();
           }
         }
-      } else if (!this.assignedClinicId && res.data.length > 0) {
-        this.assignedClinicId = res.data[0]?.clinicId;
-        this.assignedClinicName = res.data[0]?.clinicName;
+      } else {
+        // No active ticket for this doctor — check if currentTicket was resolved externally
+        // (e.g., health staff marked patient absent from vital signs area)
+        if (this.currentTicket) {
+          const stillActive = res.data.some((t: Ticket) =>
+            t.id === this.currentTicket!.id && activeStatuses.includes(t.status)
+          );
+          if (!stillActive) {
+            this.currentTicket = null;
+            this.currentVitals = null;
+            this.vitalsNotFound = false;
+          }
+        }
+        if (!this.assignedClinicId && res.data.length > 0) {
+          this.assignedClinicId = res.data[0]?.clinicId;
+          this.assignedClinicName = res.data[0]?.clinicName;
+        }
       }
 
       if (this.assignedClinicId) this.loadClinicQueue();

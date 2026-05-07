@@ -70,7 +70,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
         </button>
       </div>
 
-      <mat-tab-group animationDuration="200ms">
+      <mat-tab-group animationDuration="200ms" [selectedIndex]="selectedTabIndex" (selectedIndexChange)="selectedTabIndex=$event">
 
         <!-- TAB 1: Agendar Cita -->
         <mat-tab>
@@ -432,13 +432,17 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <button *ngFor="let slot of rscdSlots"
                             type="button"
                             [class]="'slot-btn' + (rscdSlot === slot ? ' selected' : '')"
-                            (click)="rscdSlot = slot">
+                            (click)="selectRscdSlot(slot)">
                       {{ slot }}
                     </button>
                     <div *ngIf="rscdSlots.length === 0" class="no-slots">
                       <mat-icon>event_busy</mat-icon>
                       No hay horarios disponibles para este día
                     </div>
+                  </div>
+                  <div class="reservation-timer" *ngIf="rscdReservationTimeLeft > 0" [class.timer-low]="rscdReservationLow">
+                    <mat-icon>timer</mat-icon>
+                    <span>Horario <strong>{{ rscdSlot }}</strong> reservado — expira en <strong>{{ rscdReservationMinutes }}:{{ rscdReservationSeconds }}</strong></span>
                   </div>
                 </ng-container>
                 <div class="error-msg" *ngIf="rscdError" style="margin-top:12px;color:#c62828">{{ rscdError }}</div>
@@ -576,25 +580,59 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
           </ng-template>
           <div class="tab-content">
             <div *ngIf="loadingLab" class="loading-state"><mat-spinner diameter="40"></mat-spinner></div>
-            <div class="lab-card" *ngFor="let o of labOrders">
-              <div class="lab-header">
-                <div>
-                  <strong>{{ o.labExamName || sampleLabel(o.sampleType) }}</strong>
-                  <span class="lab-code" *ngIf="o.labExamCode">{{ o.labExamCode }}</span>
+
+            <!-- Referencias pendientes de agendar -->
+            <ng-container *ngIf="!loadingLab && labReferences.length > 0">
+              <p class="section-label"><mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">assignment</mat-icon> Referencias médicas — pendientes de agendar</p>
+              <div class="lab-card ref-pending-card" *ngFor="let r of labReferences">
+                <div class="lab-header">
+                  <div>
+                    <strong>{{ r.labExamName || sampleLabel(r.sampleType) }}</strong>
+                    <span class="lab-code" *ngIf="r.labExamCode">{{ r.labExamCode }}</span>
+                  </div>
+                  <span class="status-chip status-waiting">Pendiente de cita</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button *ngIf="o.hasAttachment" mat-icon-button style="color:#c62828" title="Ver PDF resultado" (click)="openLabPdf(o.id)">
-                    <mat-icon>picture_as_pdf</mat-icon>
+                <div class="lab-details">
+                  <div><mat-icon>person</mat-icon> Dr. {{ r.doctorName }}</div>
+                  <div><mat-icon>calendar_today</mat-icon> Emitida: {{ r.orderDate }}</div>
+                  <div><mat-icon>event</mat-icon> Vence: {{ r.expirationDate }}</div>
+                  <div *ngIf="r.labExamPrice"><mat-icon>payments</mat-icon> Q{{ r.labExamPrice }}</div>
+                </div>
+                <div style="margin-top:10px">
+                  <button mat-raised-button color="primary" (click)="bookFromReference(r)">
+                    <mat-icon>event_available</mat-icon> Agendar Cita
                   </button>
-                  <span [class]="getLabStatusClass(o.status)" class="status-chip">{{ labStatusLabel(o.status) }}</span>
                 </div>
               </div>
-              <div class="lab-details">
-                <div><mat-icon>calendar_today</mat-icon> {{ o.orderDate }}</div>
-                <div><mat-icon>event</mat-icon> Vence: {{ o.expirationDate }}</div>
-                <div *ngIf="o.resultAvailableAt"><mat-icon>notifications</mat-icon> {{ o.resultAvailableAt | date:'dd/MM/yyyy HH:mm' }}</div>
+            </ng-container>
+
+            <!-- Historial de órdenes -->
+            <ng-container *ngIf="!loadingLab">
+              <p class="section-label" *ngIf="labOrders.length > labReferences.length">
+                <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">history</mat-icon> Historial
+              </p>
+              <div class="lab-card" *ngFor="let o of labOrders" [hidden]="o.status === 'PENDING' && !o.isUsed">
+                <div class="lab-header">
+                  <div>
+                    <strong>{{ o.labExamName || sampleLabel(o.sampleType) }}</strong>
+                    <span class="lab-code" *ngIf="o.labExamCode">{{ o.labExamCode }}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <button *ngIf="o.hasAttachment" mat-icon-button style="color:#c62828" title="Ver PDF resultado" (click)="openLabPdf(o.id)">
+                      <mat-icon>picture_as_pdf</mat-icon>
+                    </button>
+                    <span [class]="getLabStatusClass(o.status)" class="status-chip">{{ labStatusLabel(o.status) }}</span>
+                  </div>
+                </div>
+                <div class="lab-details">
+                  <div><mat-icon>calendar_today</mat-icon> {{ o.orderDate }}</div>
+                  <div><mat-icon>event</mat-icon> Vence: {{ o.expirationDate }}</div>
+                  <div *ngIf="o.resultAvailableAt"><mat-icon>notifications</mat-icon> {{ o.resultAvailableAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                  <div *ngIf="o.resultNotes"><mat-icon>notes</mat-icon> {{ o.resultNotes }}</div>
+                </div>
               </div>
-            </div>
+            </ng-container>
+
             <div class="empty-state" *ngIf="!loadingLab && labOrders.length === 0">
               <mat-icon>biotech</mat-icon><p>Sin órdenes de laboratorio</p>
             </div>
@@ -1038,11 +1076,13 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
 
     /* Lab */
     .lab-card { padding:16px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border:1px solid #d4e8e5; }
+    .ref-pending-card { border-left:4px solid #1D6C61; background:#f0faf8; }
     .lab-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
     .lab-code { background:#193A31; color:#3EB9A8; padding:2px 8px; border-radius:6px; font-size:0.75rem; margin-left:8px; }
     .lab-details { display:flex; flex-wrap:wrap; gap:12px; font-size:0.85rem; color:#555; }
     .lab-details div { display:flex; align-items:center; gap:4px; }
     .lab-details mat-icon { font-size:16px; width:16px; height:16px; color:#1D6C61; }
+    .section-label { font-size:0.78rem; font-weight:700; color:#9e9e9e; text-transform:uppercase; margin:16px 0 8px; display:flex; align-items:center; gap:4px; }
 
     .empty-state { text-align:center; padding:48px; color:#9e9e9e; }
     .empty-state mat-icon { font-size:56px; width:56px; height:56px; color:#3EB9A8; opacity:0.4; margin-bottom:8px; }
@@ -1117,6 +1157,9 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   prescriptions: Prescription[] = [];
   diagnoses: any[] = [];
   labOrders: LabOrder[] = [];
+  labReferences: LabOrder[] = [];
+  selectedTabIndex = 0;
+  labSelectedRefId: number | null = null;
   emergencyReports: any[] = [];
   pharmacySales: any[] = [];
   payments: any[] = [];
@@ -1188,8 +1231,15 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   rscdCalDays: (Date | null)[] = [];
   rescheduling = false;
   rscdError = '';
+  rscdReservationId: number | null = null;
+  rscdReservationTimeLeft = 0;
+  private rscdReservationTimer: any = null;
+  private rscdSlotPollTimer: any = null;
 
   get rscdMonthLabel(): string { return `${MONTH_NAMES[this.rscdMonth]} ${this.rscdYear}`; }
+  get rscdReservationMinutes(): number { return Math.floor(this.rscdReservationTimeLeft / 60); }
+  get rscdReservationSeconds(): string { return (this.rscdReservationTimeLeft % 60).toString().padStart(2, '0'); }
+  get rscdReservationLow(): boolean { return this.rscdReservationTimeLeft > 0 && this.rscdReservationTimeLeft <= 120; }
 
   // Profile edit
   profileEditMode = false;
@@ -1346,9 +1396,87 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   }
 
   closeReschedule(): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+    }
+    this.rscdClearReservation();
+    this.rscdStopSlotPoll();
     this.rescheduleTicket = null;
     this.rscdDate = null;
     this.rscdSlot = null;
+  }
+
+  rscdClearReservation(): void {
+    if (this.rscdReservationTimer) { clearInterval(this.rscdReservationTimer); this.rscdReservationTimer = null; }
+    this.rscdReservationTimeLeft = 0;
+    this.rscdReservationId = null;
+  }
+
+  rscdStopSlotPoll(): void {
+    if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
+  }
+
+  rscdStartSlotPoll(): void {
+    this.rscdStopSlotPoll();
+    this.rscdSlotPollTimer = setInterval(() => {
+      if (this.rscdDate && this.rescheduleTicket?.clinicId) {
+        const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+        this.appointmentService.getAvailableSlots(dateStr, this.rescheduleTicket.clinicId).subscribe({
+          next: res => {
+            if (res.success) {
+              this.rscdSlots = res.data;
+              if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
+                if (this.rscdReservationId) {
+                  this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];
+                } else {
+                  this.rscdSlot = null;
+                }
+              }
+            }
+          },
+          error: () => {}
+        });
+      }
+    }, 5000);
+  }
+
+  selectRscdSlot(slot: string): void {
+    if (this.rscdSlot === slot) return;
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
+    this.rscdSlot = slot;
+    if (!this.rscdDate || !this.rescheduleTicket?.clinicId || !this.patientId) return;
+    const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+    this.appointmentService.reserve({
+      patientId: this.patientId,
+      clinicId: this.rescheduleTicket.clinicId,
+      date: dateStr,
+      time: slot
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.rscdReservationId = res.data.id;
+          const secondsLeft = Math.max(0, Math.floor((new Date(res.data.expiresAt).getTime() - Date.now()) / 1000));
+          this.rscdReservationTimeLeft = secondsLeft;
+          this.rscdReservationTimer = setInterval(() => {
+            this.rscdReservationTimeLeft--;
+            if (this.rscdReservationTimeLeft <= 0) {
+              this.rscdClearReservation();
+              this.rscdSlot = null;
+              this.notification.error('La reserva expiró. Selecciona nuevamente.');
+              if (this.rscdDate && this.rescheduleTicket?.clinicId) this.selectRscdDate(this.rscdDate);
+            }
+          }, 1000);
+        }
+      },
+      error: err => {
+        this.notification.error(err?.error?.message || 'No se pudo reservar el horario');
+        this.rscdSlot = null;
+        if (this.rscdDate) this.selectRscdDate(this.rscdDate);
+      }
+    });
   }
 
   rscdBuildCalendar(): void {
@@ -1382,6 +1510,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   }
 
   selectRscdDate(day: Date): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
     this.rscdDate = day;
     this.rscdSlot = null;
     this.rscdSlots = [];
@@ -1392,6 +1524,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
       error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
     });
+    this.rscdStartSlotPoll();
   }
 
   confirmReschedule(): void {
@@ -1515,6 +1648,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   }
 
   startReservationTimer(seconds: number): void {
+    if (this.reservationTimer) {
+      clearInterval(this.reservationTimer);
+      this.reservationTimer = null;
+    }
     this.reservationTimeLeft = seconds;
     this.reservationTimer = setInterval(() => {
       this.reservationTimeLeft--;
@@ -1568,6 +1705,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     }
     this.clearReservationTimer();
     this.stopSlotPolling();
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+    }
+    this.rscdClearReservation();
+    this.rscdStopSlotPoll();
   }
 
   formatDate(d: Date | null): string {
@@ -1728,6 +1870,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
               error: () => {}
             });
           }
+          if (this.labSelectedRefId) {
+            this.labService.markUsed(this.labSelectedRefId).subscribe({ error: () => {} });
+            this.labSelectedRefId = null;
+          }
           this.paying = false;
           this.clearReservationTimer();
           this.stopSlotPolling();
@@ -1774,6 +1920,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.selectedType = 'CONSULTA';
     this.consultationFee = '150.00';
     this.selectedLabExamId = null;
+    this.labSelectedRefId = null;
     this.availableSlots = [];
     this.card = { name: this.userName, number: '', expiry: '', cvv: '' };
     this.paymentError = '';
@@ -1783,6 +1930,18 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.calYear = now.getFullYear();
     this.calMonth = now.getMonth();
     this.buildCalendar();
+  }
+
+  bookFromReference(ref: LabOrder): void {
+    this.resetBooking();
+    this.selectedType = 'LABORATORIO';
+    this.selectedLabExamId = ref.labExamId ?? null;
+    this.consultationFee = ref.labExamPrice != null ? ref.labExamPrice.toFixed(2) : '0.00';
+    this.labSelectedRefId = ref.id;
+    if (this.labClinics.length > 0) {
+      this.selectedClinicId = this.labClinics[0].id;
+    }
+    this.selectedTabIndex = 0;
   }
 
   getClinicName(id: number | null): string {
@@ -1884,7 +2043,13 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     });
 
     this.labService.getByPatient(patientId).subscribe({
-      next: res => { if (res.success) this.labOrders = res.data; this.loadingLab = false; },
+      next: res => {
+        if (res.success) {
+          this.labOrders = res.data;
+          this.labReferences = res.data.filter((o: LabOrder) => o.status === 'PENDING' && !o.isUsed);
+        }
+        this.loadingLab = false;
+      },
       error: () => { this.loadingLab = false; }
     });
 

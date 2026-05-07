@@ -5,6 +5,7 @@ import com.biocore.dto.AssignClinicRequest;
 import com.biocore.dto.UserCreateRequest;
 import com.biocore.dto.UserUpdateRequest;
 import com.biocore.dto.UserDTO;
+import com.biocore.repository.DoctorClinicAssignmentRepository;
 import com.biocore.security.CustomUserDetails;
 import com.biocore.service.UserService;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final DoctorClinicAssignmentRepository assignmentRepository;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -142,5 +144,15 @@ public class UserController {
     @GetMapping("/staff/status")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getStaffStatus() {
         return ResponseEntity.ok(ApiResponse.ok(userService.getAllStaffStatus()));
+    }
+
+    /** Returns the clinic type (EMERGENCY / GENERAL / etc.) of the current doctor's active assignment */
+    @GetMapping("/me/clinic-type")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getMyClinicType(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return assignmentRepository.findByDoctorIdAndActiveTrue(userDetails.getUser().getId())
+                .map(a -> ResponseEntity.ok(ApiResponse.ok(Map.of("clinicType", a.getClinic().getType().name()))))
+                .orElseGet(() -> ResponseEntity.ok(ApiResponse.ok(Map.of("clinicType", "GENERAL"))));
     }
 }

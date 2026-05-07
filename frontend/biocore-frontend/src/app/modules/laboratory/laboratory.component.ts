@@ -125,37 +125,10 @@ import { environment } from '../../../environments/environment';
               </div>
 
               <div class="order-actions">
-                <button mat-stroked-button color="primary"
-                        *ngIf="o.status === 'PENDING'"
-                        (click)="collectSample(o.id)">
-                  <mat-icon>colorize</mat-icon> Tomar Muestra
-                </button>
-                <button mat-stroked-button
-                        *ngIf="o.status === 'PENDING' || o.status === 'SAMPLE_COLLECTED'"
-                        (click)="openScheduleForm(o)">
-                  <mat-icon>event</mat-icon> Programar Cita
-                </button>
                 <button mat-raised-button color="primary"
-                        *ngIf="o.status === 'SAMPLE_COLLECTED' || o.status === 'SCHEDULED'"
                         (click)="openCompleteForm(o)">
                   <mat-icon>attach_file</mat-icon> Adjuntar Resultados
                 </button>
-              </div>
-
-              <!-- Panel programar -->
-              <div class="sub-panel" *ngIf="schedulingOrder?.id === o.id">
-                <mat-form-field appearance="outline">
-                  <mat-label>Fecha y hora de la cita</mat-label>
-                  <input matInput type="datetime-local" [(ngModel)]="scheduleDateTime">
-                </mat-form-field>
-                <div class="sub-panel-actions">
-                  <button mat-button (click)="schedulingOrder = null">Cancelar</button>
-                  <button mat-raised-button color="primary"
-                          [disabled]="!scheduleDateTime"
-                          (click)="saveSchedule(o.id)">
-                    <mat-icon>save</mat-icon> Confirmar Cita
-                  </button>
-                </div>
               </div>
 
               <!-- Panel adjuntar resultados -->
@@ -378,8 +351,6 @@ export class LaboratoryComponent implements OnInit, OnDestroy {
   searchQuery = '';
 
   selectedOrder: LabOrder | null = null;
-  schedulingOrder: LabOrder | null = null;
-  scheduleDateTime = '';
   showCompleteForm = false;
   selectedFile: File | null = null;
   fileError = '';
@@ -433,7 +404,7 @@ export class LaboratoryComponent implements OnInit, OnDestroy {
     this.labService.getPending().subscribe({
       next: res => {
         if (res.success) {
-          this.pending   = res.data.filter(o => o.status !== 'COMPLETED' && o.status !== 'EXPIRED');
+          this.pending   = res.data.filter(o => o.status !== 'COMPLETED');
           this.completed = res.data.filter(o => o.status === 'COMPLETED');
         }
       },
@@ -458,25 +429,6 @@ export class LaboratoryComponent implements OnInit, OnDestroy {
       result = result.filter(e => e.name.toLowerCase().includes(q) || e.code.toLowerCase().includes(q));
     }
     this.filteredExams = result;
-  }
-
-  collectSample(id: number): void {
-    this.labService.collectSample(id).subscribe({
-      next: res => { if (res.success) { this.notification.success('Muestra recolectada'); this.load(); } },
-      error: () => this.notification.error('Error al registrar muestra')
-    });
-  }
-
-  openScheduleForm(order: LabOrder): void {
-    this.schedulingOrder = order;
-    this.scheduleDateTime = '';
-  }
-
-  saveSchedule(id: number): void {
-    this.labService.schedule(id, this.scheduleDateTime).subscribe({
-      next: () => { this.notification.success('Cita programada'); this.schedulingOrder = null; this.load(); },
-      error: () => this.notification.error('Error al programar cita')
-    });
   }
 
   openCompleteForm(order: LabOrder): void {

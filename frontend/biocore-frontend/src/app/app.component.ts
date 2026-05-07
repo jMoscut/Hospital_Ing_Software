@@ -142,9 +142,17 @@ export class AppComponent {
   visibleNavItems = computed(() => {
     const user = this.authService.currentUser();
     if (!user) return [];
-    return this.navItems.filter(item =>
-      item.roles.length === 0 || item.roles.includes(user.role)
-    );
+    const clinicType = this.authService.doctorClinicType();
+    const isEmergencyDoctor = user.role === 'DOCTOR' && clinicType === 'EMERGENCY';
+    return this.navItems.filter(item => {
+      if (!item.roles.length && item.roles.length === 0) return true;
+      if (!item.roles.includes(user.role)) return false;
+      if (user.role === 'DOCTOR') {
+        if (item.path === '/emergency-consultation') return isEmergencyDoctor;
+        if (item.path === '/consultation') return !isEmergencyDoctor;
+      }
+      return true;
+    });
   });
 
   constructor(private authService: AuthService, private router: Router) {

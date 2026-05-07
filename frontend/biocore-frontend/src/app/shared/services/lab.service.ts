@@ -41,6 +41,14 @@ export class LabService {
   getResultFileUrl(id: number): string {
     return `${this.url}/${id}/result-file`;
   }
+
+  getAvailableReferences(patientId: number): Observable<ApiResponse<LabOrder[]>> {
+    return this.http.get<ApiResponse<LabOrder[]>>(`${this.url}/patient/${patientId}/available-references`);
+  }
+
+  markUsed(id: number): Observable<ApiResponse<LabOrder>> {
+    return this.http.put<ApiResponse<LabOrder>>(`${this.url}/${id}/mark-used`, {});
+  }
 }
 
 @Injectable({ providedIn: 'root' })

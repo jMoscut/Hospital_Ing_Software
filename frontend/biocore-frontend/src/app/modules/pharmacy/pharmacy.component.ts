@@ -346,15 +346,15 @@ interface CartItem {
                           Cantidad: {{ item.quantity }}
                           <span *ngIf="item.dosage"> · {{ item.dosage }}</span>
                         </div>
-                        <div *ngIf="item.medicine" class="stock-info"
-                             [class.stock-warn]="item.medicine.stock < item.quantity">
-                          Stock: {{ item.medicine.stock }}
-                          <span *ngIf="item.medicine.stock < item.quantity"> ⚠ Insuficiente</span>
+                        <div *ngIf="item.medicineStock != null" class="stock-info"
+                             [class.stock-warn]="item.medicineStock < item.quantity">
+                          Stock: {{ item.medicineStock }}
+                          <span *ngIf="item.medicineStock < item.quantity"> ⚠ Insuficiente</span>
                         </div>
                       </div>
-                      <div *ngIf="item.medicine && !item.dispatched" class="rx-item-price">
-                        Q{{ item.medicine.price | number:'1.2-2' }} × {{ item.quantity }} =
-                        <strong>Q{{ (item.medicine.price * item.quantity) | number:'1.2-2' }}</strong>
+                      <div *ngIf="item.unitPrice != null && !item.dispatched" class="rx-item-price">
+                        Q{{ item.unitPrice | number:'1.2-2' }} × {{ item.quantity }} =
+                        <strong>Q{{ (item.unitPrice * item.quantity) | number:'1.2-2' }}</strong>
                       </div>
                     </div>
 
@@ -538,7 +538,9 @@ interface CartItem {
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Categoría</mat-label>
-              <input matInput formControlName="category" placeholder="Antibiótico, AINE...">
+              <mat-select formControlName="category">
+                <mat-option *ngFor="let cat of categories" [value]="cat">{{ cat }}</mat-option>
+              </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Unidad</mat-label>
@@ -792,13 +794,13 @@ export class PharmacyComponent implements OnInit {
   get rxTotal(): number {
     if (!this.selectedRx) return 0;
     return this.selectedRx.items
-      .filter(i => !i.dispatched && i.medicine)
-      .reduce((s, i) => s + (i.medicine!.price * i.quantity), 0);
+      .filter(i => !i.dispatched && i.unitPrice != null)
+      .reduce((s, i) => s + (i.unitPrice! * i.quantity), 0);
   }
 
   get rxHasStockIssue(): boolean {
     if (!this.selectedRx) return false;
-    return this.selectedRx.items.some(i => !i.dispatched && i.medicine && i.medicine.stock < i.quantity);
+    return this.selectedRx.items.some(i => !i.dispatched && i.medicineStock != null && i.medicineStock < i.quantity);
   }
 
   // ── Tab 1: OTC Methods ───────────────────────────────────────────────
@@ -933,11 +935,11 @@ export class PharmacyComponent implements OnInit {
   processRxSale(method: string): void {
     if (!this.selectedRx || !method) return;
     this.rxProcessing = true;
-    const undispatchedItems = this.selectedRx.items.filter(i => !i.dispatched && i.medicine);
+    const undispatchedItems = this.selectedRx.items.filter(i => !i.dispatched && i.medicineId);
     const req = {
       patientId: this.selectedRx.patientId,
       prescriptionId: this.selectedRx.id,
-      items: undispatchedItems.map(i => ({ medicineId: i.medicine!.id, quantity: i.quantity }))
+      items: undispatchedItems.map(i => ({ medicineId: i.medicineId, quantity: i.quantity }))
     };
     this.pharmacySaleService.reserve(req).subscribe({
       next: reserveRes => {

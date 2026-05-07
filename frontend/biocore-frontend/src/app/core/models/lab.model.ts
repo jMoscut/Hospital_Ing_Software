@@ -50,6 +50,9 @@ export interface LabOrder {
   // Result
   resultNotes?: string;
   hasAttachment?: boolean;
+  // Reference
+  isUsed?: boolean;
+  labExamPrice?: number;
 }
 
 export interface Medicine {
@@ -69,10 +72,13 @@ export interface PrescriptionItem {
   id: number;
   medicineId: number;
   medicineName?: string;
+  customMedicineName?: string;
   quantity: number;
   dosage?: string;
   instructions?: string;
   dispatched: boolean;
+  unitPrice?: number;
+  medicineStock?: number;
   medicine?: Medicine;
 }
 

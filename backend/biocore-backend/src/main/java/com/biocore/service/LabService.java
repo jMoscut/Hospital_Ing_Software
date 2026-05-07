@@ -66,7 +66,7 @@ public class LabService {
     @Transactional(readOnly = true)
     public List<LabOrderDTO> getPending() {
         return labOrderRepository.findByStatusIn(List.of(
-                LabOrderStatus.PENDING, LabOrderStatus.SAMPLE_COLLECTED, LabOrderStatus.SCHEDULED))
+                LabOrderStatus.SAMPLE_COLLECTED, LabOrderStatus.COMPLETED))
                 .stream().map(o -> {
                     VitalSigns v = o.getTicket() != null
                             ? vitalSignsRepository.findByTicketId(o.getTicket().getId()).orElse(null)
@@ -74,6 +74,31 @@ public class LabService {
                     LabResult r = labResultRepository.findByLabOrderId(o.getId()).orElse(null);
                     return LabOrderDTO.from(o, v, r);
                 }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<LabOrderDTO> getAvailableReferences(Long patientId) {
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("America/Guatemala"));
+        return labOrderRepository.findAvailableReferences(patientId, today)
+                .stream().map(o -> LabOrderDTO.from(o, null, null))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public LabOrder markUsed(Long orderId) {
+        LabOrder order = getOrThrow(orderId);
+        if (Boolean.TRUE.equals(order.getUsed())) {
+            throw new RuntimeException("Esta orden ya fue utilizada para agendar una cita");
+        }
+        if (order.getStatus() != LabOrderStatus.PENDING) {
+            throw new RuntimeException("Solo se pueden usar referencias en estado PENDIENTE");
+        }
+        if (order.getExpirationDate().isBefore(LocalDate.now(java.time.ZoneId.of("America/Guatemala")))) {
+            throw new RuntimeException("Esta orden de laboratorio ha expirado");
+        }
+        order.setUsed(Boolean.TRUE);
+        order.setStatus(LabOrderStatus.SCHEDULED);
+        return labOrderRepository.save(order);
     }
 
     @Transactional

@@ -16,12 +16,12 @@ import { MatRadioModule } from '@angular/material/radio';
 import { PatientService } from '../../shared/services/patient.service';
 import { PaymentService, InsuranceService, EmergencyService } from '../../shared/services/payment.service';
 import { AppointmentService, ClinicService } from '../../shared/services/ticket.service';
-import { LabExamService } from '../../shared/services/lab.service';
+import { LabExamService, LabService } from '../../shared/services/lab.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Patient } from '../../core/models/patient.model';
 import { Payment } from '../../core/models/payment.model';
 import { Clinic } from '../../core/models/ticket.model';
-import { LabExam } from '../../core/models/lab.model';
+import { LabExam, LabOrder } from '../../core/models/lab.model';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -602,11 +602,46 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                   <mat-card-subtitle>Paciente: {{ labExistingPatient?.firstName }} {{ labExistingPatient?.lastName }}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
+
+                  <!-- Referencias médicas disponibles -->
+                  <div class="ref-panel" *ngIf="labReferences.length > 0 && !labSelectedReference">
+                    <div class="ref-panel-title"><mat-icon>assignment</mat-icon> Referencias médicas disponibles</div>
+                    <div class="ref-item" *ngFor="let ref of labReferences" (click)="labSelectReference(ref)">
+                      <div class="ref-item-main">
+                        <span class="ref-exam-name">{{ ref.labExamName || ref.sampleType }}</span>
+                        <span class="ref-exam-code" *ngIf="ref.labExamCode">{{ ref.labExamCode }}</span>
+                      </div>
+                      <div class="ref-item-sub">
+                        <mat-icon style="font-size:14px;width:14px;height:14px;color:#1D6C61">person</mat-icon>
+                        Dr. {{ ref.doctorName }} &nbsp;·&nbsp;
+                        <mat-icon style="font-size:14px;width:14px;height:14px;color:#e65100">event</mat-icon>
+                        Vence: {{ ref.expirationDate }}
+                        <strong *ngIf="ref.labExamPrice"> · Q{{ ref.labExamPrice }}</strong>
+                      </div>
+                    </div>
+                    <p style="font-size:0.82rem;color:#757575;margin-top:8px">
+                      O seleccione el examen manualmente abajo.
+                    </p>
+                  </div>
+
+                  <!-- Referencia seleccionada -->
+                  <div class="ref-selected" *ngIf="labSelectedReference">
+                    <mat-icon>assignment_turned_in</mat-icon>
+                    <div>
+                      <strong>Referencia: {{ labSelectedReference.labExamName }}</strong>
+                      <br><small>Dr. {{ labSelectedReference.doctorName }} · Vence: {{ labSelectedReference.expirationDate }}</small>
+                    </div>
+                    <button mat-icon-button (click)="labClearReference()" title="Cambiar">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+
                   <div class="form-grid" style="margin-bottom:16px">
                     <mat-form-field appearance="outline">
                       <mat-label>Examen de Laboratorio *</mat-label>
                       <mat-icon matPrefix>biotech</mat-icon>
-                      <mat-select [(ngModel)]="labSelectedExam" (ngModelChange)="labUpdateFee()" [ngModelOptions]="{standalone:true}">
+                      <mat-select [(ngModel)]="labSelectedExam" (ngModelChange)="labUpdateFee()" [ngModelOptions]="{standalone:true}"
+                                  [disabled]="!!labSelectedReference">
                         <mat-option *ngFor="let e of labExams" [value]="e">{{ e.name }} — Q{{ e.price }}</mat-option>
                       </mat-select>
                     </mat-form-field>
@@ -1024,13 +1059,17 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                         <button *ngFor="let slot of rscdSlots"
                                 type="button"
                                 [class]="'slot-btn' + (rscdSlot === slot ? ' selected' : '')"
-                                (click)="rscdSlot = slot">
+                                (click)="rscdSelectSlot(slot)">
                           {{ slot }}
                         </button>
                         <div *ngIf="rscdSlots.length === 0" class="no-slots">
                           <mat-icon>event_busy</mat-icon>
                           No hay horarios disponibles
                         </div>
+                      </div>
+                      <div class="reservation-timer" *ngIf="rscdReservationTimeLeft > 0" [class.timer-low]="rscdReservationLow">
+                        <mat-icon>timer</mat-icon>
+                        <span>Horario <strong>{{ rscdSlot }}</strong> reservado — expira en <strong>{{ rscdReservationMinutes }}:{{ rscdReservationSeconds }}</strong></span>
                       </div>
                     </ng-container>
                     <div style="color:#c62828;margin-top:8px" *ngIf="rscdConfirmError">{{ rscdConfirmError }}</div>
@@ -1171,6 +1210,19 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     .upload-error-item { display:flex; align-items:flex-start; gap:8px; background:#fce4ec; border-radius:6px; padding:6px 10px; font-size:0.82rem; color:#c62828; }
     .upload-error-item mat-icon { font-size:16px; width:16px; height:16px; flex-shrink:0; margin-top:1px; }
 
+    /* Lab references */
+    .ref-panel { background:#f0faf8; border:1px solid #b2dfdb; border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+    .ref-panel-title { display:flex; align-items:center; gap:6px; font-weight:600; color:#1D6C61; margin-bottom:10px; }
+    .ref-panel-title mat-icon { font-size:18px; width:18px; height:18px; }
+    .ref-item { background:white; border:1px solid #d4e8e5; border-radius:8px; padding:10px 14px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s; }
+    .ref-item:hover { border-color:#1D6C61; background:#f8fffe; }
+    .ref-item-main { display:flex; align-items:center; gap:8px; }
+    .ref-exam-name { font-weight:600; font-size:0.93rem; }
+    .ref-exam-code { background:#193A31; color:#3EB9A8; padding:1px 7px; border-radius:6px; font-size:0.75rem; font-weight:600; }
+    .ref-item-sub { display:flex; align-items:center; gap:4px; font-size:0.8rem; color:#666; margin-top:4px; }
+    .ref-selected { display:flex; align-items:center; gap:12px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:10px 14px; margin-bottom:12px; color:#2e7d32; }
+    .ref-selected mat-icon:first-child { font-size:24px; width:24px; height:24px; }
+
     /* Emergency tab */
     .emg-receipt-card { border-left:4px solid #c62828; }
     .emg-icon { color:#c62828 !important; }
@@ -1261,6 +1313,9 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   labSelectedExam: LabExam | null = null;
   labFee = 0;
 
+  labReferences: LabOrder[] = [];
+  labSelectedReference: LabOrder | null = null;
+
   labCalYear = 0;
   labCalMonth = 0;
   labCalendarDays: (Date | null)[] = [];
@@ -1317,8 +1372,15 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   rscdCalDays: (Date | null)[] = [];
   rscdConfirming = false;
   rscdConfirmError = '';
+  rscdReservationId: number | null = null;
+  rscdReservationTimeLeft = 0;
+  private rscdReservationTimer: any = null;
+  private rscdSlotPollTimer: any = null;
 
   get rscdMonthLabel(): string { return `${MONTH_NAMES[this.rscdCalMonth]} ${this.rscdCalYear}`; }
+  get rscdReservationMinutes(): number { return Math.floor(this.rscdReservationTimeLeft / 60); }
+  get rscdReservationSeconds(): string { return (this.rscdReservationTimeLeft % 60).toString().padStart(2, '0'); }
+  get rscdReservationLow(): boolean { return this.rscdReservationTimeLeft > 0 && this.rscdReservationTimeLeft <= 120; }
 
   constructor(
     private fb: FormBuilder,
@@ -1329,6 +1391,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     private clinicService: ClinicService,
     private insuranceService: InsuranceService,
     private labExamService: LabExamService,
+    private labService: LabService,
     private emergencyService: EmergencyService,
     private notification: NotificationService
   ) {}
@@ -1418,6 +1481,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.labClearReservationTimer();
     this.labStopSlotPolling();
     this.emgStopPolling();
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+    }
+    this.rscdClearReservation();
+    if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
   }
 
   // ── Citas Presenciales: DPI ────────────────────────────────────────────────
@@ -1878,8 +1946,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       const data = { ...this.labPatientForm.value, dpi: this.labExistingPatient.dpi };
       this.patientService.update(this.labExistingPatient.id, data).subscribe({
         next: res => {
-          if (res.success) { this.labExistingPatient = res.data; this.labStep = 'calendar'; }
-          else this.notification.error(res.message || 'Error al actualizar');
+          if (res.success) {
+            this.labExistingPatient = res.data;
+            this.labLoadReferences(res.data.id);
+            this.labStep = 'calendar';
+          } else this.notification.error(res.message || 'Error al actualizar');
           this.labSaving = false;
         },
         error: err => { this.notification.error(err.error?.message || 'Error'); this.labSaving = false; }
@@ -1896,6 +1967,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
               };
             }
             this.labExistingPatient = res.data;
+            this.labReferences = [];
             this.labStep = 'calendar';
           } else {
             this.notification.error(res.message || 'Error al registrar paciente');
@@ -1905,6 +1977,36 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         error: err => { this.notification.error(err.error?.message || 'Error'); this.labSaving = false; }
       });
     }
+  }
+
+  labLoadReferences(patientId: number): void {
+    this.labService.getAvailableReferences(patientId).subscribe({
+      next: res => { if (res.success) this.labReferences = res.data; },
+      error: () => { this.labReferences = []; }
+    });
+  }
+
+  labSelectReference(ref: LabOrder): void {
+    this.labSelectedReference = ref;
+    if (ref.labExamId && ref.labExamPrice != null) {
+      const fake: LabExam = {
+        id: ref.labExamId,
+        code: ref.labExamCode ?? '',
+        name: ref.labExamName ?? 'Examen',
+        sampleType: ref.sampleType,
+        category: '',
+        price: ref.labExamPrice,
+        active: true
+      };
+      this.labSelectedExam = fake;
+      this.labFee = ref.labExamPrice;
+    }
+  }
+
+  labClearReference(): void {
+    this.labSelectedReference = null;
+    this.labSelectedExam = null;
+    this.labFee = 0;
   }
 
   // ── Laboratorios: Calendar ─────────────────────────────────────────────────
@@ -2122,6 +2224,9 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         this.appointmentService.confirmPayment(apptId, { paymentMethod }).subscribe({
           next: confRes => {
             if (confRes.success) {
+              if (this.labSelectedReference) {
+                this.labService.markUsed(this.labSelectedReference.id).subscribe({ error: () => {} });
+              }
               this.labReceipt = {
                 ticketNumber:  confRes.data.ticketNumber ?? '—',
                 patientName:   bookRes.data.patientName,
@@ -2176,6 +2281,8 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.labChange = 0;
     this.labSelectedExam = null;
     this.labFee = 0;
+    this.labReferences = [];
+    this.labSelectedReference = null;
     this.labDpiForm.reset();
     this.labPatientForm.reset();
     this.labStopSlotPolling();
@@ -2314,6 +2421,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   }
 
   rscdReset(): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+    }
+    this.rscdClearReservation();
+    if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
     this.rscdPatient = null;
     this.rscdTickets = [];
     this.rscdSelectedTicket = null;
@@ -2324,6 +2436,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   }
 
   rscdSelectTicket(ticket: any): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
+    if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
     if (this.rscdSelectedTicket?.id === ticket.id) {
       this.rscdSelectedTicket = null;
     } else {
@@ -2366,6 +2483,10 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   }
 
   rscdSelectDate(day: Date): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
     this.rscdDate = day;
     this.rscdSlot = null;
     this.rscdSlots = [];
@@ -2376,6 +2497,76 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
       error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
     });
+    this.rscdStartSlotPoll();
+  }
+
+  rscdSelectSlot(slot: string): void {
+    if (this.rscdSlot === slot) return;
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
+    this.rscdSlot = slot;
+    if (!this.rscdDate || !this.rscdSelectedTicket?.clinicId) return;
+    const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+    this.appointmentService.reserve({
+      patientId: this.rscdPatient?.id ?? null,
+      clinicId: this.rscdSelectedTicket.clinicId,
+      date: dateStr,
+      time: slot
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.rscdReservationId = res.data.id;
+          const secondsLeft = Math.max(0, Math.floor((new Date(res.data.expiresAt).getTime() - Date.now()) / 1000));
+          this.rscdReservationTimeLeft = secondsLeft;
+          this.rscdReservationTimer = setInterval(() => {
+            this.rscdReservationTimeLeft--;
+            if (this.rscdReservationTimeLeft <= 0) {
+              this.rscdClearReservation();
+              this.rscdSlot = null;
+              this.notification.error('La reserva expiró. Selecciona nuevamente.');
+              if (this.rscdDate) this.rscdSelectDate(this.rscdDate);
+            }
+          }, 1000);
+        }
+      },
+      error: err => {
+        this.notification.error(err?.error?.message || 'No se pudo reservar el horario');
+        this.rscdSlot = null;
+        if (this.rscdDate) this.rscdSelectDate(this.rscdDate);
+      }
+    });
+  }
+
+  rscdClearReservation(): void {
+    if (this.rscdReservationTimer) { clearInterval(this.rscdReservationTimer); this.rscdReservationTimer = null; }
+    this.rscdReservationTimeLeft = 0;
+    this.rscdReservationId = null;
+  }
+
+  rscdStartSlotPoll(): void {
+    if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
+    this.rscdSlotPollTimer = setInterval(() => {
+      if (this.rscdDate && this.rscdSelectedTicket?.clinicId) {
+        const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+        this.appointmentService.getAvailableSlots(dateStr, this.rscdSelectedTicket.clinicId).subscribe({
+          next: res => {
+            if (res.success) {
+              this.rscdSlots = res.data;
+              if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
+                if (this.rscdReservationId) {
+                  this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];
+                } else {
+                  this.rscdSlot = null;
+                }
+              }
+            }
+          },
+          error: () => {}
+        });
+      }
+    }, 5000);
   }
 
   rscdConfirm(): void {
@@ -2389,6 +2580,11 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         this.rscdConfirming = false;
         if (res.success) {
           this.notification.success('Cita reagendada correctamente');
+          if (this.rscdReservationId) {
+            this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+          }
+          this.rscdClearReservation();
+          if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
           this.rscdTickets = this.rscdTickets.filter(t => t.id !== this.rscdSelectedTicket!.id);
           this.rscdSelectedTicket = null;
           this.rscdDate = null;

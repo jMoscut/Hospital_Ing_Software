@@ -234,7 +234,13 @@ public class TicketService {
             throw new RuntimeException("No hay pacientes en espera para esta clínica");
         }
 
-        Ticket next = waitingTickets.get(0);
+        // Only pick a ticket whose assigned doctor is currently available (on-shift, not in consultation)
+        Ticket next = waitingTickets.stream()
+                .filter(t -> t.getDoctor() != null && Boolean.TRUE.equals(t.getDoctor().isAvailable()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException(
+                        "No hay pacientes elegibles — los médicos asignados no están disponibles. " +
+                        "Espere a que un médico se marque disponible."));
 
         if ("LABORATORIO".equals(next.getType())) {
             LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);

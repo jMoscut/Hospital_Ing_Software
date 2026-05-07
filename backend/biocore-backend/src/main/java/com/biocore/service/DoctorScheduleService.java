@@ -5,6 +5,8 @@ import com.biocore.dto.DoctorScheduleRequest;
 import com.biocore.entity.Clinic;
 import com.biocore.entity.DoctorSchedule;
 import com.biocore.entity.User;
+import com.biocore.enums.AppointmentStatus;
+import com.biocore.repository.AppointmentRepository;
 import com.biocore.repository.ClinicRepository;
 import com.biocore.repository.DoctorScheduleRepository;
 import com.biocore.repository.UserRepository;
@@ -27,6 +29,7 @@ public class DoctorScheduleService {
     private final DoctorScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final ClinicRepository clinicRepository;
+    private final AppointmentRepository appointmentRepository;
 
     @Transactional(readOnly = true)
     public List<DoctorScheduleDTO> getByDoctor(Long doctorId) {
@@ -40,6 +43,7 @@ public class DoctorScheduleService {
                 .map(DoctorScheduleDTO::from).collect(Collectors.toList());
     }
 
+    /** Upsert: if a schedule already exists for this doctor+day, update it; otherwise create. */
     @Transactional
     public DoctorScheduleDTO create(DoctorScheduleRequest req) {
         User doctor = userRepository.findById(req.getDoctorId())
@@ -49,10 +53,28 @@ public class DoctorScheduleService {
         if (req.getDayOfWeek() == null && req.getSpecificDate() == null) {
             throw new RuntimeException("Debe especificar día de semana o fecha específica");
         }
+
+        Optional<DoctorSchedule> existing = req.getDayOfWeek() != null
+                ? scheduleRepository.findByDoctorIdAndDayOfWeekAndActiveTrue(doctor.getId(), req.getDayOfWeek())
+                : scheduleRepository.findByDoctorIdAndSpecificDateAndActiveTrue(doctor.getId(), req.getSpecificDate());
+
+        if (existing.isPresent()) {
+            DoctorSchedule s = existing.get();
+            if (hasAppointments(s)) {
+                throw new RuntimeException("No se puede modificar: existen citas agendadas para este horario");
+            }
+            s.setStartTime(req.getStartTime());
+            s.setEndTime(req.getEndTime());
+            s.setLunchStartTime(req.getLunchStartTime());
+            s.setLunchEndTime(req.getLunchEndTime());
+            return DoctorScheduleDTO.from(scheduleRepository.save(s));
+        }
+
         DoctorSchedule s = DoctorSchedule.builder()
                 .doctor(doctor).clinic(clinic)
                 .dayOfWeek(req.getDayOfWeek()).specificDate(req.getSpecificDate())
                 .startTime(req.getStartTime()).endTime(req.getEndTime())
+                .lunchStartTime(req.getLunchStartTime()).lunchEndTime(req.getLunchEndTime())
                 .active(true).build();
         return DoctorScheduleDTO.from(scheduleRepository.save(s));
     }
@@ -61,16 +83,40 @@ public class DoctorScheduleService {
     public DoctorScheduleDTO update(Long id, DoctorScheduleRequest req) {
         DoctorSchedule s = scheduleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Horario no encontrado"));
+        if (hasAppointments(s)) {
+            throw new RuntimeException("No se puede modificar: existen citas agendadas para este horario");
+        }
         s.setDayOfWeek(req.getDayOfWeek());
         s.setSpecificDate(req.getSpecificDate());
         s.setStartTime(req.getStartTime());
         s.setEndTime(req.getEndTime());
+        s.setLunchStartTime(req.getLunchStartTime());
+        s.setLunchEndTime(req.getLunchEndTime());
         return DoctorScheduleDTO.from(scheduleRepository.save(s));
     }
 
     @Transactional
     public void delete(Long id) {
+        DoctorSchedule s = scheduleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Horario no encontrado"));
+        if (hasAppointments(s)) {
+            throw new RuntimeException("No se puede eliminar: existen citas agendadas para este horario");
+        }
         scheduleRepository.deleteById(id);
+    }
+
+    /** True if this schedule has ≥1 non-cancelled appointment (today onwards for recurring, exact date for specific). */
+    private boolean hasAppointments(DoctorSchedule s) {
+        Long doctorId = s.getDoctor().getId();
+        LocalDate today = LocalDate.now();
+        if (s.getSpecificDate() != null) {
+            return appointmentRepository.countByDoctorAndDate(doctorId, s.getSpecificDate(),
+                    AppointmentStatus.CANCELLED) > 0;
+        }
+        return appointmentRepository.findAllByDoctorId(doctorId, AppointmentStatus.CANCELLED)
+                .stream()
+                .anyMatch(a -> !a.getScheduledDate().isBefore(today)
+                            && a.getScheduledDate().getDayOfWeek() == s.getDayOfWeek());
     }
 
     /**
@@ -84,9 +130,11 @@ public class DoctorScheduleService {
         Map<String, Long> capacity = new LinkedHashMap<>();
         for (String slot : ALL_SLOTS) {
             // Count DISTINCT doctors — a doctor with both recurring + specific date schedules must not double-count.
+            // Exclude doctors whose lunch break covers this slot.
             long count = schedules.stream()
                     .filter(s -> s.getStartTime().compareTo(slot) <= 0
-                              && s.getEndTime().compareTo(slot) > 0)
+                              && s.getEndTime().compareTo(slot) > 0
+                              && !isLunchSlot(s, slot))
                     .map(s -> s.getDoctor().getId())
                     .distinct()
                     .count();
@@ -95,19 +143,21 @@ public class DoctorScheduleService {
         return capacity;
     }
 
-    /** Distinct doctor count scheduled at this exact slot (for capacity calc). */
+    /** Distinct doctor count scheduled at this exact slot, excluding doctors on lunch break. */
     @Transactional(readOnly = true)
     public long getDistinctDoctorCountForSlot(Long clinicId, LocalDate date, String slot) {
         return scheduleRepository.findForClinicAndDate(clinicId, date, date.getDayOfWeek()).stream()
                 .filter(s -> s.getStartTime().compareTo(slot) <= 0
-                          && s.getEndTime().compareTo(slot) > 0)
+                          && s.getEndTime().compareTo(slot) > 0
+                          && !isLunchSlot(s, slot))
                 .map(s -> s.getDoctor().getId())
                 .distinct()
                 .count();
     }
 
     /**
-     * Returns doctors scheduled for clinic+date+time, excluding already-booked doctor IDs.
+     * Returns doctors scheduled for clinic+date+time, excluding already-booked doctor IDs
+     * and doctors whose lunch break covers this slot.
      */
     @Transactional(readOnly = true)
     public List<User> getAvailableDoctorsForSlot(Long clinicId, LocalDate date, String time,
@@ -117,9 +167,17 @@ public class DoctorScheduleService {
         return schedules.stream()
                 .filter(s -> s.getStartTime().compareTo(time) <= 0
                           && s.getEndTime().compareTo(time) > 0
+                          && !isLunchSlot(s, time)
                           && !bookedDoctorIds.contains(s.getDoctor().getId()))
                 .map(DoctorSchedule::getDoctor)
                 .collect(Collectors.toMap(User::getId, d -> d, (a, b) -> a, LinkedHashMap::new))
                 .values().stream().collect(Collectors.toList());
+    }
+
+    /** Returns true if the given slot falls within the schedule's lunch break. */
+    private boolean isLunchSlot(DoctorSchedule s, String slot) {
+        if (s.getLunchStartTime() == null || s.getLunchEndTime() == null) return false;
+        return s.getLunchStartTime().compareTo(slot) <= 0
+            && s.getLunchEndTime().compareTo(slot) > 0;
     }
 }
