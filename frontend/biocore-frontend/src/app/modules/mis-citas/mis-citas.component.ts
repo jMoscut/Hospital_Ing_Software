@@ -2209,7 +2209,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     const m: Record<string, string> = {
       WAITING: 'En Espera', BEING_CALLED: 'Siendo Llamado',
       IN_CONSULTATION: 'En Consulta', COMPLETED: 'Atendido',
-      ABSENT: 'Ausente', CANCELLED_NO_PAYMENT: 'Cancelado',
+      ABSENT: 'Expirado', CANCELLED_NO_PAYMENT: 'Cancelado',
       ABSENT_PENDING_RESCHEDULE: 'Pendiente Reagendar', RESCHEDULED: 'Reagendado',
       CALLED_TO_VITAL_SIGNS: 'Signos Vitales', READY_FOR_DOCTOR: 'Esperando Doctor',
       PENDING_PAYMENT: 'Pendiente Pago'
