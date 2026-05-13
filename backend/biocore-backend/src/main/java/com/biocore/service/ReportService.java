@@ -36,8 +36,8 @@ public class ReportService {
                      + ticketRepository.countByStatusSince(TicketStatus.BEING_CALLED, startOfDay);
         long inConsultation = ticketRepository.countByStatusSince(TicketStatus.IN_CONSULTATION, startOfDay);
         long attended = ticketRepository.countByStatusSince(TicketStatus.COMPLETED, startOfDay);
-        long cancelled = ticketRepository.countByStatusSince(TicketStatus.CANCELLED_NO_PAYMENT, startOfDay)
-                        + ticketRepository.countByStatusSince(TicketStatus.ABSENT, startOfDay);
+        long absent = ticketRepository.countByStatusSince(TicketStatus.ABSENT, startOfDay)
+                    + ticketRepository.countByStatusSince(TicketStatus.ABSENT_PENDING_RESCHEDULE, startOfDay);
         long paidToday = paymentRepository.countPaidSince(startOfDay);
 
         return DashboardDTO.builder()
@@ -45,7 +45,7 @@ public class ReportService {
                 .patientsWaiting(waiting)
                 .patientsInConsultation(inConsultation)
                 .patientsAttended(attended)
-                .patientsCancelled(cancelled)
+                .patientsAbsent(absent)
                 .totalPaidToday(paidToday)
                 .build();
     }

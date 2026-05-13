@@ -271,24 +271,13 @@ interface CartItem {
               <mat-card-content style="padding-top:16px">
                 <div class="rx-search-row">
                   <mat-form-field appearance="outline" style="flex:1">
-                    <mat-label>Código de Receta (REC-XXXXX)</mat-label>
-                    <mat-icon matPrefix>receipt_long</mat-icon>
-                    <input matInput [(ngModel)]="rxCodeSearch" placeholder="REC-00001" (keyup.enter)="searchByCode()">
-                  </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="searchByCode()" [disabled]="!rxCodeSearch || rxLoading">
-                    <mat-icon>search</mat-icon> Buscar
-                  </button>
-
-                  <span style="color:#9e9e9e;padding:0 8px">ó</span>
-
-                  <mat-form-field appearance="outline" style="flex:1">
                     <mat-label>DPI del Paciente</mat-label>
                     <mat-icon matPrefix>badge</mat-icon>
                     <input matInput [(ngModel)]="rxDpiSearch" placeholder="DPI del paciente" maxlength="13"
                            (keypress)="onlyDigits($event)" (keyup.enter)="searchByDpi()">
                   </mat-form-field>
-                  <button mat-raised-button color="accent" (click)="searchByDpi()" [disabled]="!rxDpiSearch || rxLoading">
-                    <mat-icon>person_search</mat-icon> Buscar por DPI
+                  <button mat-raised-button color="primary" (click)="searchByDpi()" [disabled]="!rxDpiSearch || rxLoading">
+                    <mat-icon>person_search</mat-icon> Buscar
                   </button>
                 </div>
               </mat-card-content>
@@ -718,7 +707,6 @@ export class PharmacyComponent implements OnInit {
   lastSale: PharmacySale | null = null;
 
   // ── Tab 2: Prescription ──────────────────────────────────────────────
-  rxCodeSearch = '';
   rxDpiSearch = '';
   rxResults: Prescription[] = [];
   selectedRx: Prescription | null = null;
@@ -898,21 +886,6 @@ export class PharmacyComponent implements OnInit {
   }
 
   // ── Tab 2: Prescription Methods ──────────────────────────────────────
-  searchByCode(): void {
-    if (!this.rxCodeSearch) return;
-    this.rxLoading = true;
-    this.rxSearched = true;
-    this.rxResults = [];
-    this.selectedRx = null;
-    this.prescriptionService.getByCode(this.rxCodeSearch.trim().toUpperCase()).subscribe({
-      next: res => {
-        if (res.success && res.data) this.rxResults = [res.data];
-        this.rxLoading = false;
-      },
-      error: () => { this.rxLoading = false; }
-    });
-  }
-
   searchByDpi(): void {
     if (!this.rxDpiSearch) return;
     this.rxLoading = true;
@@ -958,7 +931,7 @@ export class PharmacyComponent implements OnInit {
               this.selectedRx = null;
               this.rxResults = [];
               this.rxSearched = false;
-              this.rxCodeSearch = '';
+
               this.rxDpiSearch = '';
               this.rxPaymentMode = '';
               this.rxCashReceived = 0;

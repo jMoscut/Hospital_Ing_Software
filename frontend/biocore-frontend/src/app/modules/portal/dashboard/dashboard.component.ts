@@ -53,9 +53,9 @@ import { Ticket } from '../../../core/models/ticket.model';
           <div class="stat-label">Atendidos</div>
         </mat-card>
         <mat-card class="stat-card stat-red">
-          <mat-icon>cancel</mat-icon>
-          <div class="stat-number">{{ dashboard.patientsCancelled }}</div>
-          <div class="stat-label">Cancelados</div>
+          <mat-icon>person_off</mat-icon>
+          <div class="stat-number">{{ dashboard.patientsAbsent }}</div>
+          <div class="stat-label">Ausentes</div>
         </mat-card>
         <mat-card class="stat-card stat-teal">
           <mat-icon>payments</mat-icon>
@@ -155,7 +155,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // Si el endpoint falla, mostrar dashboard vacío en vez de spinner infinito
         this.dashboard = {
           totalPatientsToday: 0, patientsWaiting: 0, patientsInConsultation: 0,
-          patientsAttended: 0, patientsCancelled: 0, totalPaidToday: 0
+          patientsAttended: 0, patientsAbsent: 0, totalPaidToday: 0
         } as any;
       }
     });
