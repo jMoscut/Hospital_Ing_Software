@@ -126,7 +126,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <mat-form-field appearance="outline" class="wide">
                       <mat-label>DPI del Paciente (13 dígitos)</mat-label>
                       <mat-icon matPrefix>badge</mat-icon>
-                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                             (keypress)="onlyDigits($event)">
                       <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
                     </mat-form-field>
                     <div class="step-actions">
@@ -324,7 +325,11 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <div class="pay-summary-row"><mat-icon>local_hospital</mat-icon><span>{{ citClinicName }}</span></div>
                       <div class="pay-summary-row"><mat-icon>medical_services</mat-icon><span>{{ citTypeLabel(citType) }}</span></div>
                       <div class="pay-summary-row"><mat-icon>event</mat-icon><span>{{ citFormatDate(citSelectedDate) }} a las <strong>{{ citSelectedSlot }}</strong></span></div>
-                      <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>Monto a cobrar: <strong>Q{{ citFee }}</strong></span></div>
+                      <div class="pay-summary-row" *ngIf="citDiscountPct > 0">
+                        <mat-icon>discount</mat-icon>
+                        <span>Precio base: Q{{ citFee }} · Descuento {{ citDiscountPct }}%: <strong style="color:#2e7d32">-Q{{ citDiscountAmount.toFixed(2) }}</strong></span>
+                      </div>
+                      <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>{{ citDiscountPct > 0 ? 'Total con descuento' : 'Monto a cobrar' }}: <strong>Q{{ citNetFee.toFixed(2) }}</strong></span></div>
                     </div>
 
                     <!-- Method selection -->
@@ -353,7 +358,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                               [disabled]="citBooking || citUploadErrors.length > 0" (click)="citBookAndPay()">
                         <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                         <mat-icon *ngIf="!citBooking">point_of_sale</mat-icon>
-                        {{ citBooking ? 'Procesando...' : 'Cobrar Q' + citFee + ' con POS' }}
+                        {{ citBooking ? 'Procesando...' : 'Cobrar Q' + citNetFee.toFixed(2) + ' con POS' }}
                       </button>
                     </div>
 
@@ -365,16 +370,16 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                         <input matInput type="number" [(ngModel)]="citCashReceived" [ngModelOptions]="{standalone:true}"
                                min="0" step="0.01" (ngModelChange)="citComputeChange()">
                       </mat-form-field>
-                      <div class="change-display" *ngIf="citCashReceived !== null && citCashReceived >= citFee">
+                      <div class="change-display" *ngIf="citCashReceived !== null && citCashReceived >= citNetFee">
                         <mat-icon>change_circle</mat-icon>
                         <span>Vuelto a entregar: <strong>Q{{ citChange.toFixed(2) }}</strong></span>
                       </div>
-                      <div class="insufficient-notice" *ngIf="citCashReceived !== null && citCashReceived < citFee">
+                      <div class="insufficient-notice" *ngIf="citCashReceived !== null && citCashReceived < citNetFee">
                         <mat-icon>warning</mat-icon>
-                        <span>Efectivo insuficiente. Faltan Q{{ (citFee - citCashReceived).toFixed(2) }}</span>
+                        <span>Efectivo insuficiente. Faltan Q{{ (citNetFee - citCashReceived).toFixed(2) }}</span>
                       </div>
                       <button mat-raised-button color="primary" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
-                              [disabled]="citBooking || citCashReceived === null || citCashReceived < citFee || citUploadErrors.length > 0"
+                              [disabled]="citBooking || citCashReceived === null || citCashReceived < citNetFee || citUploadErrors.length > 0"
                               (click)="citBookAndPay()">
                         <mat-spinner *ngIf="citBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                         <mat-icon *ngIf="!citBooking">payments</mat-icon>
@@ -498,7 +503,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <mat-form-field appearance="outline" class="wide">
                       <mat-label>DPI del Paciente (13 dígitos)</mat-label>
                       <mat-icon matPrefix>badge</mat-icon>
-                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                             (keypress)="onlyDigits($event)">
                       <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
                     </mat-form-field>
                     <div class="step-actions">
@@ -719,7 +725,11 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <div class="pay-summary-row"><mat-icon>local_hospital</mat-icon><span>{{ labClinicName }}</span></div>
                     <div class="pay-summary-row"><mat-icon>biotech</mat-icon><span>{{ labSelectedExam?.name }}</span></div>
                     <div class="pay-summary-row"><mat-icon>event</mat-icon><span>{{ labFormatDate(labSelectedDate) }} a las <strong>{{ labSelectedSlot }}</strong></span></div>
-                    <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>Monto a cobrar: <strong>Q{{ labFee }}</strong></span></div>
+                    <div class="pay-summary-row" *ngIf="labDiscountPct > 0">
+                      <mat-icon>discount</mat-icon>
+                      <span>Precio base: Q{{ labFee }} · Descuento {{ labDiscountPct }}%: <strong style="color:#2e7d32">-Q{{ labDiscountAmount.toFixed(2) }}</strong></span>
+                    </div>
+                    <div class="pay-summary-row pay-total"><mat-icon>payments</mat-icon><span>{{ labDiscountPct > 0 ? 'Total con descuento' : 'Monto a cobrar' }}: <strong>Q{{ labNetFee.toFixed(2) }}</strong></span></div>
                   </div>
 
                   <h3 style="margin:20px 0 12px">Método de Pago</h3>
@@ -746,7 +756,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                             [disabled]="labBooking" (click)="labBookAndPay()">
                       <mat-spinner *ngIf="labBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                       <mat-icon *ngIf="!labBooking">point_of_sale</mat-icon>
-                      {{ labBooking ? 'Procesando...' : 'Cobrar Q' + labFee + ' con POS' }}
+                      {{ labBooking ? 'Procesando...' : 'Cobrar Q' + labNetFee.toFixed(2) + ' con POS' }}
                     </button>
                   </div>
 
@@ -757,16 +767,16 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <input matInput type="number" [(ngModel)]="labCashReceived" [ngModelOptions]="{standalone:true}"
                              min="0" step="0.01" (ngModelChange)="labComputeChange()">
                     </mat-form-field>
-                    <div class="change-display" *ngIf="labCashReceived !== null && labCashReceived >= labFee">
+                    <div class="change-display" *ngIf="labCashReceived !== null && labCashReceived >= labNetFee">
                       <mat-icon>change_circle</mat-icon>
                       <span>Vuelto a entregar: <strong>Q{{ labChange.toFixed(2) }}</strong></span>
                     </div>
-                    <div class="insufficient-notice" *ngIf="labCashReceived !== null && labCashReceived < labFee">
+                    <div class="insufficient-notice" *ngIf="labCashReceived !== null && labCashReceived < labNetFee">
                       <mat-icon>warning</mat-icon>
-                      <span>Efectivo insuficiente. Faltan Q{{ (labFee - labCashReceived).toFixed(2) }}</span>
+                      <span>Efectivo insuficiente. Faltan Q{{ (labNetFee - labCashReceived).toFixed(2) }}</span>
                     </div>
                     <button mat-raised-button color="primary" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
-                            [disabled]="labBooking || labCashReceived === null || labCashReceived < labFee"
+                            [disabled]="labBooking || labCashReceived === null || labCashReceived < labNetFee"
                             (click)="labBookAndPay()">
                       <mat-spinner *ngIf="labBooking" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                       <mat-icon *ngIf="!labBooking">payments</mat-icon>
@@ -980,7 +990,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <mat-form-field appearance="outline" style="flex:1">
                       <mat-label>DPI del paciente</mat-label>
                       <mat-icon matPrefix>badge</mat-icon>
-                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                      <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                             (keypress)="onlyDigits($event)">
                     </mat-form-field>
                     <button mat-raised-button color="primary" type="submit"
                             [disabled]="rscdDpiForm.invalid || rscdSearching">
@@ -1238,6 +1249,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
   `]
 })
 export class PaymentsComponent implements OnInit, OnDestroy {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
 
   today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
 
@@ -1638,6 +1650,14 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.citFee = TYPE_FEE[this.citType] ?? 150;
   }
 
+  get citDiscountPct(): number { return this.citExistingPatient?.discountPercentage ?? 0; }
+  get citDiscountAmount(): number { return Math.round(this.citFee * this.citDiscountPct) / 100; }
+  get citNetFee(): number { return this.citFee - this.citDiscountAmount; }
+
+  get labDiscountPct(): number { return this.labExistingPatient?.discountPercentage ?? 0; }
+  get labDiscountAmount(): number { return Math.round(this.labFee * this.labDiscountPct) / 100; }
+  get labNetFee(): number { return this.labFee - this.labDiscountAmount; }
+
   citLoadSlots(silent = false): void {
     if (!this.citSelectedDate || !this.citSelectedClinicId) return;
     if (!silent) this.citLoadingSlots = true;
@@ -1749,7 +1769,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   // ── Citas Presenciales: Payment ────────────────────────────────────────────
 
   citComputeChange(): void {
-    this.citChange = this.citCashReceived !== null ? Math.max(0, this.citCashReceived - this.citFee) : 0;
+    this.citChange = this.citCashReceived !== null ? Math.max(0, this.citCashReceived - this.citNetFee) : 0;
   }
 
   citTypeLabel(t: string): string {
@@ -2194,7 +2214,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   // ── Laboratorios: Payment ──────────────────────────────────────────────────
 
   labComputeChange(): void {
-    this.labChange = this.labCashReceived !== null ? Math.max(0, this.labCashReceived - this.labFee) : 0;
+    this.labChange = this.labCashReceived !== null ? Math.max(0, this.labCashReceived - this.labNetFee) : 0;
   }
 
   labBookAndPay(): void {

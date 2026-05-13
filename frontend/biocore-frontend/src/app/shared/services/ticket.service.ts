@@ -206,3 +206,22 @@ export class DoctorScheduleService {
     return this.http.delete<ApiResponse<void>>(`${this.url}/${id}`);
   }
 }
+
+@Injectable({ providedIn: 'root' })
+export class ClinicScheduleService {
+  private url = `${environment.apiUrl}/clinic-schedules`;
+
+  constructor(private http: HttpClient) {}
+
+  getByClinic(clinicId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.url}/clinic/${clinicId}`);
+  }
+
+  create(data: any): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(this.url, data);
+  }
+
+  delete(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.url}/${id}`);
+  }
+}

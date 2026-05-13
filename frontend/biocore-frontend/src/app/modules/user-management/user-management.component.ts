@@ -13,7 +13,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { UserService } from '../../shared/services/payment.service';
-import { ClinicService, DoctorScheduleService } from '../../shared/services/ticket.service';
+import { ClinicService, DoctorScheduleService, ClinicScheduleService } from '../../shared/services/ticket.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Clinic } from '../../core/models/ticket.model';
 
@@ -452,6 +452,191 @@ function defaultSettings(): NotifSettings {
                 </div>
               </mat-card-content>
             </mat-card>
+
+            <!-- Lab clinic schedules -->
+            <mat-card style="margin-top:16px">
+              <mat-card-header>
+                <mat-icon mat-card-avatar>biotech</mat-icon>
+                <mat-card-title>Horarios de Laboratorio</mat-card-title>
+                <mat-card-subtitle>Configura horario de atención por día · slots cada 30 minutos</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <mat-form-field appearance="outline" style="width:100%;margin-top:8px">
+                  <mat-label>Seleccionar Laboratorio</mat-label>
+                  <mat-select [(ngModel)]="labScheduleClinic" (ngModelChange)="onLabClinicChange()" [ngModelOptions]="{standalone:true}">
+                    <mat-option *ngFor="let c of labClinics" [value]="c">{{ c.name }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <div *ngIf="labScheduleClinic">
+
+                  <!-- Calendar navigation -->
+                  <div class="cal-nav">
+                    <button mat-icon-button (click)="labPrevPeriod()"><mat-icon>chevron_left</mat-icon></button>
+                    <span class="cal-period-label">{{ labPeriodLabel }}</span>
+                    <button mat-icon-button (click)="labNextPeriod()"><mat-icon>chevron_right</mat-icon></button>
+                    <div class="cal-view-btns">
+                      <button [class.cal-view-active]="labCalView==='month'" (click)="labSetCalView('month')">Mes</button>
+                      <button [class.cal-view-active]="labCalView==='week'" (click)="labSetCalView('week')">Semana</button>
+                    </div>
+                    <button mat-button color="warn" *ngIf="labSelectedDays.length>0"
+                            (click)="labClearSelection()" style="margin-left:auto">
+                      <mat-icon>clear</mat-icon> Limpiar ({{ labSelectedDays.length }})
+                    </button>
+                  </div>
+
+                  <!-- Month view -->
+                  <div class="cal-month" *ngIf="labCalView==='month'">
+                    <div class="cal-dow-row">
+                      <span *ngFor="let d of ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']">{{ d }}</span>
+                    </div>
+                    <div class="cal-cells">
+                      <div class="cal-cell"
+                           *ngFor="let cell of labMonthCells"
+                           [class.other-month]="!cell.inMonth"
+                           [class.cal-selected]="cell.inMonth && labIsSelected(cell.date)"
+                           [class.has-sched]="cell.inMonth && cell.hasSchedule"
+                           [class.is-today]="cell.isToday"
+                           (click)="cell.inMonth && labToggleDay(cell.date)">
+                        <span class="cal-day-num">{{ cell.day }}</span>
+                        <span class="cal-dot" *ngIf="cell.inMonth && cell.hasSchedule"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Week view -->
+                  <div class="cal-week" *ngIf="labCalView==='week'">
+                    <div class="week-col"
+                         *ngFor="let day of labWeekDays"
+                         [class.cal-selected]="labIsSelected(day.date)"
+                         [class.is-today]="day.isToday"
+                         (click)="labToggleDay(day.date)">
+                      <div class="week-col-header">
+                        <span class="week-dow">{{ day.dowLabel }}</span>
+                        <span class="week-daynum" [class.is-today]="day.isToday">{{ day.dayNum }}</span>
+                      </div>
+                      <div class="week-sched-item" *ngFor="let s of labGetSchedulesForDate(day.date)">
+                        <span style="font-size:0.75rem;font-weight:600">{{ s.startTime }}–{{ s.endTime }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Apply panel (shown when days selected) -->
+                  <div class="apply-panel" *ngIf="labSelectedDays.length > 0">
+                    <div class="apply-selected-label">
+                      <mat-icon style="color:#1D6C61;font-size:18px">event</mat-icon>
+                      <strong>{{ labSelectedDays.length }} día(s) seleccionado(s):</strong>
+                      <span class="day-chip" *ngFor="let d of labSelectedDays">{{ formatSelectedDay(d) }}</span>
+                    </div>
+                    <div class="apply-form-row">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Hora inicio *</mat-label>
+                        <mat-select [(ngModel)]="labApplyStartTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Hora fin *</mat-label>
+                        <mat-select [(ngModel)]="labApplyEndTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" (click)="applyLabSchedule()"
+                              [disabled]="labApplyLoading" style="height:56px;white-space:nowrap">
+                        <mat-icon>save</mat-icon>
+                        {{ labApplyLoading ? 'Guardando...' : 'Aplicar a ' + labSelectedDays.length + ' día(s)' }}
+                      </button>
+                    </div>
+                    <div class="error-msg" *ngIf="labApplyError">
+                      <mat-icon>error_outline</mat-icon> {{ labApplyError }}
+                    </div>
+                  </div>
+
+                  <!-- Recurring weekly form -->
+                  <mat-card style="margin-top:16px;background:#fafafa">
+                    <mat-card-header>
+                      <mat-card-title style="font-size:0.9rem">
+                        <mat-icon style="vertical-align:middle;font-size:18px;margin-right:6px">repeat</mat-icon>
+                        Patrón semanal recurrente
+                      </mat-card-title>
+                      <mat-card-subtitle>Se aplica cada semana en el día indicado</mat-card-subtitle>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <form [formGroup]="labScheduleForm" class="form-grid" style="margin-top:8px">
+                        <mat-form-field appearance="outline">
+                          <mat-label>Día de la semana *</mat-label>
+                          <mat-select formControlName="dayOfWeek">
+                            <mat-option value="MONDAY">Lunes</mat-option>
+                            <mat-option value="TUESDAY">Martes</mat-option>
+                            <mat-option value="WEDNESDAY">Miércoles</mat-option>
+                            <mat-option value="THURSDAY">Jueves</mat-option>
+                            <mat-option value="FRIDAY">Viernes</mat-option>
+                            <mat-option value="SATURDAY">Sábado</mat-option>
+                            <mat-option value="SUNDAY">Domingo</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Hora inicio *</mat-label>
+                          <mat-select formControlName="startTime">
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Hora fin *</mat-label>
+                          <mat-select formControlName="endTime">
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                      </form>
+                      <div class="error-msg" *ngIf="labScheduleError">
+                        <mat-icon>error_outline</mat-icon> {{ labScheduleError }}
+                      </div>
+                      <div style="margin-top:8px">
+                        <button mat-raised-button color="accent" (click)="saveLabSchedule()" [disabled]="savingLabSchedule">
+                          <mat-icon>repeat</mat-icon> {{ savingLabSchedule ? 'Guardando...' : 'Agregar patrón semanal' }}
+                        </button>
+                      </div>
+                    </mat-card-content>
+                  </mat-card>
+
+                  <!-- Schedule list -->
+                  <h3 class="sched-section-title" style="margin-top:16px">Horarios configurados</h3>
+                  <table mat-table [dataSource]="labClinicSchedules" *ngIf="labClinicSchedules.length > 0" class="schedule-table">
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                      <td mat-cell *matCellDef="let s">
+                        <span [class]="s.dayOfWeek ? 'sched-chip-recurring' : 'sched-chip-specific'">
+                          {{ s.dayOfWeek ? 'Semanal' : 'Fecha única' }}
+                        </span>
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="day">
+                      <th mat-header-cell *matHeaderCellDef>Día / Fecha</th>
+                      <td mat-cell *matCellDef="let s">{{ s.dayOfWeek ? dayLabel(s.dayOfWeek) : s.specificDate }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="time">
+                      <th mat-header-cell *matHeaderCellDef>Horario</th>
+                      <td mat-cell *matCellDef="let s">{{ s.startTime }} – {{ s.endTime }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="actions">
+                      <th mat-header-cell *matHeaderCellDef></th>
+                      <td mat-cell *matCellDef="let s">
+                        <button mat-icon-button color="warn" (click)="deleteLabSchedule(s.id)">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="labScheduleColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: labScheduleColumns;"></tr>
+                  </table>
+                  <div *ngIf="labClinicSchedules.length === 0"
+                       style="padding:16px;text-align:center;color:#9e9e9e">
+                    <mat-icon style="font-size:32px;width:32px;height:32px">event_busy</mat-icon>
+                    <p>Sin horarios configurados</p>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
           </div>
         </mat-tab>
 
@@ -764,9 +949,31 @@ export class UserManagementComponent implements OnInit {
   scheduleForm!: FormGroup;
   savingSchedule = false;
   scheduleError = '';
-  timeSlots = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00',
-               '14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+  timeSlots = [
+    '00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00',
+    '08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00',
+    '16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'
+  ];
   get doctors(): any[] { return this.users.filter(u => u.role === 'DOCTOR'); }
+
+  // Lab schedule tab
+  labClinics: any[] = [];
+  labScheduleClinic: any = null;
+  labClinicSchedules: any[] = [];
+  labScheduleColumns = ['type', 'day', 'time', 'actions'];
+  labScheduleForm!: FormGroup;
+  savingLabSchedule = false;
+  labScheduleError = '';
+  // Lab calendar
+  labCalView: 'month' | 'week' = 'month';
+  labCalDate = new Date();
+  labMonthCells: CalCell[] = [];
+  labWeekDays: WeekDay[] = [];
+  labSelectedDays: string[] = [];
+  labApplyStartTime: string | null = null;
+  labApplyEndTime: string | null = null;
+  labApplyError = '';
+  labApplyLoading = false;
 
   // Calendar
   calView: 'month' | 'week' = 'month';
@@ -789,6 +996,7 @@ export class UserManagementComponent implements OnInit {
     private userService: UserService,
     private clinicService: ClinicService,
     private scheduleService: DoctorScheduleService,
+    private clinicScheduleService: ClinicScheduleService,
     private notification: NotificationService
   ) {}
 
@@ -827,11 +1035,20 @@ export class UserManagementComponent implements OnInit {
       lunchEndTime:   [null]
     });
 
+    this.labScheduleForm = this.fb.group({
+      dayOfWeek: [null, Validators.required],
+      startTime: [null, Validators.required],
+      endTime:   [null, Validators.required]
+    });
+
     this.load();
     // Only the 3 consultation clinics are valid for doctor assignment
     const allowedClinics = ['Consulta Externa', 'Medicina General', 'Emergencias'];
     this.clinicService.getAll().subscribe(res => {
-      if (res.success) this.clinics = res.data.filter((c: Clinic) => allowedClinics.includes(c.name));
+      if (res.success) {
+        this.clinics = res.data.filter((c: Clinic) => allowedClinics.includes(c.name));
+        this.labClinics = res.data.filter((c: Clinic) => c.type === 'LABORATORY');
+      }
     });
   }
 
@@ -1131,6 +1348,182 @@ export class UserManagementComponent implements OnInit {
       next: () => { this.notification.success('Horario eliminado'); this.loadSchedules(); },
       error: err => this.notification.error(err.error?.message || 'Error al eliminar horario')
     });
+  }
+
+  // ── Lab schedule tab ──────────────────────────────────────────────────────
+
+  onLabClinicChange(): void {
+    this.labClinicSchedules = [];
+    this.labClearSelection();
+    if (this.labScheduleClinic) this.loadLabSchedules();
+  }
+
+  loadLabSchedules(): void {
+    this.clinicScheduleService.getByClinic(this.labScheduleClinic.id).subscribe({
+      next: res => {
+        if (res.success) { this.labClinicSchedules = res.data; this.buildLabCalendar(); }
+      },
+      error: () => this.notification.error('Error al cargar horarios de laboratorio')
+    });
+  }
+
+  saveLabSchedule(): void {
+    this.labScheduleError = '';
+    const v = this.labScheduleForm.value;
+    if (!v.dayOfWeek)            { this.labScheduleError = 'Seleccione el día de la semana'; return; }
+    if (!v.startTime || !v.endTime) { this.labScheduleError = 'Ingrese hora inicio y fin'; return; }
+    if (!this.labScheduleClinic) { this.labScheduleError = 'Seleccione un laboratorio'; return; }
+
+    this.savingLabSchedule = true;
+    this.clinicScheduleService.create({
+      clinicId:  this.labScheduleClinic.id,
+      dayOfWeek: v.dayOfWeek,
+      startTime: v.startTime,
+      endTime:   v.endTime
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Horario de laboratorio guardado');
+          this.labScheduleForm.patchValue({ dayOfWeek: null, startTime: null, endTime: null });
+          this.loadLabSchedules();
+        } else {
+          this.labScheduleError = res.message || 'Error al guardar';
+        }
+        this.savingLabSchedule = false;
+      },
+      error: err => {
+        this.labScheduleError = err.error?.message || 'Error al guardar horario';
+        this.savingLabSchedule = false;
+      }
+    });
+  }
+
+  deleteLabSchedule(id: number): void {
+    if (!confirm('¿Eliminar este horario de laboratorio?')) return;
+    this.clinicScheduleService.delete(id).subscribe({
+      next: () => { this.notification.success('Horario eliminado'); this.loadLabSchedules(); },
+      error: err => this.notification.error(err.error?.message || 'Error al eliminar horario')
+    });
+  }
+
+  applyLabSchedule(): void {
+    this.labApplyError = '';
+    if (!this.labApplyStartTime || !this.labApplyEndTime) { this.labApplyError = 'Ingrese hora inicio y fin'; return; }
+    if (!this.labScheduleClinic) return;
+
+    this.labApplyLoading = true;
+    const requests = this.labSelectedDays.map(date =>
+      this.clinicScheduleService.create({
+        clinicId:     this.labScheduleClinic.id,
+        specificDate: date,
+        startTime:    this.labApplyStartTime,
+        endTime:      this.labApplyEndTime
+      })
+    );
+
+    forkJoin(requests).subscribe({
+      next: () => {
+        this.notification.success(`Horario aplicado a ${this.labSelectedDays.length} día(s)`);
+        this.labClearSelection();
+        this.loadLabSchedules();
+        this.labApplyLoading = false;
+      },
+      error: err => {
+        this.labApplyError = err.error?.message || 'Error al guardar algunos horarios';
+        this.labApplyLoading = false;
+        this.loadLabSchedules();
+      }
+    });
+  }
+
+  // ── Lab Calendar ──────────────────────────────────────────────────────────
+
+  get labPeriodLabel(): string {
+    if (this.labCalView === 'month') {
+      const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      return `${months[this.labCalDate.getMonth()]} ${this.labCalDate.getFullYear()}`;
+    }
+    if (!this.labWeekDays.length) return '';
+    return `Semana: ${this.labWeekDays[0].date} – ${this.labWeekDays[6].date}`;
+  }
+
+  labSetCalView(v: 'month' | 'week'): void { this.labCalView = v; this.buildLabCalendar(); }
+
+  labPrevPeriod(): void {
+    if (this.labCalView === 'month') {
+      this.labCalDate = new Date(this.labCalDate.getFullYear(), this.labCalDate.getMonth() - 1, 1);
+    } else {
+      const d = new Date(this.labCalDate); d.setDate(d.getDate() - 7); this.labCalDate = d;
+    }
+    this.buildLabCalendar();
+  }
+
+  labNextPeriod(): void {
+    if (this.labCalView === 'month') {
+      this.labCalDate = new Date(this.labCalDate.getFullYear(), this.labCalDate.getMonth() + 1, 1);
+    } else {
+      const d = new Date(this.labCalDate); d.setDate(d.getDate() + 7); this.labCalDate = d;
+    }
+    this.buildLabCalendar();
+  }
+
+  buildLabCalendar(): void {
+    if (this.labCalView === 'month') this.buildLabMonth(); else this.buildLabWeek();
+  }
+
+  buildLabMonth(): void {
+    const year = this.labCalDate.getFullYear();
+    const month = this.labCalDate.getMonth();
+    const today = this.dateToISO(new Date());
+    const cells: CalCell[] = [];
+    const firstOfMonth = new Date(year, month, 1);
+    let dow = firstOfMonth.getDay() || 7;
+    const start = new Date(year, month, 1 - (dow - 1));
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const iso = this.dateToISO(d);
+      const inMonth = d.getMonth() === month;
+      cells.push({ date: iso, day: d.getDate(), inMonth, hasSchedule: this.labHasSchedule(iso), isToday: iso === today });
+    }
+    if (cells.slice(35).every(c => !c.inMonth)) cells.splice(35, 7);
+    this.labMonthCells = cells;
+  }
+
+  buildLabWeek(): void {
+    const today = this.dateToISO(new Date());
+    const d = new Date(this.labCalDate);
+    const dow = d.getDay() || 7;
+    d.setDate(d.getDate() - (dow - 1));
+    const labels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    this.labWeekDays = labels.map((label, i) => {
+      const day = new Date(d); day.setDate(d.getDate() + i);
+      const iso = this.dateToISO(day);
+      return { date: iso, dowLabel: label, dayNum: day.getDate(), isToday: iso === today };
+    });
+  }
+
+  labToggleDay(date: string): void {
+    const idx = this.labSelectedDays.indexOf(date);
+    if (idx >= 0) this.labSelectedDays.splice(idx, 1); else this.labSelectedDays.push(date);
+    this.labSelectedDays = [...this.labSelectedDays];
+  }
+
+  labIsSelected(date: string): boolean { return this.labSelectedDays.includes(date); }
+
+  labClearSelection(): void { this.labSelectedDays = []; this.labApplyError = ''; }
+
+  labHasSchedule(date: string): boolean {
+    const d = new Date(date + 'T12:00:00');
+    const dow = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][d.getDay()];
+    return this.labClinicSchedules.some(s => s.specificDate === date || s.dayOfWeek === dow);
+  }
+
+  labGetSchedulesForDate(date: string): any[] {
+    const d = new Date(date + 'T12:00:00');
+    const dow = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][d.getDay()];
+    return this.labClinicSchedules.filter(s => s.specificDate === date || s.dayOfWeek === dow);
   }
 
   // ── Calendar ───────────────────────────────────────────────────────────────

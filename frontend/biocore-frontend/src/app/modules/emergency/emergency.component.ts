@@ -65,7 +65,8 @@ import { environment } from '../../../environments/environment';
                         <mat-label>DPI del Paciente (si disponible)</mat-label>
                         <mat-icon matPrefix>badge</mat-icon>
                         <input matInput [(ngModel)]="searchDpi" [ngModelOptions]="{standalone:true}"
-                               placeholder="0000000000000" maxlength="13">
+                               placeholder="0000000000000" maxlength="13"
+                               (keypress)="onlyDigits($event)">
                       </mat-form-field>
                     </div>
 
@@ -123,11 +124,15 @@ import { environment } from '../../../environments/environment';
                           </mat-form-field>
                           <mat-form-field appearance="outline">
                             <mat-label>Teléfono (opcional)</mat-label>
-                            <input matInput formControlName="phone">
+                            <input matInput formControlName="phone" type="tel" maxlength="8"
+                                   (keypress)="onlyDigits($event)">
+                            <mat-hint>8 dígitos</mat-hint>
+                            <mat-error>8 dígitos, no inicia en 0</mat-error>
                           </mat-form-field>
                           <mat-form-field appearance="outline">
                             <mat-label>Correo (opcional — para recibo de pago)</mat-label>
                             <input matInput formControlName="email" type="email">
+                            <mat-error>Correo inválido</mat-error>
                           </mat-form-field>
                         </div>
                       </div>
@@ -160,27 +165,41 @@ import { environment } from '../../../environments/environment';
                       <div class="vitals-grid">
                         <mat-form-field appearance="outline">
                           <mat-label>Presión Arterial</mat-label>
-                          <input matInput formControlName="bloodPressure" placeholder="120/80">
+                          <input matInput formControlName="bloodPressure" placeholder="120/80"
+                                 maxlength="7" (keypress)="onlyBP($event)">
+                          <mat-hint>Formato: 120/80</mat-hint>
+                          <mat-error>Formato xxx/xxx (solo números)</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Frec. Cardíaca (bpm)</mat-label>
-                          <input matInput type="number" formControlName="heartRate">
+                          <input matInput inputmode="numeric" formControlName="heartRate"
+                                 maxlength="3" (keypress)="onlyDigits($event)">
+                          <mat-error>Máximo 3 dígitos</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Temperatura (°C)</mat-label>
-                          <input matInput type="number" formControlName="temperature" step="0.1">
+                          <input matInput inputmode="numeric" formControlName="temperature"
+                                 maxlength="2" (keypress)="onlyDigits($event)">
+                          <mat-hint>30–45 °C</mat-hint>
+                          <mat-error>Debe estar entre 30 y 45 °C</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Peso (kg)</mat-label>
-                          <input matInput type="number" formControlName="weight">
+                          <input matInput inputmode="numeric" formControlName="weight"
+                                 maxlength="3" (keypress)="onlyDigits($event)">
+                          <mat-error>Máximo 3 dígitos</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Talla (cm)</mat-label>
-                          <input matInput type="number" formControlName="height">
+                          <input matInput inputmode="numeric" formControlName="height"
+                                 maxlength="3" (keypress)="onlyDigits($event)">
+                          <mat-error>Máximo 3 dígitos</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>SpO2 (%)</mat-label>
-                          <input matInput type="number" formControlName="oxygenSaturation">
+                          <input matInput inputmode="numeric" formControlName="oxygenSaturation"
+                                 maxlength="2" (keypress)="onlyDigits($event)">
+                          <mat-error>Máximo 2 dígitos</mat-error>
                         </mat-form-field>
                       </div>
                       <div class="step-actions">
@@ -282,7 +301,8 @@ import { environment } from '../../../environments/environment';
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>DPI (13 dígitos) *</mat-label>
-                      <input matInput [(ngModel)]="regForm.dpi" [ngModelOptions]="{standalone:true}" maxlength="13">
+                      <input matInput [(ngModel)]="regForm.dpi" [ngModelOptions]="{standalone:true}" maxlength="13"
+                             (keypress)="onlyDigits($event)">
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Correo Electrónico *</mat-label>
@@ -418,6 +438,17 @@ import { environment } from '../../../environments/environment';
   `]
 })
 export class EmergencyComponent implements OnInit, OnDestroy {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+  onlyBP(e: KeyboardEvent): boolean {
+    const char = e.key;
+    if (!/[\d\/]/.test(char)) return false;
+    const input = e.target as HTMLInputElement;
+    const val = input.value;
+    const slashIdx = val.indexOf('/');
+    if (char === '/') return !val.includes('/') && val.length >= 1 && val.length <= 3;
+    return slashIdx === -1 ? val.length < 3 : (val.length - slashIdx - 1) < 3;
+  }
+
   // Registration flow
   searchDpi = '';
   searching = false;
@@ -453,17 +484,22 @@ export class EmergencyComponent implements OnInit, OnDestroy {
     this.patientForm = this.fb.group({
       firstName: ['Paciente No Identificado', Validators.required],
       lastName: ['Emergencia', Validators.required],
-      phone: [''],
-      email: ['', Validators.email],
+      phone: ['', [Validators.pattern(/^[1-9]\d{7}$/)]],
+      email: ['', [Validators.email]],
       motive: ['', Validators.required]
     });
     this.vitalsForm = this.fb.group({
-      bloodPressure: [''],
-      heartRate: [null],
-      temperature: [null],
-      weight: [null],
-      height: [null],
-      oxygenSaturation: [null]
+      bloodPressure: ['', [Validators.pattern(/^\d{1,3}\/\d{1,3}$/)]],
+      heartRate:     [null, [Validators.min(1), Validators.max(999)]],
+      temperature:   ['', [(ctrl: any) => {
+        if (!ctrl.value && ctrl.value !== 0) return null;
+        const v = parseInt(ctrl.value, 10);
+        if (isNaN(v) || v < 30 || v > 45) return { tempRange: true };
+        return null;
+      }]],
+      weight:        [null, [Validators.min(1), Validators.max(999)]],
+      height:        [null, [Validators.min(1), Validators.max(999)]],
+      oxygenSaturation: [null, [Validators.min(1), Validators.max(99)]]
     });
     this.loadReports();
     this.loadQueue();

@@ -101,7 +101,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <mat-form-field appearance="outline" class="wide">
                         <mat-label>DPI del Paciente (13 dígitos)</mat-label>
                         <mat-icon matPrefix>badge</mat-icon>
-                        <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                        <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                               (keypress)="onlyDigits($event)">
                         <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
                       </mat-form-field>
                       <div class="step-actions">
@@ -206,23 +207,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
           </ng-template>
           <div class="tab-content">
 
-            <!-- Llamar siguiente paciente -->
-            <div class="call-next-bar">
-              <mat-form-field appearance="outline" style="min-width:200px;margin-bottom:0">
-                <mat-label>Clínica</mat-label>
-                <mat-select [(ngModel)]="selectedVitalsClinicId">
-                  <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <button mat-raised-button color="primary" [disabled]="!selectedVitalsClinicId || callingVitals"
-                      (click)="callNextToVitalSigns()">
-                <mat-spinner *ngIf="callingVitals" diameter="18" style="display:inline-block;margin-right:6px"></mat-spinner>
-                <mat-icon *ngIf="!callingVitals">campaign</mat-icon>
-                {{ callingVitals ? 'Llamando...' : 'Llamar Siguiente' }}
-              </button>
-            </div>
-
-            <p class="hint-text" style="margin-top:12px">Pacientes en área de signos vitales. Haga clic para registrar signos.</p>
+            <p class="hint-text">Pacientes en área de signos vitales. Haga clic para registrar signos.</p>
 
             <div *ngIf="calledTickets.length === 0" class="empty-state">
               <mat-icon>health_and_safety</mat-icon>
@@ -256,27 +241,41 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                   <mat-form-field appearance="outline">
                     <mat-label>Presión Arterial</mat-label>
                     <mat-icon matPrefix>favorite</mat-icon>
-                    <input matInput formControlName="bloodPressure" placeholder="120/80">
+                    <input matInput formControlName="bloodPressure" placeholder="120/80"
+                           maxlength="7" (keypress)="onlyBP($event)">
+                    <mat-hint>Formato: 120/80</mat-hint>
+                    <mat-error>Formato xxx/xxx (solo números)</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Frec. Cardíaca (bpm)</mat-label>
-                    <input matInput type="number" formControlName="heartRate">
+                    <input matInput inputmode="numeric" formControlName="heartRate"
+                           maxlength="3" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 3 dígitos</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Temperatura (°C)</mat-label>
-                    <input matInput type="number" formControlName="temperature" step="0.1">
+                    <input matInput inputmode="numeric" formControlName="temperature"
+                           maxlength="2" (keypress)="onlyDigits($event)">
+                    <mat-hint>30–45 °C</mat-hint>
+                    <mat-error>Debe estar entre 30 y 45 °C</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Peso (kg)</mat-label>
-                    <input matInput type="number" formControlName="weight" step="0.1">
+                    <input matInput inputmode="numeric" formControlName="weight"
+                           maxlength="3" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 3 dígitos</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Talla (cm)</mat-label>
-                    <input matInput type="number" formControlName="height">
+                    <input matInput inputmode="numeric" formControlName="height"
+                           maxlength="3" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 3 dígitos</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Saturación O₂ (%)</mat-label>
-                    <input matInput type="number" formControlName="oxygenSaturation">
+                    <input matInput inputmode="numeric" formControlName="oxygenSaturation"
+                           maxlength="2" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 2 dígitos</mat-error>
                   </mat-form-field>
                 </form>
                 <div class="vitals-actions">
@@ -557,7 +556,7 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
       birthDate:       ['', [birthDateValidator]],
-      phone:           ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
+      phone:           ['', [Validators.pattern(/^[1-9]\d{7}$/)]],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
       insuranceId:     [null],
@@ -711,16 +710,31 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     });
   }
 
+  onlyBP(e: KeyboardEvent): boolean {
+    const char = e.key;
+    if (!/[\d\/]/.test(char)) return false;
+    const input = e.target as HTMLInputElement;
+    const val = input.value;
+    const slashIdx = val.indexOf('/');
+    if (char === '/') return !val.includes('/') && val.length >= 1 && val.length <= 3;
+    return slashIdx === -1 ? val.length < 3 : (val.length - slashIdx - 1) < 3;
+  }
+
   openVitalsForm(ticket: Ticket): void {
     this.activeVitalsTicketId = ticket.id;
     if (!this.vitalsFormMap[ticket.id]) {
       this.vitalsFormMap[ticket.id] = this.fb.group({
-        bloodPressure: [''],
-        heartRate: [null],
-        temperature: [null],
-        weight: [null],
-        height: [null],
-        oxygenSaturation: [null]
+        bloodPressure: ['', [Validators.pattern(/^\d{1,3}\/\d{1,3}$/)]],
+        heartRate:      [null, [Validators.min(1), Validators.max(999)]],
+        temperature:    ['', [(ctrl: any) => {
+          if (!ctrl.value && ctrl.value !== 0) return null;
+          const v = parseInt(ctrl.value, 10);
+          if (isNaN(v) || v < 30 || v > 45) return { tempRange: true };
+          return null;
+        }]],
+        weight:         [null, [Validators.min(1), Validators.max(999)]],
+        height:         [null, [Validators.min(1), Validators.max(999)]],
+        oxygenSaturation: [null, [Validators.min(1), Validators.max(99)]]
       });
     }
   }

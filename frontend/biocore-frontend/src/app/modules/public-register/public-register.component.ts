@@ -131,7 +131,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <mat-form-field appearance="outline">
                       <mat-label>DPI (13 dígitos) *</mat-label>
                       <mat-icon matPrefix>badge</mat-icon>
-                      <input matInput formControlName="dpi" maxlength="13" placeholder="0000000000000">
+                      <input matInput formControlName="dpi" maxlength="13" placeholder="0000000000000"
+                             (keypress)="onlyDigits($event)">
                       <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">

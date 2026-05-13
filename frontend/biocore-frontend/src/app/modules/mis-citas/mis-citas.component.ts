@@ -28,7 +28,11 @@ type BookingStep = 'calendar' | 'payment' | 'confirmed';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const ALL_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
+const ALL_SLOTS = [
+  '00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00',
+  '08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00',
+  '16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'
+];
 const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
 const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00' };
@@ -86,7 +90,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                 <mat-card-header>
                   <mat-icon mat-card-avatar>calendar_month</mat-icon>
                   <mat-card-title>Seleccionar fecha y horario</mat-card-title>
-                  <mat-card-subtitle>Citas disponibles todos los días de 8:00 a 18:00</mat-card-subtitle>
+                  <mat-card-subtitle>Selecciona un día para ver los horarios disponibles</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
 
@@ -202,9 +206,17 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                         <mat-icon>local_hospital</mat-icon>
                         <span>{{ getClinicName(selectedClinicId) }} — {{ typeLabel(selectedType) }}</span>
                       </div>
-                      <div class="summary-row total-row">
+                      <div class="summary-row" *ngIf="discountPct > 0">
                         <mat-icon>receipt</mat-icon>
-                        <span>Total: <strong>Q {{ consultationFee }}</strong></span>
+                        <span>Precio base: <strong>Q {{ consultationFee }}</strong></span>
+                      </div>
+                      <div class="summary-row" *ngIf="discountPct > 0" style="color:#2e7d32">
+                        <mat-icon>discount</mat-icon>
+                        <span>Descuento {{ discountPct }}% ({{ patientProfile?.insuranceName }}): <strong>-Q {{ discountAmountNum.toFixed(2) }}</strong></span>
+                      </div>
+                      <div class="summary-row total-row">
+                        <mat-icon>payments</mat-icon>
+                        <span>Total a pagar: <strong>Q {{ netFeeNum.toFixed(2) }}</strong></span>
                       </div>
                     </div>
 
@@ -252,7 +264,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                             (click)="pay()">
                       <mat-spinner *ngIf="paying" diameter="20" style="display:inline-block;margin-right:8px"></mat-spinner>
                       <mat-icon *ngIf="!paying">lock</mat-icon>
-                      {{ paying ? 'Procesando pago...' : 'Pagar Q ' + consultationFee }}
+                      {{ paying ? 'Procesando pago...' : 'Pagar Q ' + netFeeNum.toFixed(2) }}
                     </button>
                   </mat-card-actions>
                 </mat-card>
@@ -475,7 +487,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                 </div>
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-                <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
+                <span [class]="getStatusClass(t.status, t.scheduledDate)" class="status-chip">{{ statusLabel(t.status, t.scheduledDate) }}</span>
                 <button *ngIf="t.status === 'ABSENT_PENDING_RESCHEDULE'"
                         mat-raised-button color="accent"
                         style="font-size:0.75rem"
@@ -795,7 +807,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>DPI *</mat-label>
-                      <input matInput formControlName="dpi">
+                      <input matInput formControlName="dpi" maxlength="13" (keypress)="onlyDigits($event)">
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Fecha de Nacimiento</mat-label>
@@ -933,7 +945,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                         <div class="history-doctor" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
                       </div>
                     </div>
-                    <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
+                    <span [class]="getStatusClass(t.status, t.scheduledDate)" class="status-chip">{{ statusLabel(t.status, t.scheduledDate) }}</span>
                   </div>
                   <div class="empty-state" *ngIf="tickets.length === 0">
                     <mat-icon>event_busy</mat-icon><p>Sin historial de citas</p>
@@ -1141,6 +1153,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     .status-appt-pending { background:#fff8e1; color:#f57f17; }
     .status-appt-confirmed { background:#e8f5e9; color:#2e7d32; }
     .status-appt-cancelled { background:#ffebee; color:#c62828; }
+    .status-appt-expired { background:#f5f5f5; color:#9e9e9e; }
 
     /* Reservation timer */
     .reservation-timer { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:10px 14px; color:#2e7d32; font-size:0.88rem; margin-top:12px; transition:background 0.3s; }
@@ -1151,6 +1164,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
   `]
 })
 export class MisCitasComponent implements OnInit, OnDestroy {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+
   // Patient data
   tickets: Ticket[] = [];
   appointments: any[] = [];
@@ -1196,6 +1211,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   uploadedDocs: File[] = [];
   uploadErrors: string[] = [];
   readonly allSlots = ALL_SLOTS;
+
+  get grossFeeNum(): number { return parseFloat(this.consultationFee) || 0; }
+  get discountPct(): number { return (this.patientProfile as any)?.discountPercentage ?? 0; }
+  get discountAmountNum(): number { return Math.round(this.grossFeeNum * this.discountPct) / 100; }
+  get netFeeNum(): number { return this.grossFeeNum - this.discountAmountNum; }
 
   // Slots
   availableSlots: string[] = [];
@@ -1246,6 +1266,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   profileSaving = false;
   profileForm!: FormGroup;
   today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  todayStr = this.today;
   insurances: any[] = [];
 
   // Credentials
@@ -2193,7 +2214,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   logout(): void { this.authService.logout(); }
   sampleLabel(s: string): string { return (SAMPLE_TYPE_LABELS as any)[s] ?? s; }
 
-  getStatusClass(s: string): string {
+  getStatusClass(s: string, scheduledDate?: string): string {
+    if (s === 'WAITING' && scheduledDate && scheduledDate < this.todayStr) return 'status-appt-expired';
     const m: Record<string, string> = {
       WAITING: 'status-waiting', BEING_CALLED: 'status-being-called',
       IN_CONSULTATION: 'status-in-consultation', COMPLETED: 'status-completed',
@@ -2205,7 +2227,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     return m[s] ?? '';
   }
 
-  statusLabel(s: string): string {
+  statusLabel(s: string, scheduledDate?: string): string {
+    if (s === 'WAITING' && scheduledDate && scheduledDate < this.todayStr) return 'Expirada';
     const m: Record<string, string> = {
       WAITING: 'En Espera', BEING_CALLED: 'Siendo Llamado',
       IN_CONSULTATION: 'En Consulta', COMPLETED: 'Atendido',

@@ -62,7 +62,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>DPI del Paciente</mat-label>
                   <mat-icon matPrefix>badge</mat-icon>
-                  <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                  <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                         (keypress)="onlyDigits($event)">
                   <mat-error *ngIf="dpiForm.get('dpi')?.hasError('pattern')">
                     El DPI debe tener exactamente 13 dígitos numéricos
                   </mat-error>
@@ -258,8 +259,8 @@ export class PatientRegisterComponent implements OnInit {
       firstName:        ['', Validators.required],
       lastName:         ['', Validators.required],
       birthDate:        ['', [birthDateValidator]],
-      phone:            ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
-      email:            ['', Validators.email],
+      phone:            ['', [Validators.pattern(/^[1-9]\d{7}$/)]],
+      email:            ['', [Validators.email]],
       address:          [''],
       emergencyContact: [''],
       emergencyPhone:   [''],

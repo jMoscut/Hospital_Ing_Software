@@ -22,6 +22,7 @@ import com.biocore.repository.DoctorClinicAssignmentRepository;
 import com.biocore.repository.LabExamRepository;
 import com.biocore.repository.LabOrderRepository;
 import com.biocore.repository.PatientRepository;
+import com.biocore.entity.Clinic;
 import com.biocore.repository.PrescriptionRepository;
 import com.biocore.repository.TicketRepository;
 import com.biocore.repository.UserRepository;
@@ -62,6 +63,7 @@ public class TicketService {
     private final AppointmentRepository appointmentRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final EmailService emailService;
+    private final DoctorScheduleService doctorScheduleService;
 
     @Transactional(readOnly = true)
     public List<TicketDTO> getAll() {
@@ -234,15 +236,28 @@ public class TicketService {
             throw new RuntimeException("No hay pacientes en espera para esta clínica");
         }
 
-        // Only pick a ticket whose assigned doctor is currently available (on-shift, not in consultation)
-        Ticket next = waitingTickets.stream()
-                .filter(t -> t.getDoctor() != null && Boolean.TRUE.equals(t.getDoctor().isAvailable()))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException(
-                        "No hay pacientes elegibles — los médicos asignados no están disponibles. " +
-                        "Espere a que un médico se marque disponible."));
+        // Check if this is a lab clinic (lab tickets have no pre-assigned doctor)
+        Clinic callingClinic = clinicRepository.findById(clinicId).orElse(null);
+        boolean isLabClinic = callingClinic != null &&
+                (callingClinic.getType() == com.biocore.enums.ClinicType.LABORATORY ||
+                 (callingClinic.getName() != null && callingClinic.getName().toLowerCase().contains("lab")));
 
-        if ("LABORATORIO".equals(next.getType())) {
+        Ticket next;
+        if (isLabClinic) {
+            // Lab: just pick the first WAITING ticket — no doctor pre-assignment required
+            next = waitingTickets.stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("No hay pacientes en espera para esta clínica"));
+        } else {
+            // Regular clinic: only pick a ticket whose assigned doctor is currently available
+            next = waitingTickets.stream()
+                    .filter(t -> t.getDoctor() != null && Boolean.TRUE.equals(t.getDoctor().isAvailable()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException(
+                            "No hay pacientes elegibles — los médicos asignados no están disponibles. " +
+                            "Espere a que un médico se marque disponible."));
+        }
+
+        if (isLabClinic || "LABORATORIO".equals(next.getType())) {
             LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
             List<User> onlineTechs = userRepository.findByRoleAndActiveTrue(Role.LAB_TECHNICIAN).stream()
                     .filter(u -> u.isAvailable() && u.getOnlineAt() != null && u.getOnlineAt().isAfter(threshold))
@@ -381,10 +396,32 @@ public class TicketService {
             throw new RuntimeException("Este ticket no puede reagendarse (estado: " + original.getStatus() + ")");
         }
 
+        // Assign doctor for non-lab slots
+        Clinic reschedClinic = original.getClinic();
+        boolean isLab = reschedClinic != null &&
+                (reschedClinic.getType() == com.biocore.enums.ClinicType.LABORATORY ||
+                 (reschedClinic.getName() != null && reschedClinic.getName().toLowerCase().contains("lab")));
+        User assignedDoctor = null;
+        if (!isLab && reschedClinic != null) {
+            java.util.Set<Long> bookedIds = new java.util.HashSet<>(
+                    appointmentRepository.findBookedDoctorIds(reschedClinic.getId(), newDate, newTime,
+                            com.biocore.enums.AppointmentStatus.CANCELLED));
+            java.util.List<User> available = doctorScheduleService.getAvailableDoctorsForSlot(
+                    reschedClinic.getId(), newDate, newTime, bookedIds);
+            if (!available.isEmpty()) {
+                final java.time.LocalDate fd = newDate;
+                assignedDoctor = available.stream()
+                        .min(java.util.Comparator.comparingLong(doc -> appointmentRepository
+                                .countByDoctorAndDate(doc.getId(), fd, com.biocore.enums.AppointmentStatus.CANCELLED)))
+                        .orElse(available.get(0));
+            }
+        }
+
         // Build a new confirmed appointment to block the slot in real-time availability
         Appointment appt = Appointment.builder()
                 .patient(original.getPatient())
                 .clinic(original.getClinic())
+                .doctor(assignedDoctor)
                 .type(original.getType())
                 .scheduledDate(newDate)
                 .scheduledTime(newTime)
@@ -399,7 +436,7 @@ public class TicketService {
         Ticket newTicket = Ticket.builder()
                 .patient(original.getPatient())
                 .clinic(original.getClinic())
-                .doctor(null)
+                .doctor(assignedDoctor)
                 .status(TicketStatus.WAITING)
                 .priority(original.getPriority())
                 .appointment(savedAppt)

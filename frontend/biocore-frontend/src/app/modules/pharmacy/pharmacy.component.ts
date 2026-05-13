@@ -284,7 +284,8 @@ interface CartItem {
                   <mat-form-field appearance="outline" style="flex:1">
                     <mat-label>DPI del Paciente</mat-label>
                     <mat-icon matPrefix>badge</mat-icon>
-                    <input matInput [(ngModel)]="rxDpiSearch" placeholder="DPI del paciente" (keyup.enter)="searchByDpi()">
+                    <input matInput [(ngModel)]="rxDpiSearch" placeholder="DPI del paciente" maxlength="13"
+                           (keypress)="onlyDigits($event)" (keyup.enter)="searchByDpi()">
                   </mat-form-field>
                   <button mat-raised-button color="accent" (click)="searchByDpi()" [disabled]="!rxDpiSearch || rxLoading">
                     <mat-icon>person_search</mat-icon> Buscar por DPI
@@ -696,6 +697,7 @@ interface CartItem {
   `]
 })
 export class PharmacyComponent implements OnInit {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
 
   // ── Shared ──────────────────────────────────────────────────────────
   medicines: Medicine[] = [];

@@ -27,6 +27,8 @@ public class SchemaMigrationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         log.info("Running schema migration checks...");
 
+        createClinicSchedulesTable();
+
         applyIfMissing(
             "users", "must_change_password",
             "ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE"
@@ -78,6 +80,26 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             log.info("Schema: tickets_status_check updated + rescheduled column added");
         } catch (Exception e) {
             log.warn("Schema migration warning for tickets_status_check: {}", e.getMessage());
+        }
+    }
+
+    private void createClinicSchedulesTable() {
+        try {
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS clinic_schedules (" +
+                "  id BIGSERIAL PRIMARY KEY," +
+                "  clinic_id BIGINT NOT NULL REFERENCES clinics(id)," +
+                "  day_of_week VARCHAR(10)," +
+                "  specific_date DATE," +
+                "  start_time VARCHAR(5) NOT NULL," +
+                "  end_time VARCHAR(5) NOT NULL," +
+                "  active BOOLEAN NOT NULL DEFAULT TRUE," +
+                "  created_at TIMESTAMP DEFAULT NOW()" +
+                ")"
+            );
+            log.info("Schema: clinic_schedules table ensured");
+        } catch (Exception e) {
+            log.warn("Schema migration warning for clinic_schedules: {}", e.getMessage());
         }
     }
 

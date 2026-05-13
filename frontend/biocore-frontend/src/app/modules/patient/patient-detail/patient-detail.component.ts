@@ -21,6 +21,7 @@ import { PaymentService, InsuranceService, EmergencyService, PharmacySaleService
 import { TicketService, PrescriptionService, VitalSignsService, AppointmentService } from '../../../shared/services/ticket.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
+import { AuthService } from '../../../core/auth/auth.service';
 
 function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
   const v: string = ctrl.value;
@@ -57,14 +58,14 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
         <div class="header-actions">
           <mat-chip color="primary">{{ patient.patientCode }}</mat-chip>
           <ng-container *ngIf="!editMode">
-            <button mat-stroked-button color="primary" (click)="startEdit()">
+            <button *ngIf="canEdit" mat-stroked-button color="primary" (click)="startEdit()">
               <mat-icon>edit</mat-icon> Editar
             </button>
             <button mat-button routerLink="/patients">
               <mat-icon>arrow_back</mat-icon> Volver
             </button>
           </ng-container>
-          <ng-container *ngIf="editMode">
+          <ng-container *ngIf="editMode && canEdit">
             <button mat-raised-button color="primary" (click)="saveEdit()" [disabled]="saving || editForm.invalid">
               <mat-icon>save</mat-icon> {{ saving ? 'Guardando...' : 'Guardar' }}
             </button>
@@ -83,7 +84,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
             <form *ngIf="editMode" [formGroup]="editForm" class="edit-grid">
               <mat-form-field appearance="outline"><mat-label>Nombres *</mat-label><input matInput formControlName="firstName"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Apellidos *</mat-label><input matInput formControlName="lastName"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>DPI *</mat-label><input matInput formControlName="dpi"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>DPI *</mat-label><input matInput formControlName="dpi" maxlength="13" (keypress)="onlyDigits($event)"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Fecha de Nacimiento</mat-label><mat-icon matPrefix>cake</mat-icon><input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today"><mat-error *ngIf="editForm.get('birthDate')?.errors?.['yearTooEarly']">Año mínimo 1900</mat-error><mat-error *ngIf="editForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error><mat-error *ngIf="editForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Teléfono</mat-label><input matInput formControlName="phone"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Correo Electrónico</mat-label><input matInput formControlName="email"></mat-form-field>
@@ -409,6 +410,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
   `]
 })
 export class PatientDetailComponent implements OnInit {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+
   apiUrl = environment.apiUrl;
   patient: Patient | null = null;
   tickets: any[] = [];
@@ -421,6 +424,7 @@ export class PatientDetailComponent implements OnInit {
   emergencyReports: any[] = [];
   vitalsCache: Record<number, any> = {};
   patientId!: number;
+  canEdit = false;
   editMode = false;
   saving = false;
   editForm!: FormGroup;
@@ -441,7 +445,8 @@ export class PatientDetailComponent implements OnInit {
     private emergencyService: EmergencyService,
     private pharmacySaleService: PharmacySaleService,
     private appointmentService: AppointmentService,
-    private notification: NotificationService
+    private notification: NotificationService,
+    private auth: AuthService
   ) {}
 
   openLabPdf(orderId: number): void {
@@ -456,6 +461,7 @@ export class PatientDetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.canEdit = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
     this.patientId = Number(this.route.snapshot.paramMap.get('id'));
     this.patientService.getById(this.patientId).subscribe(res => {
       if (res.success) {

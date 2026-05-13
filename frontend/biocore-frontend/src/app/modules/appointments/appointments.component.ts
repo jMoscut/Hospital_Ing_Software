@@ -133,7 +133,7 @@ const NOTIF_KEY = 'biocore_notification_settings';
                 <mat-label>Filtrar por clínica</mat-label>
                 <mat-select [(ngModel)]="selectedClinicFilter" (selectionChange)="applyFilter()" [ngModelOptions]="{standalone: true}">
                   <mat-option [value]="0">Todas las clínicas</mat-option>
-                  <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
+                  <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <div class="queue-stats">
@@ -472,10 +472,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
     this.clinicService.getAll().subscribe(res => {
       if (res.success) {
         this.clinics = res.data;
-        const excluded = ['farmacia', 'emergencia', 'emergencias'];
-        this.visitClinics = res.data.filter((c: Clinic) =>
-          !excluded.some(x => c.name.toLowerCase().includes(x))
-        );
+        const allowed = ['EXTERNAL_CONSULTATION', 'GENERAL_MEDICINE', 'LABORATORY'];
+        this.visitClinics = res.data.filter((c: Clinic) => allowed.includes(c.type));
       }
     });
     this.loadAll();

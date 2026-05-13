@@ -82,7 +82,8 @@ import { Patient } from '../../../core/models/patient.model';
                 <button mat-icon-button color="primary" [routerLink]="['/patients', p.id]" title="Ver detalle">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button color="accent" (click)="openEdit(p); $event.stopPropagation()" title="Editar">
+                <button mat-icon-button color="accent" *ngIf="canEdit"
+                        (click)="openEdit(p); $event.stopPropagation()" title="Editar">
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button mat-icon-button color="warn"
@@ -148,7 +149,7 @@ import { Patient } from '../../../core/models/patient.model';
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>DPI *</mat-label>
-              <input matInput formControlName="dpi">
+              <input matInput formControlName="dpi" maxlength="13" (keypress)="onlyDigits($event)">
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Fecha de Nacimiento</mat-label>
@@ -208,6 +209,8 @@ import { Patient } from '../../../core/models/patient.model';
   `]
 })
 export class PatientListComponent implements OnInit {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+
   patients: Patient[] = [];
   loading = true;
   searchCtrl = new FormControl('');
@@ -223,6 +226,7 @@ export class PatientListComponent implements OnInit {
   deletingPatient: Patient | null = null;
   deleting = false;
   canDelete = false;
+  canEdit = false;
 
   constructor(
     private fb: FormBuilder,
@@ -234,6 +238,7 @@ export class PatientListComponent implements OnInit {
 
   ngOnInit(): void {
     this.canDelete = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
+    this.canEdit = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
     this.loadAll();
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
     this.searchCtrl.valueChanges.pipe(
@@ -268,10 +273,10 @@ export class PatientListComponent implements OnInit {
     this.editForm = this.fb.group({
       firstName:        [p.firstName,           Validators.required],
       lastName:         [p.lastName,            Validators.required],
-      dpi:              [p.dpi,                 Validators.required],
+      dpi:              [p.dpi,                 [Validators.required, Validators.pattern(/^\d{13}$/)]],
       birthDate:        [p.birthDate            || ''],
-      phone:            [p.phone               || ''],
-      email:            [p.email               || ''],
+      phone:            [p.phone               || '', [Validators.pattern(/^[1-9]\d{7}$/)]],
+      email:            [p.email               || '', [Validators.email]],
       address:          [p.address             || ''],
       emergencyContact: [p.emergencyContact    || ''],
       emergencyPhone:   [p.emergencyPhone      || ''],

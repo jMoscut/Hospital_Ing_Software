@@ -30,16 +30,11 @@ import java.util.stream.Collectors;
 public class AppointmentService {
 
     private static final List<String> ALL_SLOTS =
-            Arrays.asList("08:00","09:00","10:00","11:00","12:00","13:00",
-                          "14:00","15:00","16:00","17:00","18:00");
+            Arrays.asList("00:00","01:00","02:00","03:00","04:00","05:00","06:00","07:00",
+                          "08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00",
+                          "16:00","17:00","18:00","19:00","20:00","21:00","22:00","23:00");
 
     private static final int LAB_CAPACITY_PER_SLOT = 1;
-
-    private static final List<String> LAB_SLOTS =
-            Arrays.asList("08:00","08:30","09:00","09:30","10:00","10:30",
-                          "11:00","11:30","12:00","12:30","13:00","13:30",
-                          "14:00","14:30","15:00","15:30","16:00","16:30",
-                          "17:00","17:30");
 
     private static final Map<String, BigDecimal> TYPE_FEE = Map.of(
             "CONSULTA", BigDecimal.valueOf(150.00),
@@ -52,6 +47,7 @@ public class AppointmentService {
     private final TicketService              ticketService;
     private final SlotReservationRepository  slotReservationRepository;
     private final DoctorScheduleService      doctorScheduleService;
+    private final ClinicScheduleService      clinicScheduleService;
     private final LabExamRepository          labExamRepository;
     private final EmailService               emailService;
 
@@ -75,7 +71,8 @@ public class AppointmentService {
             long cap = labCap(clinic);
             Map<String, Long> booked = toCountMap(appointmentRepository
                     .findBookedCountsPerSlot(clinicId, date, AppointmentStatus.CANCELLED));
-            for (String slot : LAB_SLOTS) {
+            List<String> labSlots = clinicScheduleService.getLabSlotsForDate(clinicId, date);
+            for (String slot : labSlots) {
                 long taken = booked.getOrDefault(slot, 0L) + reserved.getOrDefault(slot, 0L);
                 if (taken < cap) out.add(slot);
             }
