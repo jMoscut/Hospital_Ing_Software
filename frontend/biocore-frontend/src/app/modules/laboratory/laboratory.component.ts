@@ -155,7 +155,7 @@ import { environment } from '../../../environments/environment';
                 </div>
                 <div class="email-warning" *ngIf="!o.patientEmail">
                   <mat-icon>warning</mat-icon>
-                  El paciente no tiene correo registrado. No se podrá completar (RN-L03).
+                  El paciente no tiene correo registrado. No se podrá completar.
                 </div>
 
                 <div class="sub-panel-actions">
@@ -273,72 +273,72 @@ import { environment } from '../../../environments/environment';
   styles: [`
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
-    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
-    .page-header h1 { font-size:1.6rem; font-weight:500; color:#1565c0; margin:0; }
-    .availability-bar { display:flex; align-items:center; gap:10px; padding:8px 16px; border-radius:20px; background:#fce4ec; color:#c62828; font-size:0.88rem; font-weight:600; transition:all 0.3s; }
+    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid #D0D9E3; }
+    .page-header h1 { font-size:1.55rem; font-weight:700; color:#243C2C; margin:0; letter-spacing:-0.3px; }
+    .availability-bar { display:flex; align-items:center; gap:10px; padding:8px 18px; border-radius:20px; background:#fce4ec; color:#c62828; font-size:0.88rem; font-weight:700; transition:all 0.3s; border:1px solid #ffcdd2; }
     .availability-bar mat-icon { font-size:20px; width:20px; height:20px; }
-    .availability-bar.available { background:#e8f5e9; color:#2e7d32; }
+    .availability-bar.available { background:#EBF0DC; color:#243C2C; border-color:#A9B6C4; }
 
     .lab-order {
-      background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(29,108,97,0.08); border: 1px solid #d4e8e5;
+      background: white; border-radius: 14px; padding: 20px 22px; margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(36,60,44,0.07); border: 1px solid #D0D9E3;
+      transition: box-shadow 0.2s;
     }
-    .lab-order.completed { opacity: 0.85; }
+    .lab-order:hover { box-shadow: 0 4px 16px rgba(36,60,44,0.12); }
+    .lab-order.completed { opacity: 0.8; }
 
     .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .order-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .order-title strong { font-size: 1rem; }
+    .order-title strong { font-size: 1rem; font-weight: 700; color: #243C2C; }
 
-    .code-badge { background: #d0f4ef; color: #1D6C61; padding: 2px 8px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; }
-    .exam-badge { background: #193A31; color: #3EB9A8; padding: 2px 8px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; }
-    .dpi-badge { background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 8px; font-size: 0.78rem; }
-    .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
+    .code-badge { background: #D8E4C8; color: #243C2C; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; }
+    .exam-badge { background: #243C2C; color: #7A9445; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; }
+    .dpi-badge { background: #EDE9C0; color: #243C2C; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+    .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
 
     .order-details { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-    .detail-item { display: flex; align-items: center; gap: 4px; font-size: 0.88rem; color: #444; }
-    .detail-item mat-icon { font-size: 16px; width: 16px; height: 16px; color: #1D6C61; }
+    .detail-item { display: flex; align-items: center; gap: 4px; font-size: 0.87rem; color: #4a6560; }
+    .detail-item mat-icon { font-size: 16px; width: 16px; height: 16px; color: #59789F; }
     .detail-item.expiring { color: #e65100; }
     .detail-item.expiring mat-icon { color: #e65100; }
 
-    /* Vitals */
-    .vitals-grid { background: #f0f7ff; border: 1px solid #bbdefb; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
-    .vitals-label { display:flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:600; color:#1565c0; margin-bottom:10px; }
-    .vitals-label mat-icon { font-size:16px; width:16px; height:16px; }
+    .vitals-grid { background: #F5F2DC; border: 1px solid #C5CDD8; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; }
+    .vitals-label { display:flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:700; color:#243C2C; margin-bottom:10px; }
+    .vitals-label mat-icon { font-size:16px; width:16px; height:16px; color:#59789F; }
     .vitals-row { display:flex; flex-wrap:wrap; gap:12px; }
-    .vital-item { display:flex; flex-direction:column; align-items:center; background:white; border-radius:8px; padding:8px 14px; min-width:80px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+    .vital-item { display:flex; flex-direction:column; align-items:center; background:white; border-radius:10px; padding:8px 14px; min-width:80px; box-shadow:0 1px 3px rgba(36,60,44,0.07); border:1px solid #D0D9E3; }
     .vital-icon { font-size:1.1rem; }
-    .vital-val { font-size:0.92rem; font-weight:700; color:#1a237e; }
-    .vital-lbl { font-size:0.7rem; color:#666; }
+    .vital-val { font-size:0.92rem; font-weight:800; color:#59789F; }
+    .vital-lbl { font-size:0.68rem; color:#8aada7; letter-spacing:0.3px; }
 
     .order-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-    .sub-panel { margin-top: 16px; padding: 16px; background: #f0f7f6; border-radius: 8px; border: 1px solid #d4e8e5; }
+    .sub-panel { margin-top: 16px; padding: 16px 18px; background: #F5F2DC; border-radius: 12px; border: 1px solid #C5CDD8; }
     .sub-panel-actions { display: flex; gap: 8px; margin-top: 12px; }
     .full-width { width: 100%; }
 
-    /* File upload */
     .file-upload-area {
-      border: 2px dashed #b2dfdb; border-radius: 8px; padding: 24px;
+      border: 2px dashed #A9B6C4; border-radius: 12px; padding: 28px;
       text-align: center; cursor: pointer; transition: all 0.2s;
-      display:flex; flex-direction:column; align-items:center; gap:8px; color:#555;
+      display:flex; flex-direction:column; align-items:center; gap:8px; color:#4a6560;
+      background:#FAFAF5;
     }
-    .file-upload-area:hover { border-color: #1D6C61; background: #e8f5f3; }
-    .file-upload-area mat-icon { font-size: 36px; width:36px; height:36px; color:#1D6C61; }
-    .file-selected { display:flex; align-items:center; gap:6px; color:#2e7d32; font-weight:500; }
+    .file-upload-area:hover { border-color: #243C2C; background: #EDE9C0; }
+    .file-upload-area mat-icon { font-size: 36px; width:36px; height:36px; color:#59789F; }
+    .file-selected { display:flex; align-items:center; gap:6px; color:#243C2C; font-weight:600; }
     .file-error { color: #c62828; font-size: 0.85rem; margin-top: 6px; }
-    .email-notice { display:flex; align-items:center; gap:6px; color:#1565c0; font-size:0.85rem; margin-top:8px; }
+    .email-notice { display:flex; align-items:center; gap:6px; color:#243C2C; font-size:0.85rem; margin-top:8px; background:#EDE9C0; padding:6px 10px; border-radius:8px; border:1px solid #C5CDD8; }
     .email-notice mat-icon { font-size:16px; width:16px; height:16px; }
-    .email-warning { display:flex; align-items:center; gap:6px; color:#e65100; font-size:0.85rem; margin-top:8px; }
+    .email-warning { display:flex; align-items:center; gap:6px; color:#e65100; font-size:0.85rem; margin-top:8px; background:#fff3e0; padding:6px 10px; border-radius:8px; border:1px solid #ffe082; }
     .email-warning mat-icon { font-size:16px; width:16px; height:16px; }
 
-    /* Catálogo */
     .catalog-filters { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
     .catalog-filters mat-form-field { flex: 1; min-width: 200px; }
     .catalog-table { width: 100%; }
-    .category-chip { background: #e8f5f3; color: #1D6C61; padding: 2px 8px; border-radius: 8px; font-size: 0.78rem; }
+    .category-chip { background: #EDE9C0; color: #243C2C; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
 
-    .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
-    .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 8px; color: #3EB9A8; opacity: 0.5; }
+    .empty-state { text-align: center; padding: 56px 24px; color: #9e9e9e; }
+    .empty-state mat-icon { font-size: 52px; width: 52px; height: 52px; margin-bottom: 10px; color: #7A9445; opacity: 0.4; display:block; margin: 0 auto 10px; }
   `]
 })
 export class LaboratoryComponent implements OnInit, OnDestroy {

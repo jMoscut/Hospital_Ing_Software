@@ -65,7 +65,7 @@ function defaultSettings(): NotifSettings {
               <mat-card-header>
                 <mat-icon mat-card-avatar>person_add</mat-icon>
                 <mat-card-title>Nuevo Usuario</mat-card-title>
-                <mat-card-subtitle>FA01 · Registrar personal médico o administrativo</mat-card-subtitle>
+                <mat-card-subtitle>Registrar personal médico o administrativo</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
                 <form [formGroup]="userForm" class="form-grid">
@@ -117,7 +117,7 @@ function defaultSettings(): NotifSettings {
                     *ngIf="['DOCTOR','LAB_TECHNICIAN','HEALTH_STAFF'].includes(userForm.value.role)">
                     <mat-label>N° Colegiado {{ isCollegiateRequired() ? '*' : '(opcional)' }}</mat-label>
                     <input matInput formControlName="collegiateNumber">
-                    <mat-error>Requerido para este rol (RN-M05: debe ser único)</mat-error>
+                    <mat-error>Requerido para este rol</mat-error>
                   </mat-form-field>
                 </form>
                 <div class="error-msg" *ngIf="createError">
@@ -185,7 +185,7 @@ function defaultSettings(): NotifSettings {
                       <!-- FA04 / FA03: Asignar o reasignar clínica a médicos -->
                       <button mat-icon-button color="primary" *ngIf="u.role === 'DOCTOR'"
                               (click)="openAssignDialog(u)"
-                              [title]="u.assignedClinic ? 'Reasignar clínica (FA03)' : 'Asignar clínica (FA04)'">
+                              [title]="u.assignedClinic ? 'Reasignar clínica' : 'Asignar clínica'">
                         <mat-icon>{{ u.assignedClinic ? 'sync_alt' : 'add_location' }}</mat-icon>
                       </button>
                       <button mat-icon-button color="accent" (click)="openEditDialog(u)" title="Editar usuario">
@@ -651,7 +651,7 @@ function defaultSettings(): NotifSettings {
               <mat-card-header>
                 <mat-icon mat-card-avatar>notifications_active</mat-icon>
                 <mat-card-title>Configuración de Notificaciones</mat-card-title>
-                <mat-card-subtitle>FA02 · Pantallas de llamado y sistema de audio (RN-N01, RN-N02)</mat-card-subtitle>
+                <mat-card-subtitle>Pantallas de llamado y sistema de audio</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
 
@@ -660,7 +660,7 @@ function defaultSettings(): NotifSettings {
                   <div class="notif-row">
                     <div>
                       <strong>Activar pantalla de llamado</strong>
-                      <p>Muestra el turno del paciente en la pantalla de sala de espera [RN-N01]</p>
+                      <p>Muestra el turno del paciente en la pantalla de sala de espera</p>
                     </div>
                     <mat-slide-toggle [(ngModel)]="notifSettings.visualEnabled"
                                       (change)="saveSettings()" color="primary">
@@ -685,7 +685,7 @@ function defaultSettings(): NotifSettings {
                   <div class="notif-row">
                     <div>
                       <strong>Activar sistema de audio</strong>
-                      <p>Anuncia en voz alta el turno y clínica del paciente [RN-N02]</p>
+                      <p>Anuncia en voz alta el turno y clínica del paciente</p>
                     </div>
                     <mat-slide-toggle [(ngModel)]="notifSettings.audioEnabled"
                                       (change)="saveSettings()" color="primary">
@@ -734,7 +734,7 @@ function defaultSettings(): NotifSettings {
 
                 <div class="save-row">
                   <mat-icon style="color:#2e7d32">check_circle</mat-icon>
-                  <span>Los cambios se guardan automáticamente y se aplican en tiempo real [RN-N03]</span>
+                  <span>Los cambios se guardan automáticamente y se aplican en tiempo real</span>
                 </div>
               </mat-card-content>
             </mat-card>
@@ -808,7 +808,7 @@ function defaultSettings(): NotifSettings {
           </mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <p class="hint-text">RN-M01: Máx. de médicos por clínica. RN-M02: Solo una clínica activa por médico.</p>
+          <p class="hint-text">Máx. de médicos por clínica.Solo una clínica activa por médico.</p>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Clínica de Destino</mat-label>
             <mat-select [(ngModel)]="selectedClinicId" [ngModelOptions]="{standalone: true}">
@@ -837,8 +837,8 @@ function defaultSettings(): NotifSettings {
   styles: [`
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1D6C61; margin: 0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #C5CDD8; }
+    .page-header h1 { font-size: 1.7rem; font-weight: 700; margin: 0; background: linear-gradient(135deg,#243C2C,#59789F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 8px; }
     .mb-16 { margin-bottom: 16px; }
     .full-width { width: 100%; }
@@ -846,18 +846,18 @@ function defaultSettings(): NotifSettings {
 
     .user-table { width: 100%; }
     .role-chip { padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
-    .role-doctor { background: #e3f2fd; color: #1565c0; }
-    .role-admin { background: #fce4ec; color: #c62828; }
-    .role-nurse { background: #f3e5f5; color: #6a1b9a; }
-    .role-lab { background: #e8f5e9; color: #2e7d32; }
-    .role-pharmacy { background: #fff3e0; color: #e65100; }
-    .role-cashier { background: #f5f5f5; color: #424242; }
-    .role-staff { background: #e0f7fa; color: #006064; }
-    .clinic-badge { background: #d0f4ef; color: #1D6C61; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; }
-    .unassigned-badge { background: #fff3e0; color: #e65100; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; }
-    .collegiate-badge { background: #e8eaf6; color: #3949ab; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-left: 6px; }
-    .area-badge { background: #e8f5e9; color: #2e7d32; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; display:inline-flex;align-items:center;gap:4px; }
-    .auto-area-info { display:flex;align-items:center;gap:6px;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:8px 12px;font-size:0.82rem;margin-top:-4px; }
+    .role-doctor   { background: #D6E3F0; color: #3d5c80; }   /* Glaucous */
+    .role-admin    { background: #243C2C; color: #ECE69D; }   /* Dark Green + Vanilla */
+    .role-nurse    { background: #C8D8A8; color: #3d5528; }   /* Moss Green */
+    .role-lab      { background: #EBF0DC; color: #243C2C; }   /* Light Moss */
+    .role-pharmacy { background: #ECE69D; color: #4A4210; }   /* Vanilla */
+    .role-cashier  { background: #C5CDD8; color: #2A3D4F; }   /* Powder Blue */
+    .role-staff    { background: #D8E8C8; color: #3d5528; }   /* Light Moss */
+    .clinic-badge      { background: #D6E3F0; color: #3d5c80; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
+    .unassigned-badge  { background: #ECE69D; color: #4A4210; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
+    .collegiate-badge  { background: #C5CDD8; color: #2A3D4F; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-left: 6px; font-weight: 600; }
+    .area-badge        { background: #C8D8A8; color: #3d5528; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; display:inline-flex;align-items:center;gap:4px; }
+    .auto-area-info { display:flex;align-items:center;gap:6px;background:#F5F2DC;border:1px solid #C5CDD8;color:#243C2C;border-radius:10px;padding:8px 12px;font-size:0.82rem;margin-top:-4px; }
     .error-msg { display: flex; align-items: center; gap: 8px; color: #c62828; font-size: 0.88rem; margin-top: 4px; }
 
     .empty-state { text-align: center; padding: 32px; color: #9e9e9e; }
@@ -865,61 +865,64 @@ function defaultSettings(): NotifSettings {
 
     /* Notification settings */
     .notif-section { margin-bottom: 32px; }
-    .notif-section h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 600; color: #1D6C61; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px; }
-    .notif-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; gap: 16px; }
+    .notif-section h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; color: #243C2C; margin-bottom: 16px; border-bottom: 2px solid #C5CDD8; padding-bottom: 8px; }
+    .notif-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 10px; border: 1px solid #F5F2DC; gap: 16px; margin-bottom: 4px; transition: background 0.15s; }
+    .notif-row:hover { background: #F5F2DC; }
     .notif-row > div { flex: 1; }
-    .notif-row strong { font-size: 0.92rem; }
+    .notif-row strong { font-size: 0.92rem; color: #243C2C; }
     .notif-row p { font-size: 0.78rem; color: #757575; margin: 2px 0 0; }
     .notif-input { display: flex; align-items: center; gap: 8px; }
-    .number-input { width: 64px; padding: 6px 10px; border: 1px solid #bbb; border-radius: 6px; font-size: 1rem; text-align: center; }
-    .volume-slider { width: 140px; accent-color: #1D6C61; }
+    .number-input { width: 64px; padding: 6px 10px; border: 1px solid #A9B6C4; border-radius: 8px; font-size: 1rem; text-align: center; transition: border-color 0.15s; }
+    .number-input:focus { border-color: #243C2C; outline: none; }
+    .volume-slider { width: 140px; accent-color: #243C2C; }
     .notif-select { width: 180px; }
-    .save-row { display: flex; align-items: center; gap: 8px; color: #2e7d32; font-size: 0.85rem; margin-top: 24px; background: #e8f5e9; padding: 12px 16px; border-radius: 8px; }
+    .save-row { display: flex; align-items: center; gap: 8px; color: #243C2C; font-size: 0.85rem; margin-top: 24px; background: linear-gradient(135deg,#EBF0DC,#F5F2DC); border: 1px solid #A9B6C4; padding: 12px 16px; border-radius: 10px; font-weight: 500; }
 
     /* Assign dialog */
     .assign-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .assign-dialog { width: 420px; }
+    .assign-dialog { width: 420px; border-radius: 16px !important; }
 
     /* Schedule tab */
-    .sched-section-title { font-size: 0.95rem; font-weight: 600; color: #1D6C61; margin: 16px 0 8px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+    .sched-section-title { font-size: 0.95rem; font-weight: 700; color: #243C2C; margin: 16px 0 8px; border-bottom: 2px solid #C5CDD8; padding-bottom: 6px; }
     .schedule-table { width: 100%; margin-bottom: 8px; }
-    .sched-chip-recurring { background: #e3f2fd; color: #1565c0; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
+    .sched-chip-recurring { background: #e3f2fd; color: #59789F; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
     .sched-chip-specific   { background: #f3e5f5; color: #6a1b9a; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
 
     /* Calendar */
     .cal-nav { display:flex; align-items:center; gap:8px; margin:16px 0 8px; flex-wrap:wrap; }
-    .cal-period-label { font-size:1rem; font-weight:600; color:#1D6C61; min-width:180px; }
-    .cal-view-btns { display:flex; border:1px solid #bdbdbd; border-radius:6px; overflow:hidden; margin-left:8px; }
-    .cal-view-btns button { border:none; background:none; padding:6px 16px; cursor:pointer; font-size:0.85rem; color:#616161; }
-    .cal-view-btns button.cal-view-active { background:#1D6C61; color:#fff; }
+    .cal-period-label { font-size:1rem; font-weight:700; color:#243C2C; min-width:180px; }
+    .cal-view-btns { display:flex; border:1px solid #A9B6C4; border-radius:8px; overflow:hidden; margin-left:8px; }
+    .cal-view-btns button { border:none; background:none; padding:6px 16px; cursor:pointer; font-size:0.85rem; color:#616161; transition:background 0.15s; }
+    .cal-view-btns button:hover { background:#F5F2DC; }
+    .cal-view-btns button.cal-view-active { background:linear-gradient(135deg,#243C2C,#59789F); color:#fff; }
     .cal-month { margin-bottom:16px; }
-    .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:0.78rem; font-weight:600; color:#757575; padding:4px 0; border-bottom:1px solid #e0e0e0; }
+    .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:0.78rem; font-weight:700; color:#757575; padding:4px 0; border-bottom:2px solid #C5CDD8; }
     .cal-cells { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-    .cal-cell { min-height:56px; border-radius:6px; padding:4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; transition:background 0.15s; position:relative; }
-    .cal-cell:hover:not(.other-month) { background:#e8f5e9; }
+    .cal-cell { min-height:56px; border-radius:8px; padding:4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; transition:all 0.15s; position:relative; }
+    .cal-cell:hover:not(.other-month) { background:#F5F2DC; transform:translateY(-1px); }
     .cal-cell.other-month { opacity:0.3; cursor:default; }
-    .cal-cell.cal-selected { background:#1D6C61 !important; color:#fff; }
+    .cal-cell.cal-selected { background:linear-gradient(135deg,#243C2C,#59789F) !important; color:#fff; box-shadow:0 2px 8px rgba(36,60,44,0.25); }
     .cal-cell.cal-selected .cal-day-num { color:#fff; }
-    .cal-cell.is-today .cal-day-num { background:#1D6C61; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
-    .cal-cell.cal-selected.is-today .cal-day-num { background:#fff; color:#1D6C61; }
+    .cal-cell.is-today .cal-day-num { background:#243C2C; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+    .cal-cell.cal-selected.is-today .cal-day-num { background:#fff; color:#243C2C; }
     .cal-day-num { font-size:0.88rem; font-weight:500; }
-    .cal-dot { width:6px; height:6px; border-radius:50%; background:#4caf50; flex-shrink:0; }
-    .cal-cell.cal-selected .cal-dot { background:#a5d6a7; }
+    .cal-dot { width:6px; height:6px; border-radius:50%; background:#7A9445; flex-shrink:0; }
+    .cal-cell.cal-selected .cal-dot { background:#A9B6C4; }
     .cal-week { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:16px; }
-    .week-col { border:1px solid #e0e0e0; border-radius:8px; padding:8px 4px; cursor:pointer; min-height:80px; transition:background 0.15s; }
-    .week-col:hover { background:#e8f5e9; }
-    .week-col.cal-selected { background:#1D6C61; color:#fff; border-color:#1D6C61; }
+    .week-col { border:1px solid #C5CDD8; border-radius:10px; padding:8px 4px; cursor:pointer; min-height:80px; transition:all 0.15s; }
+    .week-col:hover { background:#F5F2DC; border-color:#7A9445; transform:translateY(-1px); }
+    .week-col.cal-selected { background:linear-gradient(135deg,#243C2C,#59789F); color:#fff; border-color:#243C2C; box-shadow:0 2px 8px rgba(36,60,44,0.25); }
     .week-col-header { text-align:center; margin-bottom:6px; }
-    .week-dow { display:block; font-size:0.72rem; color:#757575; text-transform:uppercase; }
-    .week-col.cal-selected .week-dow { color:#a5d6a7; }
+    .week-dow { display:block; font-size:0.72rem; color:#757575; text-transform:uppercase; font-weight:600; }
+    .week-col.cal-selected .week-dow { color:#A9B6C4; }
     .week-daynum { display:inline-block; font-size:1rem; font-weight:600; }
-    .week-daynum.is-today { background:#1D6C61; color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; }
-    .week-col.cal-selected .week-daynum.is-today { background:#fff; color:#1D6C61; }
+    .week-daynum.is-today { background:#243C2C; color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; }
+    .week-col.cal-selected .week-daynum.is-today { background:#fff; color:#243C2C; }
     .week-sched-item { display:flex; flex-direction:column; background:rgba(255,255,255,0.2); border-radius:4px; padding:2px 4px; margin-top:4px; }
     .week-col.cal-selected .week-sched-item { background:rgba(255,255,255,0.2); }
-    .apply-panel { background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:16px; margin:12px 0; }
+    .apply-panel { background:linear-gradient(135deg,#EBF0DC,#F5F2DC); border:1px solid #A9B6C4; border-radius:12px; padding:16px; margin:12px 0; }
     .apply-selected-label { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:0.88rem; }
-    .day-chip { background:#1D6C61; color:#fff; border-radius:12px; padding:2px 10px; font-size:0.75rem; }
+    .day-chip { background:linear-gradient(135deg,#243C2C,#59789F); color:#fff; border-radius:12px; padding:2px 10px; font-size:0.75rem; font-weight:600; }
     .apply-form-row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
   `]
 })
@@ -1118,7 +1121,7 @@ export class UserManagementComponent implements OnInit {
           }
           this.assigning = false;
         },
-        error: err => { this.notification.error(err.error?.message || 'Error: Verifique capacidad (RN-M01)'); this.assigning = false; }
+        error: err => { this.notification.error(err.error?.message || 'Error: Verifique capacidad'); this.assigning = false; }
       });
     };
 

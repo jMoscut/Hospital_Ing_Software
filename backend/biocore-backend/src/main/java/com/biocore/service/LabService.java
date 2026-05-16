@@ -168,7 +168,7 @@ public class LabService {
         // RN-L03: Verificar correo registrado
         Patient patient = order.getPatient();
         if (patient.getEmail() == null || patient.getEmail().isBlank()) {
-            throw new RuntimeException("RN-L03: El correo electrónico del paciente no está registrado. Actualícelo antes de completar.");
+            throw new RuntimeException("El correo electrónico del paciente no está registrado. Actualícelo antes de completar.");
         }
 
         // Validar PDF

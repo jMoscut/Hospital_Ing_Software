@@ -181,8 +181,8 @@ const NOTIF_KEY = 'biocore_notification_settings';
           </div>
         </mat-tab>
 
-        <!-- TAB 2: Personal médico -->
-        <mat-tab>
+        <!-- TAB 2: Personal médico — solo ADMIN y HEALTH_STAFF -->
+        <mat-tab *ngIf="canSeeStaff()">
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">badge</mat-icon>
             Personal ({{ staffList.length }})
@@ -272,142 +272,145 @@ const NOTIF_KEY = 'biocore_notification_settings';
     </div>
   `,
   styles: [`
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1D6C61; margin: 0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid #D0D9E3; }
+    .page-header h1 { font-size: 1.55rem; font-weight: 700; color: #243C2C; margin: 0; letter-spacing: -0.3px; }
     .header-actions { display: flex; gap: 8px; }
     .tab-content { padding: 20px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
-    h3 { font-size: 1rem; font-weight: 600; color: #1D6C61; margin-bottom: 12px; margin-top: 4px; }
+    h3 { font-size: 1rem; font-weight: 700; color: #243C2C; margin-bottom: 12px; margin-top: 4px; }
 
-    /* Calling banner */
+    /* ── Calling banner ── */
     .calling-banner {
       display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-      background: linear-gradient(90deg, #1D6C61, #3EB9A8);
-      color: white; border-radius: 10px; padding: 12px 20px; margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(29,108,97,0.3);
+      background: linear-gradient(135deg,#243C2C,#59789F);
+      color: white; border-radius: 14px; padding: 14px 22px; margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(36,60,44,0.35);
     }
-    .calling-label { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+    .calling-label { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.82rem; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
     .calling-tickets { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
-    .calling-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 12px; }
-    .calling-num { font-size: 1.4rem; font-weight: 700; }
+    .calling-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.15); border-radius: 10px; padding: 6px 14px; backdrop-filter: blur(4px); }
+    .calling-num { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.5px; }
     .calling-name { font-weight: 500; }
-    .calling-clinic { font-size: 0.85rem; opacity: 0.9; }
+    .calling-clinic { font-size: 0.82rem; opacity: 0.85; }
 
-    /* Call panel */
-    .call-panel { margin-bottom: 16px; border-left: 4px solid #1D6C61; }
+    /* ── Call panel ── */
+    .call-panel { margin-bottom: 16px; border-left: 4px solid #243C2C; border-radius: 0 14px 14px 0; }
     .call-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     .call-clinic-field { flex: 1; min-width: 220px; }
-    .call-hint { font-size: 0.78rem; color: #757575; margin: 6px 0 0; }
+    .call-hint { font-size: 0.78rem; color: #6b8c84; margin: 6px 0 0; }
 
-    /* Queue toolbar */
+    /* ── Queue toolbar ── */
     .queue-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
     .filter-field { flex: 1; min-width: 200px; }
     .queue-stats { display: flex; gap: 8px; flex-wrap: wrap; }
-    .stat-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 500; }
+    .stat-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
     .waiting { background: #fff8e1; color: #f57f17; }
     .vitals { background: #e0f7fa; color: #00838f; }
     .ready { background: #f3e5f5; color: #7b1fa2; }
-    .calling { background: #e3f2fd; color: #1565c0; }
-    .consulting { background: #e8f5e9; color: #2e7d32; }
-    .calling-dest { font-size: 0.85rem; opacity: 0.9; }
+    .calling { background: #e3f2fd; color: #59789F; }
+    .consulting { background: #EBF0DC; color: #243C2C; }
+    .calling-dest { font-size: 0.82rem; opacity: 0.88; }
     .calling-icon-vs { font-size: 16px; opacity: 0.8; }
     .warn-hint { color: #e65100 !important; }
     .doctor-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-    .doctor-chip { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 16px; font-size: 0.82rem; font-weight: 500; }
-    .doctor-chip.avail { background: #e8f5e9; color: #2e7d32; }
+    .doctor-chip { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 16px; font-size: 0.82rem; font-weight: 600; }
+    .doctor-chip.avail { background: #EBF0DC; color: #243C2C; }
     .doctor-chip.busy { background: #ffebee; color: #c62828; }
     .avail-label { font-size: 0.72rem; opacity: 0.8; margin-left: 2px; }
 
-    /* Ticket cards */
+    /* ── Ticket cards ── */
     .ticket-card {
-      display: flex; align-items: center; gap: 16px; padding: 14px 18px;
-      background: white; border-radius: 10px; margin-bottom: 10px;
-      box-shadow: 0 2px 8px rgba(29,108,97,0.07); border: 1px solid #e8e8e8;
-      transition: border-color 0.2s;
+      display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+      background: white; border-radius: 14px; margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(36,60,44,0.07); border: 1px solid #D0D9E3;
+      transition: box-shadow 0.2s, transform 0.2s;
     }
-    .ticket-card.being-called { border-color: #3EB9A8; box-shadow: 0 2px 12px rgba(62,185,168,0.25); }
-    .ticket-card.completed { opacity: 0.7; }
-    .ticket-num { font-size: 1.5rem; font-weight: 700; color: #1D6C61; min-width: 85px; }
+    .ticket-card:hover { box-shadow: 0 4px 16px rgba(36,60,44,0.12); transform: translateY(-1px); }
+    .ticket-card.being-called { border-color: #7A9445; box-shadow: 0 2px 12px rgba(89,120,159,0.25); }
+    .ticket-card.completed { opacity: 0.65; }
+    .ticket-num { font-size: 1.5rem; font-weight: 800; color: #59789F; min-width: 85px; letter-spacing: -0.5px; }
     .ticket-body { flex: 1; }
-    .ticket-name { font-weight: 600; }
-    .ticket-sub { font-size: 0.8rem; color: #757575; margin-top: 2px; }
-    .ticket-doctor { color: #1565c0; font-size: 0.8rem; margin-top: 3px; display:flex; align-items:center; gap:3px; }
+    .ticket-name { font-weight: 600; color: #243C2C; }
+    .ticket-sub { font-size: 0.8rem; color: #6b8c84; margin-top: 2px; }
+    .ticket-doctor { color: #59789F; font-size: 0.8rem; margin-top: 3px; display:flex; align-items:center; gap:3px; }
     .ticket-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-    .ticket-time { font-size: 0.8rem; color: #1D6C61; font-weight: 600; display:flex; align-items:center; gap:2px; }
+    .ticket-time { font-size: 0.8rem; color: #59789F; font-weight: 600; display:flex; align-items:center; gap:2px; }
     .ticket-actions { display: flex; gap: 4px; }
-    .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
+    .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
 
-    /* Search */
+    /* ── Search ── */
     .search-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
     .search-field { flex: 1; min-width: 250px; }
     .search-results { margin-bottom: 12px; }
     .result-item {
       display: flex; align-items: center; gap: 12px; padding: 10px 14px;
-      border-radius: 8px; cursor: pointer; border: 2px solid transparent;
-      margin-bottom: 6px; background: #f8f9ff; transition: all 0.15s;
+      border-radius: 10px; cursor: pointer; border: 2px solid transparent;
+      margin-bottom: 6px; background: #FAFAF5; transition: all 0.15s;
     }
-    .result-item:hover { background: #e3f2fd; }
-    .result-item.selected { border-color: #1D6C61; background: #d0f4ef; }
-    .result-name { font-weight: 500; }
-    .result-meta { font-size: 0.78rem; color: #757575; }
-    .check-icon { color: #1D6C61; margin-left: auto; }
-    .no-results { display: flex; align-items: center; gap: 8px; color: #757575; font-size: 0.85rem; padding: 8px 0; }
+    .result-item:hover { background: #EDE9C0; }
+    .result-item.selected { border-color: #243C2C; background: #D8E4C8; }
+    .result-name { font-weight: 600; color: #243C2C; }
+    .result-meta { font-size: 0.78rem; color: #6b8c84; }
+    .check-icon { color: #59789F; margin-left: auto; }
+    .no-results { display: flex; align-items: center; gap: 8px; color: #6b8c84; font-size: 0.85rem; padding: 8px 0; }
     .selected-patient-box {
       display: flex; align-items: center; gap: 12px;
-      background: #e8f5e9; padding: 14px; border-radius: 8px; margin-bottom: 8px; color: #2e7d32;
+      background: linear-gradient(135deg,#EBF0DC,#F5F2DC); padding: 14px 16px;
+      border-radius: 12px; margin-bottom: 8px; color: #243C2C; border: 1px solid #C5CDD8;
     }
     .selected-patient-box mat-icon { font-size: 36px; width: 36px; height: 36px; }
-    .selected-patient-box button { margin-left: auto; color: #757575; }
+    .selected-patient-box button { margin-left: auto; color: #6b8c84; }
     .appt-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 8px; }
     .full-width { grid-column: 1 / -1; }
 
-    .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
-    .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; }
+    .empty-state { text-align: center; padding: 56px 24px; color: #9e9e9e; }
+    .empty-state mat-icon { font-size: 52px; width: 52px; height: 52px; color: #7A9445; opacity: 0.4; margin-bottom: 10px; display:block; margin: 0 auto 10px; }
     .status-waiting { background:#fff8e1;color:#f57f17; }
     .status-vitals { background:#e0f7fa;color:#00838f; }
     .status-ready { background:#f3e5f5;color:#7b1fa2; }
-    .status-being-called { background:#e3f2fd;color:#1565c0; }
-    .status-in-consultation { background:#e8f5e9;color:#2e7d32; }
+    .status-being-called { background:#e3f2fd;color:#59789F; }
+    .status-in-consultation { background:#EBF0DC;color:#243C2C; }
     .status-completed { background:#f5f5f5;color:#616161; }
     .status-absent { background:#ffebee;color:#c62828; }
 
-    /* Staff panel */
+    /* ── Staff panel ── */
     .staff-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
     .staff-filter-field { min-width: 200px; }
     .staff-summary { display: flex; gap: 8px; flex-wrap: wrap; }
     .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
     .staff-card {
       display: flex; flex-direction: column; gap: 12px;
-      background: white; border-radius: 12px; padding: 16px 18px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.07); border: 1px solid #e8e8e8;
-      border-left: 5px solid #e0e0e0;
+      background: white; border-radius: 14px; padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(36,60,44,0.07); border: 1px solid #D0D9E3;
+      border-left: 5px solid #e0e0e0; transition: box-shadow 0.2s;
     }
-    .staff-card.staff-activo { border-left-color: #43a047; }
+    .staff-card:hover { box-shadow: 0 4px 16px rgba(36,60,44,0.12); }
+    .staff-card.staff-activo { border-left-color: #7A9445; }
     .staff-card.staff-inactivo { border-left-color: #fb8c00; }
-    .staff-card.staff-fuera_de_turno { border-left-color: #9e9e9e; opacity: 0.75; }
+    .staff-card.staff-fuera_de_turno { border-left-color: #9e9e9e; opacity: 0.72; }
     .staff-card-top { display: flex; align-items: center; gap: 12px; }
     .staff-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
     .staff-avatar {
       width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
-      background: #e8f5e9; display: flex; align-items: center; justify-content: center;
-      color: #1D6C61;
+      background: transparent; display: flex; align-items: center; justify-content: center;
+      color: #59789F;
     }
     .staff-card.staff-inactivo .staff-avatar { background: #fff3e0; color: #e65100; }
     .staff-card.staff-fuera_de_turno .staff-avatar { background: #f5f5f5; color: #9e9e9e; }
     .staff-info { flex: 1; min-width: 0; }
-    .staff-name { font-weight: 700; font-size: 0.97rem; color: #212121; line-height: 1.3; word-break: break-word; }
-    .staff-role { font-size: 0.78rem; color: #757575; margin-top: 3px; }
-    .staff-area { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #1D6C61; font-weight: 500; flex-shrink: 0; }
+    .staff-name { font-weight: 700; font-size: 0.95rem; color: #243C2C; line-height: 1.3; word-break: break-word; }
+    .staff-role { font-size: 0.78rem; color: #6b8c84; margin-top: 3px; }
+    .staff-area { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: #59789F; font-weight: 600; flex-shrink: 0; }
     .staff-area mat-icon { font-size: 15px; width: 15px; height: 15px; }
     .staff-status-badge {
       display: flex; align-items: center; gap: 5px;
-      padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+      padding: 4px 10px; border-radius: 12px; font-size: 0.73rem; font-weight: 700;
       flex-shrink: 0;
     }
-    .badge-activo { background: #e8f5e9; color: #2e7d32; }
+    .badge-activo { background: #EBF0DC; color: #243C2C; }
     .badge-inactivo { background: #fff3e0; color: #e65100; }
     .badge-fuera_de_turno { background: #f5f5f5; color: #757575; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
   `]
 })
 export class AppointmentsComponent implements OnInit, OnDestroy {
@@ -656,6 +659,10 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
 
   canManage(): boolean {
     return this.authService.hasRole('HEALTH_STAFF', 'NURSE');
+  }
+
+  canSeeStaff(): boolean {
+    return this.authService.hasRole('ADMIN', 'HEALTH_STAFF');
   }
 
   getStatusClass(s: string): string {

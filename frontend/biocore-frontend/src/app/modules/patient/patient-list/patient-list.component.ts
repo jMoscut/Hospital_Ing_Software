@@ -199,13 +199,13 @@ import { Patient } from '../../../core/models/patient.model';
     </div>
   `,
   styles: [`
-    .search-field { width: 100%; max-width: 400px; margin-bottom: 16px; }
+    .search-field { width: 100%; max-width: 420px; margin-bottom: 16px; }
     .w-full { width: 100%; }
-    .clickable-row { cursor: pointer; }
-    .clickable-row:hover { background: #f5f5f5; }
+    .clickable-row { cursor: pointer; transition: background 0.15s; }
+    .clickable-row:hover { background: #F5F2DC !important; }
     .edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .edit-dialog { width: 560px; max-height: 90vh; overflow-y: auto; }
-    .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .edit-dialog { width: 580px; max-height: 90vh; overflow-y: auto; border-radius: 16px !important; }
+    .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
   `]
 })
 export class PatientListComponent implements OnInit {

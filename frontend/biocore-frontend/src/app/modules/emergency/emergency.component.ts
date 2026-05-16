@@ -57,7 +57,7 @@ import { environment } from '../../../environments/environment';
                   <mat-step label="Identificar Paciente">
                     <div class="rn-note">
                       <mat-icon>info</mat-icon>
-                      RN-E01: El personal debe registrar explícitamente el ingreso como Emergencia.
+                      El personal debe registrar explícitamente el ingreso como Emergencia.
                     </div>
 
                     <div class="form-grid">
@@ -111,7 +111,7 @@ import { environment } from '../../../environments/environment';
                       <div *ngIf="!foundPatient">
                         <div class="rn-note rn-warn">
                           <mat-icon>warning</mat-icon>
-                          RN-E04: Ingrese los datos que se puedan obtener. Se creará un reporte para completar registro luego.
+                          Ingrese los datos que se puedan obtener. Se creará un reporte para completar registro luego.
                         </div>
                         <div class="form-grid">
                           <mat-form-field appearance="outline">
@@ -160,7 +160,7 @@ import { environment } from '../../../environments/environment';
                     <form [formGroup]="vitalsForm">
                       <div class="rn-note rn-warn">
                         <mat-icon>monitor_heart</mat-icon>
-                        RN-E03: Registrar signos vitales. Al finalizar se envía la orden de pago a caja.
+                        Registrar signos vitales. Al finalizar se envía la orden de pago a caja.
                       </div>
                       <div class="vitals-grid">
                         <mat-form-field appearance="outline">
@@ -205,7 +205,7 @@ import { environment } from '../../../environments/environment';
                       <div class="step-actions">
                         <button mat-button type="button" matStepperPrevious>← Anterior</button>
                         <button mat-raised-button color="warn" type="button"
-                                (click)="registerEmergency()" [disabled]="submitting">
+                                (click)="registerEmergency()" [disabled]="submitting || vitalsForm.invalid">
                           <mat-spinner *ngIf="submitting" diameter="20" style="display:inline-block;margin-right:8px"></mat-spinner>
                           <mat-icon *ngIf="!submitting">emergency</mat-icon>
                           {{ submitting ? 'Registrando...' : 'Activar Emergencia' }}
@@ -390,50 +390,52 @@ import { environment } from '../../../environments/environment';
     </div>
   `,
   styles: [`
-    .emergency-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-    .header-title { display:flex; align-items:center; gap:8px; }
-    .header-title h1 { font-size:1.6rem; font-weight:500; color:#c62828; margin:0; }
+    .emergency-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:18px; border-bottom:1px solid #fdd; }
+    .header-title { display:flex; align-items:center; gap:10px; }
+    .header-title h1 { font-size:1.55rem; font-weight:700; color:#b71c1c; margin:0; letter-spacing:-0.3px; }
     .emergency-icon { font-size:32px; width:32px; height:32px; color:#c62828; }
     .urgent-chip { background:#c62828 !important; color:white !important; font-weight:700; }
-    .rn-note { display:flex; align-items:center; gap:8px; background:#e3f2fd; color:#1565c0; padding:12px 16px; border-radius:8px; margin-bottom:16px; font-size:0.9rem; }
-    .rn-warn { background:#ffebee !important; color:#c62828 !important; }
-    .patient-found { display:flex; align-items:center; gap:12px; background:#e8f5e9; color:#2e7d32; padding:12px 16px; border-radius:8px; margin:16px 0; }
-    .patient-meta { font-size:0.82rem; color:#555; margin-top:2px; }
-    .patient-ok { display:flex; align-items:center; gap:8px; background:#e8f5e9; color:#2e7d32; padding:12px 16px; border-radius:8px; margin-bottom:16px; }
-    .patient-unknown { display:flex; align-items:center; gap:8px; background:#fff3e0; color:#e65100; padding:12px 16px; border-radius:8px; margin:16px 0; font-size:0.87rem; }
+    .rn-note { display:flex; align-items:center; gap:8px; background:#EDE9C0; color:#243C2C; padding:12px 16px; border-radius:10px; margin-bottom:16px; font-size:0.9rem; border:1px solid #C5CDD8; }
+    .rn-warn { background:#ffebee !important; color:#c62828 !important; border-color:#ffcdd2 !important; }
+    .patient-found { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#EBF0DC,#F5F2DC); color:#243C2C; padding:14px 18px; border-radius:12px; margin:16px 0; border:1px solid #A9B6C4; }
+    .patient-meta { font-size:0.82rem; color:#4a6560; margin-top:2px; }
+    .patient-ok { display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#EBF0DC,#F5F2DC); color:#243C2C; padding:12px 16px; border-radius:10px; margin-bottom:16px; border:1px solid #A9B6C4; }
+    .patient-unknown { display:flex; align-items:center; gap:8px; background:#fff3e0; color:#e65100; padding:12px 16px; border-radius:10px; margin:16px 0; font-size:0.87rem; border:1px solid #ffe082; }
     .insurance-info { font-size:0.82rem; margin-top:4px; }
     .form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:12px; }
     .full-width { width:100%; margin-bottom:8px; }
     .vitals-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
     .step-actions { display:flex; gap:12px; margin-top:16px; }
-    .success-panel { text-align:center; padding:40px 24px; }
-    .success-icon { font-size:64px; width:64px; height:64px; color:#c62828; margin-bottom:16px; }
-    .success-panel h2 { color:#c62828; margin-bottom:16px; }
-    .alert-box { display:flex; align-items:center; gap:10px; background:#fff8e1; border:1px solid #ffe082; border-radius:8px; padding:14px 20px; margin:16px auto; max-width:520px; font-size:0.9rem; color:#5d4037; }
-    .report-box { display:flex; align-items:center; gap:10px; background:#e3f2fd; border-radius:8px; padding:14px 20px; margin:8px auto; max-width:520px; font-size:0.9rem; color:#1565c0; }
-    .empty-state { text-align:center; padding:40px; color:#9e9e9e; }
-    .empty-state mat-icon { font-size:48px; width:48px; height:48px; margin-bottom:8px; color:#c8e6c9; }
-    .report-card { border:1px solid #e0e0e0; border-radius:10px; padding:16px; margin-bottom:16px; background:white; }
-    .report-card.report-registered { border-color:#c8e6c9; background:#f9fff9; }
+    .success-panel { text-align:center; padding:48px 24px; }
+    .success-icon { font-size:72px; width:72px; height:72px; color:#c62828; margin-bottom:16px; filter:drop-shadow(0 4px 12px rgba(198,40,40,0.3)); }
+    .success-panel h2 { color:#b71c1c; margin-bottom:16px; font-weight:700; }
+    .alert-box { display:flex; align-items:center; gap:10px; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:14px 20px; margin:16px auto; max-width:520px; font-size:0.9rem; color:#5d4037; }
+    .report-box { display:flex; align-items:center; gap:10px; background:#EDE9C0; border-radius:10px; padding:14px 20px; margin:8px auto; max-width:520px; font-size:0.9rem; color:#243C2C; border:1px solid #C5CDD8; }
+    .empty-state { text-align:center; padding:48px; color:#9e9e9e; }
+    .empty-state mat-icon { font-size:52px; width:52px; height:52px; margin-bottom:10px; color:#ef9a9a; display:block; margin:0 auto 10px; }
+    .report-card { border:1px solid #D0D9E3; border-radius:14px; padding:18px 20px; margin-bottom:14px; background:white; box-shadow:0 2px 8px rgba(36,60,44,0.06); transition:box-shadow 0.2s; }
+    .report-card:hover { box-shadow:0 4px 14px rgba(36,60,44,0.12); }
+    .report-card.report-registered { border-color:#A9B6C4; background:#FAFAF5; }
     .report-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .report-id { display:flex; align-items:center; gap:8px; color:#c62828; }
-    .report-ticket { font-size:0.82rem; color:#757575; margin-left:8px; }
-    .report-status { font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:12px; }
+    .report-id { display:flex; align-items:center; gap:8px; color:#c62828; font-weight:700; }
+    .report-ticket { font-size:0.82rem; color:#6b8c84; margin-left:8px; }
+    .report-status { font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:12px; }
     .status-open { background:#ffebee; color:#c62828; }
     .status-paid { background:#fff3e0; color:#e65100; }
-    .status-done { background:#e8f5e9; color:#2e7d32; }
-    .report-info { display:flex; gap:20px; font-size:0.85rem; color:#555; margin-bottom:6px; flex-wrap:wrap; }
-    .report-motive { font-size:0.87rem; color:#333; background:#f5f5f5; padding:8px 12px; border-radius:6px; }
+    .status-done { background:#EBF0DC; color:#243C2C; }
+    .report-info { display:flex; gap:20px; font-size:0.85rem; color:#4a6560; margin-bottom:6px; flex-wrap:wrap; }
+    .report-motive { font-size:0.87rem; color:#2d4a47; background:#F5F2DC; padding:8px 12px; border-radius:8px; border:1px solid #C5CDD8; }
     .register-form { margin-top:12px; }
-    .register-form h4 { margin:8px 0 12px; color:#1D6C61; font-size:0.95rem; }
+    .register-form h4 { margin:8px 0 12px; color:#243C2C; font-size:0.95rem; font-weight:700; }
     .reg-actions { display:flex; gap:12px; margin-top:8px; }
-    .reg-note { display:flex; align-items:center; gap:6px; font-size:0.8rem; color:#757575; margin-top:8px; }
-    .registered-badge { display:flex; align-items:center; gap:6px; color:#2e7d32; font-size:0.87rem; margin-top:8px; }
-    .queue-card { display:flex; align-items:center; justify-content:space-between; border:2px solid #ffcdd2; border-radius:10px; padding:16px; margin-bottom:12px; background:#fff8f8; }
+    .reg-note { display:flex; align-items:center; gap:6px; font-size:0.8rem; color:#6b8c84; margin-top:8px; }
+    .registered-badge { display:flex; align-items:center; gap:6px; color:#243C2C; font-size:0.87rem; margin-top:8px; font-weight:600; }
+    .queue-card { display:flex; align-items:center; justify-content:space-between; border:2px solid #ffcdd2; border-left:4px solid #c62828; border-radius:14px; padding:16px 20px; margin-bottom:12px; background:#fff8f8; transition:box-shadow 0.2s; }
+    .queue-card:hover { box-shadow:0 4px 14px rgba(198,40,40,0.15); }
     .queue-card-left { display:flex; align-items:center; gap:16px; }
-    .queue-number { font-size:1.6rem; font-weight:700; color:#c62828; min-width:64px; }
-    .queue-patient { font-weight:600; color:#212121; font-size:1rem; }
-    .queue-clinic { font-size:0.82rem; color:#757575; margin-top:2px; }
+    .queue-number { font-size:1.7rem; font-weight:800; color:#c62828; min-width:64px; letter-spacing:-1px; }
+    .queue-patient { font-weight:700; color:#243C2C; font-size:1rem; }
+    .queue-clinic { font-size:0.82rem; color:#6b8c84; margin-top:2px; }
     .queue-time { font-size:0.78rem; color:#9e9e9e; margin-top:2px; }
   `]
 })

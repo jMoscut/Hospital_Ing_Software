@@ -87,9 +87,9 @@ const NOTIF_KEY = 'biocore_notification_settings';
 
     .screen-root {
       width: 100vw; height: 100vh;
-      background: #0a1a16;
+      background: #1a2f22;
       display: flex; flex-direction: column;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
       color: white;
     }
 
@@ -97,29 +97,30 @@ const NOTIF_KEY = 'biocore_notification_settings';
     .screen-header {
       display: flex; justify-content: space-between; align-items: center;
       padding: 16px 40px;
-      background: rgba(62,185,168,0.15);
-      border-bottom: 2px solid #3EB9A8;
+      background: rgba(36,60,44,0.9);
+      border-bottom: 2px solid #7A9445;
     }
     .brand { display: flex; align-items: center; gap: 16px; }
     .brand-icon { font-size: 2rem; }
-    .brand-name { font-size: 1.4rem; font-weight: 700; color: #3EB9A8; }
-    .brand-sub { font-size: 0.75rem; color: rgba(255,255,255,0.5); letter-spacing: 1px; text-transform: uppercase; }
-    .clock { font-size: 2.2rem; font-weight: 700; color: #3EB9A8; font-variant-numeric: tabular-nums; }
+    .brand-name { font-size: 1.4rem; font-weight: 700; color: #ECE69D; }
+    .brand-sub { font-size: 0.75rem; color: rgba(236,230,157,0.5); letter-spacing: 1px; text-transform: uppercase; }
+    .clock { font-size: 2.2rem; font-weight: 700; color: #ECE69D; font-variant-numeric: tabular-nums; }
 
     /* Main area */
     .main-area {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       padding: 32px;
+      background: linear-gradient(180deg, #1a2f22 0%, #243C2C 100%);
     }
     .now-calling-label {
       display: flex; align-items: center; gap: 12px;
       font-size: 1rem; font-weight: 700; letter-spacing: 3px;
-      color: #3EB9A8; text-transform: uppercase; margin-bottom: 32px;
+      color: #ECE69D; text-transform: uppercase; margin-bottom: 32px;
     }
     .pulse-dot {
       width: 14px; height: 14px; border-radius: 50%;
-      background: #3EB9A8;
+      background: #ECE69D;
       animation: pulse 1.2s infinite;
       display: inline-block;
     }
@@ -131,62 +132,63 @@ const NOTIF_KEY = 'biocore_notification_settings';
       display: flex; gap: 32px; flex-wrap: wrap; justify-content: center;
     }
     .called-card {
-      background: linear-gradient(135deg, #1D6C61, #3EB9A8);
+      background: linear-gradient(135deg, #243C2C, #59789F);
       border-radius: 20px; padding: 32px 48px; text-align: center;
       min-width: 320px;
-      box-shadow: 0 0 60px rgba(62,185,168,0.4);
+      box-shadow: 0 0 60px rgba(89,120,159,0.45);
       animation: fadeIn 0.4s ease;
     }
     @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-    .ticket-number { font-size: 5rem; font-weight: 900; line-height: 1; color: white; letter-spacing: 2px; }
-    .patient-name { font-size: 1.6rem; font-weight: 600; color: rgba(255,255,255,0.9); margin: 12px 0 16px; }
+    .ticket-number { font-size: 5rem; font-weight: 900; line-height: 1; color: #ECE69D; letter-spacing: 2px; }
+    .patient-name { font-size: 1.6rem; font-weight: 600; color: rgba(255,255,255,0.92); margin: 12px 0 16px; }
     .clinic-arrow { display: flex; align-items: center; justify-content: center; gap: 12px; }
-    .arrow { font-size: 2rem; color: rgba(255,255,255,0.7); }
+    .arrow { font-size: 2rem; color: rgba(236,230,157,0.7); }
     .clinic-name { font-size: 1.2rem; color: rgba(255,255,255,0.85); font-weight: 500; }
-    .card-vitals { background: linear-gradient(135deg, #1a5c6e, #2ea8c4) !important; box-shadow: 0 0 60px rgba(46,168,196,0.4) !important; }
+    .card-vitals { background: linear-gradient(135deg, #3d5c80, #59789F) !important; box-shadow: 0 0 60px rgba(89,120,159,0.5) !important; }
     .card-emergency { background: linear-gradient(135deg, #7f0000, #c62828) !important; box-shadow: 0 0 80px rgba(198,40,40,0.7) !important; animation: fadeIn 0.4s ease, emg-pulse-border 1s infinite !important; }
     .emergency-banner { font-size: 0.85rem; font-weight: 800; letter-spacing: 2px; color: #ffcdd2; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 4px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
     .emg-pulse { width: 10px; height: 10px; border-radius: 50%; background: #ff5252; display: inline-block; animation: pulse 0.7s infinite; flex-shrink: 0; }
     @keyframes emg-pulse-border { 0%,100% { box-shadow: 0 0 80px rgba(198,40,40,0.7); } 50% { box-shadow: 0 0 120px rgba(255,82,82,1); } }
-    .destination-badge { margin-top: 12px; font-size: 0.85rem; background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 14px; display: inline-flex; align-items: center; gap: 6px; }
+    .destination-badge { margin-top: 12px; font-size: 0.85rem; background: rgba(236,230,157,0.2); border-radius: 20px; padding: 4px 14px; display: inline-flex; align-items: center; gap: 6px; color: #ECE69D; }
 
-    .no-call { text-align: center; color: rgba(255,255,255,0.25); }
+    .no-call { text-align: center; color: rgba(236,230,157,0.25); }
     .no-call-icon { font-size: 5rem; margin-bottom: 16px; }
     .no-call-text { font-size: 1.5rem; font-weight: 300; letter-spacing: 2px; }
 
     /* Queue */
     .queue-area {
-      background: rgba(255,255,255,0.04);
-      border-top: 1px solid rgba(62,185,168,0.2);
+      background: rgba(36,60,44,0.8);
+      border-top: 1px solid rgba(122,148,69,0.3);
       padding: 16px 40px;
       max-height: 220px; overflow-y: auto;
     }
     .queue-title {
       font-size: 0.75rem; font-weight: 700; letter-spacing: 2px;
-      color: rgba(255,255,255,0.4); text-transform: uppercase; margin-bottom: 10px;
+      color: rgba(236,230,157,0.5); text-transform: uppercase; margin-bottom: 10px;
     }
     .queue-list { display: flex; flex-direction: column; gap: 6px; }
     .queue-item {
       display: flex; align-items: center; gap: 16px;
       padding: 8px 16px; border-radius: 8px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(236,230,157,0.06);
       font-size: 0.95rem;
     }
-    .queue-pos { color: rgba(255,255,255,0.3); min-width: 20px; font-size: 0.8rem; }
-    .queue-num { font-weight: 700; color: #3EB9A8; min-width: 80px; }
+    .queue-pos { color: rgba(236,230,157,0.35); min-width: 20px; font-size: 0.8rem; }
+    .queue-num { font-weight: 700; color: #ECE69D; min-width: 80px; }
     .queue-num-urgent { color: #ff5252 !important; }
-    .queue-patient { flex: 1; color: rgba(255,255,255,0.8); }
-    .queue-clinic { font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+    .queue-patient { flex: 1; color: rgba(255,255,255,0.82); }
+    .queue-clinic { font-size: 0.8rem; color: rgba(169,182,196,0.7); }
     .queue-item-urgent { background: rgba(198,40,40,0.18) !important; border-left: 3px solid #ff5252; }
     .queue-urgent-badge { background: #c62828; color: white; font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em; margin-right: 4px; flex-shrink: 0; }
 
     /* Footer */
     .screen-footer {
       display: flex; justify-content: center; align-items: center; gap: 16px;
-      padding: 12px; font-size: 0.8rem; color: rgba(255,255,255,0.3);
-      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 12px; font-size: 0.8rem; color: rgba(236,230,157,0.35);
+      border-top: 1px solid rgba(122,148,69,0.2);
+      background: rgba(26,47,34,0.95);
     }
-    .footer-dot { color: #3EB9A8; }
+    .footer-dot { color: #7A9445; }
   `]
 })
 export class CallScreenComponent implements OnInit, OnDestroy {

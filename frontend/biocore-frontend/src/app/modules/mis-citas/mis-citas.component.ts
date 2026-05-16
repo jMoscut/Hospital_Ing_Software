@@ -960,76 +960,92 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     </div>
   `,
   styles: [`
-    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
-    .page-header h1 { font-size:1.6rem; font-weight:600; color:#1D6C61; margin:0; }
-    .subtitle { color:#757575; font-size:0.9rem; margin:4px 0 0; }
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid #D0D9E3;
+    }
+    .page-header h1 {
+      font-size:1.65rem; font-weight:700; margin:0; letter-spacing:-0.3px;
+      background:linear-gradient(135deg,#243C2C,#59789F);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .subtitle { color:#6b8c84; font-size:0.88rem; margin:3px 0 0; font-weight:500; }
     .tab-content { padding:24px 0; }
     .tab-icon { font-size:18px; margin-right:6px; vertical-align:middle; }
-    .loading-state { display:flex; flex-direction:column; align-items:center; padding:48px; gap:16px; color:#9e9e9e; }
+    .loading-state { display:flex; flex-direction:column; align-items:center; padding:56px; gap:16px; color:#9e9e9e; }
 
-    /* Booking */
-    .booking-card { max-width:700px; }
-    .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; align-items:center; }
-    .lab-auto-info { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:12px 16px; color:#2e7d32; font-size:0.9rem; }
-    .lab-auto-info mat-icon { color:#2e7d32; }
+    /* ── BOOKING ── */
+    .booking-card { max-width:720px; }
+    .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; align-items:center; }
+    .lab-auto-info {
+      display:flex; align-items:center; gap:8px; border-radius:10px;
+      padding:12px 16px; color:#243C2C; font-size:0.9rem;
+      background:linear-gradient(135deg,#EBF0DC,#F5F2DC);
+      border:1px solid #C5CDD8;
+    }
+    .lab-auto-info mat-icon { color:#7A9445; }
 
-    /* Calendar */
+    /* ── CALENDAR ── */
     .calendar-nav {
       display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:12px; background:#f0faf8; border-radius:10px; padding:6px 12px;
+      margin-bottom:14px; background:#F5F2DC; border-radius:12px; padding:8px 16px;
+      border:1px solid #C5CDD8;
     }
-    .month-label { font-size:1rem; font-weight:700; color:#1D6C61; }
+    .month-label { font-size:1rem; font-weight:700; color:#243C2C; letter-spacing:-0.2px; }
     .nav-btn {
       background:none; border:none; cursor:pointer;
-      font-size:2rem; line-height:1; color:#1D6C61; padding:0 8px;
-      border-radius:6px; transition:background 0.15s;
+      font-size:1.8rem; line-height:1; color:#59789F; padding:2px 10px;
+      border-radius:8px; transition:background 0.15s;
     }
-    .nav-btn:hover { background:#d0f4ef; }
+    .nav-btn:hover { background:#D8E4C8; }
 
     .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:20px; }
-    .cal-weekday { text-align:center; font-size:0.72rem; font-weight:700; color:#9e9e9e; padding:6px 0; text-transform:uppercase; }
+    .cal-weekday { text-align:center; font-size:0.7rem; font-weight:700; color:#8aada7; padding:8px 0; text-transform:uppercase; letter-spacing:0.5px; }
     .cal-day {
-      text-align:center; padding:10px 4px; border-radius:8px;
-      font-size:0.9rem; cursor:pointer; transition:background 0.15s; user-select:none;
+      text-align:center; padding:10px 4px; border-radius:10px;
+      font-size:0.9rem; cursor:pointer; transition:all 0.15s; user-select:none;
     }
     .cal-day.empty { cursor:default; }
     .cal-day.past { color:#ccc; cursor:not-allowed; }
-    .cal-day:not(.past):not(.empty):hover { background:#d0f4ef; }
-    .cal-day.today { border:2px solid #3EB9A8; font-weight:700; }
-    .cal-day.selected { background:#1D6C61 !important; color:white; font-weight:700; }
+    .cal-day:not(.past):not(.empty):hover { background:#D8E4C8; color:#243C2C; }
+    .cal-day.today { border:2px solid #7A9445; font-weight:700; color:#59789F; }
+    .cal-day.selected { background:linear-gradient(135deg,#243C2C,#59789F) !important; color:white; font-weight:700; box-shadow:0 4px 12px rgba(36,60,44,0.3); }
 
-    /* Slots */
-    .slots-label { display:flex; align-items:center; gap:8px; font-weight:600; color:#1D6C61; margin-bottom:12px; font-size:0.9rem; }
+    /* ── SLOTS ── */
+    .slots-label { display:flex; align-items:center; gap:8px; font-weight:600; color:#243C2C; margin-bottom:14px; font-size:0.9rem; }
+    .slots-label mat-icon { color:#59789F; }
     .slots-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
     .slot-btn {
-      padding:12px 4px; border-radius:8px; border:2px solid #d0e8e5;
-      background:white; cursor:pointer; font-size:0.9rem; font-weight:600;
-      color:#1D6C61; transition:all 0.15s;
+      padding:12px 4px; border-radius:10px; border:2px solid #C5CDD8;
+      background:white; cursor:pointer; font-size:0.88rem; font-weight:600;
+      color:#59789F; transition:all 0.15s;
+      box-shadow:0 1px 3px rgba(0,0,0,0.04);
     }
-    .slot-btn:hover { background:#d0f4ef; border-color:#3EB9A8; }
-    .slot-btn.selected { background:#1D6C61; color:white; border-color:#1D6C61; }
-    .no-slots { grid-column:1/-1; display:flex; align-items:center; gap:8px; color:#9e9e9e; font-size:0.9rem; padding:12px; }
+    .slot-btn:hover { background:#EDE9C0; border-color:#7A9445; transform:translateY(-1px); }
+    .slot-btn.selected { background:linear-gradient(135deg,#243C2C,#59789F); color:white; border-color:#243C2C; box-shadow:0 4px 12px rgba(36,60,44,0.3); }
+    .no-slots { grid-column:1/-1; display:flex; align-items:center; gap:8px; color:#9e9e9e; font-size:0.9rem; padding:16px; background:#fafafa; border-radius:10px; border:1px dashed #e0e0e0; }
 
-    /* Payment layout */
+    /* ── PAYMENT LAYOUT ── */
     .payment-layout { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
     .payment-card { flex:1; min-width:300px; max-width:700px; }
     .upload-card { flex:0 0 320px; min-width:280px; }
 
-    /* Upload card */
+    /* ── UPLOAD ZONE ── */
     .upload-zone {
-      border:2px dashed #b2dfdb; border-radius:10px; padding:28px 16px;
+      border:2px dashed #A9B6C4; border-radius:12px; padding:32px 16px;
       text-align:center; cursor:pointer; transition:all 0.2s;
-      background:#f7fdfc; margin-bottom:16px;
+      background:#F5F2DC; margin-bottom:16px;
     }
-    .upload-zone:hover:not(.upload-zone-full) { border-color:#1D6C61; background:#e8f5f3; }
+    .upload-zone:hover:not(.upload-zone-full) { border-color:#243C2C; background:#EDE9C0; }
     .upload-zone-full { cursor:default; opacity:0.6; }
-    .upload-zone-icon { font-size:36px; width:36px; height:36px; color:#1D6C61; margin-bottom:8px; }
-    .upload-zone-text { font-size:0.88rem; font-weight:600; color:#333; margin:0 0 4px; }
+    .upload-zone-icon { font-size:36px; width:36px; height:36px; color:#59789F; margin-bottom:10px; }
+    .upload-zone-text { font-size:0.88rem; font-weight:600; color:#2d4a47; margin:0 0 4px; }
     .upload-zone-hint { font-size:0.75rem; color:#9e9e9e; }
     .doc-list { display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
     .doc-item {
-      display:flex; align-items:center; gap:8px; padding:8px 10px;
-      background:#f0faf8; border-radius:8px; border:1px solid #d0eae6;
+      display:flex; align-items:center; gap:8px; padding:8px 12px;
+      background:#F5F2DC; border-radius:10px; border:1px solid #C5CDD8;
     }
     .doc-icon { color:#c62828; font-size:22px; width:22px; height:22px; flex-shrink:0; }
     .doc-meta { flex:1; min-width:0; }
@@ -1039,126 +1055,158 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     .upload-error-item { display:flex; align-items:flex-start; gap:6px; font-size:0.8rem; color:#c62828; }
     .upload-error-item mat-icon { font-size:16px; width:16px; height:16px; flex-shrink:0; margin-top:1px; }
 
-    /* Payment */
-    .appt-summary { background:#f0faf8; border:1px solid #b2dfdb; border-radius:10px; padding:16px; margin-bottom:20px; }
+    /* ── PAYMENT SUMMARY ── */
+    .appt-summary { background:#F5F2DC; border:1px solid #C5CDD8; border-radius:12px; padding:16px 20px; margin-bottom:20px; }
     .summary-row { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:0.95rem; }
-    .summary-row mat-icon { color:#1D6C61; flex-shrink:0; }
-    .total-row { border-top:1px solid #b2dfdb; margin-top:4px; padding-top:12px; font-size:1rem; }
-    .card-form h4 { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#555; margin-bottom:12px; }
+    .summary-row mat-icon { color:#59789F; flex-shrink:0; }
+    .total-row { border-top:1px solid #C5CDD8; margin-top:4px; padding-top:12px; font-size:1rem; font-weight:600; }
+    .card-form h4 { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#444; margin-bottom:14px; }
     .full-width { width:100%; }
     .card-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .error-msg { display:flex; align-items:center; gap:8px; color:#c62828; font-size:0.88rem; margin:8px 0; }
+    .error-msg { display:flex; align-items:center; gap:8px; color:#c62828; font-size:0.88rem; margin:8px 0; background:#fff5f5; border-radius:8px; padding:8px 12px; border:1px solid #fdd; }
     .hint-text { color:#757575; font-size:0.82rem; margin-top:4px; }
 
-    /* Confirmed */
-    .confirmed-card { text-align:center; padding:32px; }
-    .confirmed-icon { font-size:72px; width:72px; height:72px; color:#2e7d32; margin-bottom:12px; }
-    .confirmed-card h2 { font-size:1.6rem; color:#2e7d32; margin-bottom:8px; }
-    .confirmed-summary { max-width:420px; margin:20px auto 0; text-align:left; }
-    .info-box { display:flex; align-items:flex-start; gap:10px; background:#e3f2fd; border-radius:8px; padding:12px; margin-top:12px; font-size:0.85rem; color:#1565c0; }
+    /* ── CONFIRMED ── */
+    .confirmed-card { text-align:center; padding:40px 32px; }
+    .confirmed-icon { font-size:72px; width:72px; height:72px; color:#243C2C; margin-bottom:16px; filter:drop-shadow(0 4px 12px rgba(36,60,44,0.3)); }
+    .confirmed-card h2 { font-size:1.7rem; color:#243C2C; font-weight:700; margin-bottom:8px; }
+    .confirmed-summary { max-width:440px; margin:20px auto 0; text-align:left; }
+    .info-box { display:flex; align-items:flex-start; gap:10px; background:#e3f2fd; border-radius:10px; padding:14px 16px; margin-top:14px; font-size:0.85rem; color:#59789F; border:1px solid #bbdefb; }
     .info-box mat-icon { flex-shrink:0; margin-top:2px; }
 
-    /* Tickets */
-    .ticket-card { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #3EB9A8; }
+    /* ── TICKET CARDS ── */
+    .ticket-card {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; background:white; border-radius:14px; margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07), 0 1px 3px rgba(0,0,0,0.04);
+      border:1px solid #D0D9E3; border-left:4px solid #7A9445;
+      transition:box-shadow 0.2s, transform 0.2s;
+    }
+    .ticket-card:hover { box-shadow:0 4px 16px rgba(36,60,44,0.12); transform:translateY(-1px); }
     .ticket-left { display:flex; align-items:center; gap:20px; }
-    .ticket-num { font-size:2rem; font-weight:700; color:#1D6C61; min-width:100px; }
-    .ticket-clinic { font-weight:600; }
-    .ticket-type { font-size:0.82rem; color:#757575; }
-    .ticket-date { font-size:0.78rem; color:#9e9e9e; margin-top:2px; }
-    .ticket-doctor { font-size:0.82rem; color:#1D6C61; }
-    .status-chip { padding:4px 14px; border-radius:12px; font-size:0.8rem; font-weight:500; white-space:nowrap; }
-    .status-waiting { background:#e3f2fd; color:#1565c0; }
+    .ticket-num { font-size:2rem; font-weight:800; color:#59789F; min-width:100px; letter-spacing:-1px; }
+    .ticket-clinic { font-weight:600; color:#243C2C; }
+    .ticket-type { font-size:0.82rem; color:#6b8c84; margin-top:2px; }
+    .ticket-date { font-size:0.78rem; color:#9e9e9e; margin-top:3px; display:flex; align-items:center; gap:2px; }
+    .ticket-doctor { font-size:0.82rem; color:#59789F; font-weight:500; margin-top:2px; }
+    .status-chip { padding:4px 14px; border-radius:12px; font-size:0.78rem; font-weight:600; white-space:nowrap; }
+    .status-waiting { background:#e3f2fd; color:#59789F; }
     .status-being-called { background:#fff3e0; color:#e65100; }
-    .status-in-consultation { background:#e8f5e9; color:#2e7d32; }
+    .status-in-consultation { background:#EBF0DC; color:#243C2C; }
     .status-completed { background:#f5f5f5; color:#616161; }
     .status-absent { background:#ffebee; color:#c62828; }
 
-    /* Reschedule */
-    .reschedule-panel { margin-bottom:20px; border-left:4px solid #e65100; }
+    /* ── RESCHEDULE ── */
+    .reschedule-panel { margin-bottom:20px; border-left:4px solid #e65100; border-radius:14px; }
 
-    /* Recetas */
-    .rx-card { margin-bottom:16px; }
+    /* ── RECETAS ── */
+    .rx-card { margin-bottom:16px; border-radius:14px !important; }
     .rx-items { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
-    .rx-item { display:flex; align-items:flex-start; gap:10px; padding:8px; background:#f8f9ff; border-radius:6px; }
-    .rx-item mat-icon { color:#1D6C61; flex-shrink:0; }
-    .rx-qty { color:#757575; font-size:0.85rem; }
+    .rx-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#F5F2DC; border-radius:10px; border:1px solid #C5CDD8; }
+    .rx-item mat-icon { color:#59789F; flex-shrink:0; }
+    .rx-qty { color:#6b8c84; font-size:0.85rem; }
     .rx-dosage { font-size:0.8rem; color:#555; margin-top:2px; }
-    .dispatched-badge { margin-left:auto; background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:8px; font-size:0.75rem; }
+    .dispatched-badge { margin-left:auto; background:#EBF0DC; color:#243C2C; padding:2px 10px; border-radius:10px; font-size:0.75rem; font-weight:600; }
     .rx-status { margin-top:12px; }
 
-    /* Lab */
-    .lab-card { padding:16px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border:1px solid #d4e8e5; }
-    .ref-pending-card { border-left:4px solid #1D6C61; background:#f0faf8; }
+    /* ── LAB ── */
+    .lab-card {
+      padding:18px 20px; background:white; border-radius:14px; margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07); border:1px solid #D0D9E3;
+    }
+    .ref-pending-card { border-left:4px solid #59789F; background:#F5F2DC; }
     .lab-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .lab-code { background:#193A31; color:#3EB9A8; padding:2px 8px; border-radius:6px; font-size:0.75rem; margin-left:8px; }
+    .lab-code { background:#243C2C; color:#59789F; padding:2px 8px; border-radius:6px; font-size:0.72rem; margin-left:8px; font-weight:600; }
     .lab-details { display:flex; flex-wrap:wrap; gap:12px; font-size:0.85rem; color:#555; }
     .lab-details div { display:flex; align-items:center; gap:4px; }
-    .lab-details mat-icon { font-size:16px; width:16px; height:16px; color:#1D6C61; }
-    .section-label { font-size:0.78rem; font-weight:700; color:#9e9e9e; text-transform:uppercase; margin:16px 0 8px; display:flex; align-items:center; gap:4px; }
+    .lab-details mat-icon { font-size:15px; width:15px; height:15px; color:#59789F; }
+    .section-label { font-size:0.72rem; font-weight:700; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; margin:16px 0 10px; display:flex; align-items:center; gap:4px; }
 
-    .empty-state { text-align:center; padding:48px; color:#9e9e9e; }
-    .empty-state mat-icon { font-size:56px; width:56px; height:56px; color:#3EB9A8; opacity:0.4; margin-bottom:8px; }
-    .hint { font-size:0.85rem; margin-top:4px; }
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align:center; padding:56px 24px; color:#9e9e9e; }
+    .empty-state mat-icon { font-size:56px; width:56px; height:56px; color:#7A9445; opacity:0.35; margin-bottom:12px; display:block; margin:0 auto 12px; }
+    .hint { font-size:0.85rem; margin-top:4px; color:#b0bec5; }
 
-    /* Diagnósticos */
-    .diag-card { background:white; border-radius:10px; padding:20px; margin-bottom:14px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #1D6C61; }
+    /* ── DIAGNÓSTICOS ── */
+    .diag-card {
+      background:white; border-radius:14px; padding:20px 24px; margin-bottom:14px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07); border:1px solid #D0D9E3;
+      border-left:4px solid #59789F;
+    }
     .diag-card-emergency { border-left-color:#c62828; }
-    .diag-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-    .diag-header mat-icon { font-size:28px; width:28px; height:28px; color:#1D6C61; }
+    .diag-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .diag-header mat-icon { font-size:28px; width:28px; height:28px; }
     .diag-meta { display:flex; flex-direction:column; }
-    .diag-date { font-weight:600; font-size:0.9rem; color:#333; }
-    .diag-doctor { font-size:0.82rem; color:#1D6C61; }
-    .diag-notes { font-size:0.95rem; color:#333; line-height:1.6; background:#f8fffe; border-radius:8px; padding:12px 16px; margin-bottom:12px; white-space:pre-wrap; }
-    .diag-meds { border-top:1px solid #e0f0ee; padding-top:10px; }
-    .diag-meds-label { display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#555; margin-bottom:8px; }
-    .diag-meds-label mat-icon { font-size:16px; width:16px; height:16px; }
-    .med-chip { display:inline-block; background:#e8f5e9; color:#2e7d32; padding:3px 10px; border-radius:10px; font-size:0.8rem; margin:2px 4px 2px 0; }
+    .diag-date { font-weight:700; font-size:0.92rem; color:#243C2C; }
+    .diag-doctor { font-size:0.82rem; color:#59789F; margin-top:2px; }
+    .diag-notes { font-size:0.92rem; color:#2d4a47; line-height:1.7; background:#F5F2DC; border-radius:10px; padding:12px 16px; margin-bottom:12px; white-space:pre-wrap; border:1px solid #C5CDD8; }
+    .diag-meds { border-top:1px solid #D0D9E3; padding-top:12px; }
+    .diag-meds-label { display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:#6b8c84; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.4px; }
+    .diag-meds-label mat-icon { font-size:15px; width:15px; height:15px; }
+    .med-chip { display:inline-block; background:#EBF0DC; color:#243C2C; padding:4px 12px; border-radius:10px; font-size:0.8rem; margin:2px 4px 2px 0; font-weight:500; }
 
-    /* Perfil */
-    .profile-card { max-width:700px; }
-    .profile-avatar { width:56px; height:56px; border-radius:50%; background:#1D6C61; color:white; display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:700; margin-right:12px; flex-shrink:0; }
+    /* ── PERFIL ── */
+    .profile-card { max-width:720px; border-radius:16px !important; }
+    .profile-avatar {
+      width:56px; height:56px; border-radius:50%;
+      background:linear-gradient(135deg,#243C2C,#59789F);
+      color:white; display:flex; align-items:center; justify-content:center;
+      font-size:1.4rem; font-weight:700; margin-right:14px; flex-shrink:0;
+      box-shadow:0 4px 12px rgba(36,60,44,0.3);
+    }
     .profile-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:0; margin-top:8px; }
-    .profile-field { display:flex; flex-direction:column; padding:12px 8px; border-bottom:1px solid #f0f0f0; }
-    .pf-label { display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
-    .pf-label mat-icon { font-size:14px; width:14px; height:14px; }
-    .pf-value { font-size:0.95rem; color:#333; padding-left:20px; }
-    .discount-badge { background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:8px; font-size:0.75rem; margin-left:8px; }
-    .history-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f5f5f5; gap:12px; }
+    .profile-field { display:flex; flex-direction:column; padding:12px 10px; border-bottom:1px solid #f0f4f3; }
+    .pf-label { display:flex; align-items:center; gap:6px; font-size:0.7rem; font-weight:700; color:#8aada7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+    .pf-label mat-icon { font-size:13px; width:13px; height:13px; }
+    .pf-value { font-size:0.93rem; color:#243C2C; padding-left:20px; }
+    .discount-badge { background:#EBF0DC; color:#243C2C; padding:2px 10px; border-radius:10px; font-size:0.73rem; margin-left:8px; font-weight:600; }
+    .history-row { display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid #f0f4f3; gap:12px; }
     .history-left { display:flex; align-items:center; gap:12px; }
-    .history-num { font-size:1.1rem; font-weight:700; color:#1D6C61; min-width:70px; }
-    .history-clinic { font-weight:500; font-size:0.9rem; }
-    .history-date { font-size:0.78rem; color:#9e9e9e; }
-    .history-doctor { font-size:0.8rem; color:#1D6C61; }
+    .history-num { font-size:1.05rem; font-weight:800; color:#59789F; min-width:70px; letter-spacing:-0.5px; }
+    .history-clinic { font-weight:600; font-size:0.9rem; color:#243C2C; }
+    .history-date { font-size:0.78rem; color:#9e9e9e; margin-top:2px; }
+    .history-doctor { font-size:0.8rem; color:#59789F; margin-top:1px; }
     .profile-edit-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:8px; }
-    .cred-section-title { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#1D6C61; margin-bottom:12px; }
-    .cred-section-title mat-icon { font-size:20px; width:20px; height:20px; }
+    .cred-section-title { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:700; color:#243C2C; margin-bottom:12px; }
+    .cred-section-title mat-icon { font-size:20px; width:20px; height:20px; color:#59789F; }
     .cred-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; align-items:start; }
     .cred-form button { align-self:center; margin-top:4px; }
 
-    /* Mis Citas history */
-    .appt-hist-card { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 20px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #1D6C61; gap:12px; }
+    /* ── CITAS HISTORY ── */
+    .appt-hist-card {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      padding:16px 20px; background:white; border-radius:14px; margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07); border:1px solid #D0D9E3;
+      border-left:4px solid #59789F; gap:12px;
+      transition:box-shadow 0.2s;
+    }
+    .appt-hist-card:hover { box-shadow:0 4px 16px rgba(36,60,44,0.12); }
     .appt-hist-left { display:flex; align-items:flex-start; gap:16px; flex:1; min-width:0; }
-    .appt-hist-icon { background:#e8f5f3; border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .appt-hist-icon mat-icon { color:#1D6C61; }
+    .appt-hist-icon { background: transparent; border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .appt-hist-icon mat-icon { color:#59789F; }
     .appt-hist-info { flex:1; min-width:0; }
-    .appt-hist-date { font-weight:700; font-size:0.95rem; color:#333; }
-    .appt-hist-time { color:#1D6C61; margin-left:6px; font-weight:600; }
+    .appt-hist-date { font-weight:700; font-size:0.95rem; color:#243C2C; }
+    .appt-hist-time { color:#59789F; margin-left:6px; font-weight:600; }
     .appt-hist-presencial { margin-left:6px; background:#fff3e0; color:#e65100; padding:1px 8px; border-radius:8px; font-size:0.78rem; font-weight:600; }
-    .appt-hist-clinic { font-size:0.88rem; color:#555; margin-top:2px; }
+    .appt-hist-clinic { font-size:0.88rem; color:#4a6560; margin-top:3px; }
     .appt-hist-meta { font-size:0.8rem; color:#9e9e9e; margin-top:2px; }
     .appt-hist-voucher { display:flex; align-items:center; gap:4px; font-size:0.75rem; color:#9e9e9e; margin-top:4px; font-family:monospace; }
     .appt-hist-voucher mat-icon { font-size:14px; width:14px; height:14px; }
     .appt-hist-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
-    .appt-hist-amount { font-size:0.85rem; color:#555; font-weight:600; }
+    .appt-hist-amount { font-size:0.88rem; color:#59789F; font-weight:700; }
     .status-appt-pending { background:#fff8e1; color:#f57f17; }
-    .status-appt-confirmed { background:#e8f5e9; color:#2e7d32; }
+    .status-appt-confirmed { background:#EBF0DC; color:#243C2C; }
     .status-appt-cancelled { background:#ffebee; color:#c62828; }
     .status-appt-expired { background:#f5f5f5; color:#9e9e9e; }
 
-    /* Reservation timer */
-    .reservation-timer { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:10px 14px; color:#2e7d32; font-size:0.88rem; margin-top:12px; transition:background 0.3s; }
-    .reservation-timer mat-icon { color:#2e7d32; flex-shrink:0; }
-    .reservation-timer.timer-low { background:#fff3e0; color:#e65100; animation:pulse-timer 1s infinite; }
+    /* ── RESERVATION TIMER ── */
+    .reservation-timer {
+      display:flex; align-items:center; gap:10px; border-radius:10px;
+      padding:10px 16px; font-size:0.88rem; margin-top:14px; transition:all 0.3s;
+      background:#EBF0DC; border:1px solid #C5CDD8; color:#243C2C;
+    }
+    .reservation-timer mat-icon { color:#7A9445; flex-shrink:0; }
+    .reservation-timer.timer-low { background:#fff3e0; border-color:#ffe0b2; color:#e65100; animation:pulse-timer 1s infinite; }
     .reservation-timer.timer-low mat-icon { color:#e65100; }
     @keyframes pulse-timer { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
   `]

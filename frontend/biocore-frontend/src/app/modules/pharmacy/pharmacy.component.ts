@@ -146,7 +146,7 @@ interface CartItem {
 
                   <div class="cart-patient" *ngIf="cart.length > 0">
                     <mat-form-field appearance="outline" class="w-full">
-                      <mat-label>Buscar Paciente (opcional)</mat-label>
+                      <mat-label>Buscar Paciente</mat-label>
                       <mat-icon matPrefix>person_search</mat-icon>
                       <input matInput [(ngModel)]="patientDpiSearch" placeholder="DPI del paciente"
                              maxlength="13" pattern="[0-9]*" inputmode="numeric"
@@ -606,83 +606,83 @@ interface CartItem {
     </div>
   `,
   styles: [`
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1565c0; margin: 0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #D0D9E3; }
+    .page-header h1 { font-size: 1.55rem; font-weight: 700; color: #243C2C; margin: 0; letter-spacing: -0.3px; }
     .tab-content { padding: 24px 0; }
-    .otc-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+    .otc-layout { display: grid; grid-template-columns: 1fr 350px; gap: 24px; }
     .filter-row { display: flex; gap: 12px; margin-bottom: 8px; align-items: flex-end; }
     .medicine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; max-height: 520px; overflow-y: auto; }
-    .medicine-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; transition: box-shadow .2s; }
-    .medicine-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .medicine-card { border: 1px solid #D0D9E3; border-radius: 12px; padding: 14px; transition: box-shadow .2s, transform .2s; background: white; }
+    .medicine-card:hover { box-shadow: 0 4px 14px rgba(36,60,44,0.12); transform: translateY(-2px); }
     .medicine-card.out-of-stock { opacity: .5; }
-    .med-header { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
-    .med-name { font-weight: 600; font-size: .9rem; }
-    .med-meta { font-size: .75rem; color: #757575; margin-bottom: 8px; }
+    .med-header { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+    .med-name { font-weight: 700; font-size: .9rem; color: #243C2C; }
+    .med-meta { font-size: .73rem; color: #6b8c84; margin-bottom: 8px; }
     .med-footer { display: flex; justify-content: space-between; align-items: flex-end; }
-    .med-price { font-size: 1rem; font-weight: 700; color: #1565c0; }
-    .med-stock { font-size: .75rem; color: #555; }
-    .med-stock.low { color: #c62828; font-weight: 600; }
-    .cart-card { position: sticky; top: 16px; }
+    .med-price { font-size: 1rem; font-weight: 800; color: #59789F; }
+    .med-stock { font-size: .72rem; color: #6b8c84; }
+    .med-stock.low { color: #c62828; font-weight: 700; }
+    .cart-card { position: sticky; top: 16px; border-radius: 16px !important; }
     .empty-cart { display: flex; flex-direction: column; align-items: center; padding: 32px; color: #9e9e9e; }
-    .empty-cart mat-icon { font-size: 48px; width: 48px; height: 48px; }
+    .empty-cart mat-icon { font-size: 48px; width: 48px; height: 48px; color: #7A9445; opacity: 0.4; }
     .cart-items { max-height: 300px; overflow-y: auto; }
-    .cart-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .cart-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #F0EDD5; }
     .cart-item-info { flex: 1; }
-    .cart-item-name { font-weight: 500; font-size: .88rem; }
-    .cart-item-meta { font-size: .75rem; color: #777; }
+    .cart-item-name { font-weight: 600; font-size: .88rem; color: #243C2C; }
+    .cart-item-meta { font-size: .72rem; color: #6b8c84; }
     .cart-qty { display: flex; align-items: center; gap: 4px; }
-    .cart-qty span { min-width: 20px; text-align: center; font-weight: 600; }
-    .cart-subtotal { min-width: 70px; text-align: right; font-weight: 600; color: #1565c0; font-size: .88rem; }
-    .cart-total { display: flex; justify-content: space-between; font-size: 1.1rem; padding: 4px 0; }
+    .cart-qty span { min-width: 20px; text-align: center; font-weight: 700; color: #59789F; }
+    .cart-subtotal { min-width: 70px; text-align: right; font-weight: 700; color: #59789F; font-size: .88rem; }
+    .cart-total { display: flex; justify-content: space-between; font-size: 1.1rem; padding: 4px 0; font-weight: 700; }
     .cart-patient { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .patient-found { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #e8f5e9; border-radius: 8px; font-size: .88rem; }
-    .receipt-card { margin-top: 16px; border-left: 4px solid #2e7d32; }
-    .receipt-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: .9rem; }
-    .email-sent { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: #1565c0; margin-top: 8px; }
+    .patient-found { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #EBF0DC; border-radius: 10px; font-size: .88rem; border: 1px solid #A9B6C4; color: #243C2C; }
+    .receipt-card { margin-top: 16px; border-left: 4px solid #243C2C; border-radius: 14px !important; }
+    .receipt-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: .9rem; }
+    .email-sent { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: #243C2C; margin-top: 8px; background: #EDE9C0; padding: 6px 10px; border-radius: 8px; }
     .rx-search-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
     .rx-results { display: flex; flex-direction: column; gap: 8px; }
-    .rx-result-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: background .2s; }
-    .rx-result-item:hover { background: #f5f5f5; }
-    .rx-code { font-family: monospace; font-weight: 700; color: #1565c0; }
-    .rx-patient { font-size: .9rem; }
-    .rx-meta { font-size: .8rem; color: #757575; }
+    .rx-result-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #D0D9E3; border-radius: 12px; cursor: pointer; transition: all .2s; background: white; }
+    .rx-result-item:hover { background: #F5F2DC; border-color: #7A9445; }
+    .rx-code { font-family: monospace; font-weight: 700; color: #59789F; }
+    .rx-patient { font-size: .9rem; font-weight: 600; color: #243C2C; }
+    .rx-meta { font-size: .8rem; color: #6b8c84; }
     .rx-detail-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
-    .info-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: .9rem; }
-    .info-row mat-icon { font-size: 18px; width: 18px; height: 18px; color: #757575; }
-    .rx-item { display: flex; align-items: flex-start; gap: 12px; padding: 8px; border-radius: 6px; background: #f8f9ff; margin-bottom: 6px; }
-    .rx-item-meta { font-size: .82rem; color: #555; }
-    .rx-item-price { font-size: .85rem; color: #1565c0; white-space: nowrap; }
-    .stock-info { font-size: .78rem; color: #555; }
-    .stock-warn { color: #c62828; font-weight: 600; }
-    .stock-warn-msg { display: flex; align-items: center; gap: 6px; color: #c62828; font-size: .88rem; }
-    .empty-search { display: flex; flex-direction: column; align-items: center; padding: 48px; color: #9e9e9e; }
-    .empty-search mat-icon { font-size: 48px; width: 48px; height: 48px; }
+    .info-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: .9rem; }
+    .info-row mat-icon { font-size: 18px; width: 18px; height: 18px; color: #6b8c84; }
+    .rx-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #FAFAF5; margin-bottom: 6px; border: 1px solid #C5CDD8; }
+    .rx-item-meta { font-size: .82rem; color: #4a6560; }
+    .rx-item-price { font-size: .85rem; color: #59789F; white-space: nowrap; font-weight: 700; }
+    .stock-info { font-size: .75rem; color: #6b8c84; }
+    .stock-warn { color: #c62828; font-weight: 700; }
+    .stock-warn-msg { display: flex; align-items: center; gap: 6px; color: #c62828; font-size: .88rem; background: #ffebee; padding: 6px 10px; border-radius: 8px; }
+    .empty-search { display: flex; flex-direction: column; align-items: center; padding: 56px; color: #9e9e9e; }
+    .empty-search mat-icon { font-size: 52px; width: 52px; height: 52px; color: #7A9445; opacity: 0.35; }
     .inventory-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .w-full { width: 100%; }
-    .med-code { font-family: monospace; font-size: .75rem; color: #1D6C61; background: #d0f4ef; padding: 1px 6px; border-radius: 4px; }
-    .category-chip { background: #e8f5f3; color: #1D6C61; padding: 2px 8px; border-radius: 8px; font-size: .78rem; }
+    .med-code { font-family: monospace; font-size: .72rem; color: #243C2C; background: #D8E4C8; padding: 2px 6px; border-radius: 6px; border: 1px solid #A9B6C4; }
+    .category-chip { background: #EDE9C0; color: #243C2C; padding: 2px 8px; border-radius: 8px; font-size: .75rem; font-weight: 600; }
     .stock-low { color: #c62828; font-weight: 700; }
-    .stock-ok { color: #2e7d32; }
-    .inventory-columns mat-header-cell { font-weight: 600; }
+    .stock-ok { color: #243C2C; font-weight: 600; }
+    .inventory-columns mat-header-cell { font-weight: 700; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .dialog-card { width: 560px; max-height: 90vh; overflow-y: auto; }
+    .dialog-card { width: 560px; max-height: 90vh; overflow-y: auto; border-radius: 16px !important; }
     .medicine-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
     .flex-center { display: flex; justify-content: center; padding: 32px; }
-    .empty-grid { display: flex; flex-direction: column; align-items: center; padding: 32px; color: #9e9e9e; }
-    .empty-grid mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 8px; }
-    .status-pending { background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 8px; font-size: .75rem; }
-    .status-dispatched { background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 8px; font-size: .75rem; }
-    .status-partial { background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 8px; font-size: .75rem; }
-    .patient-not-found { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff3e0; border-radius: 8px; border: 1px solid #ffcc80; font-size: .9rem; flex-wrap: wrap; }
-    .patient-required-warn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f5f5f5; border-radius: 8px; }
+    .empty-grid { display: flex; flex-direction: column; align-items: center; padding: 40px; color: #9e9e9e; }
+    .empty-grid mat-icon { font-size: 52px; width: 52px; height: 52px; margin-bottom: 10px; color: #7A9445; opacity: 0.4; }
+    .status-pending { background: #fff3e0; color: #e65100; padding: 3px 10px; border-radius: 10px; font-size: .73rem; font-weight: 600; }
+    .status-dispatched { background: #EBF0DC; color: #243C2C; padding: 3px 10px; border-radius: 10px; font-size: .73rem; font-weight: 600; }
+    .status-partial { background: #EDE9C0; color: #243C2C; padding: 3px 10px; border-radius: 10px; font-size: .73rem; font-weight: 600; }
+    .patient-not-found { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fff3e0; border-radius: 10px; border: 1px solid #ffe082; font-size: .9rem; flex-wrap: wrap; color: #e65100; }
+    .patient-required-warn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f5f5f5; border-radius: 10px; color: #6b8c84; }
     .pay-method-row { display: flex; gap: 12px; margin-bottom: 4px; }
-    .pay-btn { flex: 1; height: 48px; font-size: 1rem; border: 2px solid #e0e0e0; background: #fafafa; }
-    .pay-btn.pay-active { border-color: #1565c0; background: #e3f2fd; color: #1565c0; }
+    .pay-btn { flex: 1; height: 48px; font-size: 1rem; border: 2px solid #D0D9E3; background: #fafafa; border-radius: 12px !important; font-weight: 600; }
+    .pay-btn.pay-active { border-color: #243C2C; background: #F5F2DC; color: #243C2C; }
     .pos-options { display: flex; gap: 12px; }
     .cash-flow { display: flex; flex-direction: column; gap: 8px; }
-    .change-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f5f5f5; border-radius: 8px; font-size: .95rem; }
-    .change-ok { color: #2e7d32; font-size: 1.1rem; }
-    .change-short { color: #c62828; font-size: 1.1rem; }
+    .change-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #F0EDD5; border-radius: 10px; font-size: .95rem; border: 1px solid #D0D9E3; }
+    .change-ok { color: #243C2C; font-size: 1.1rem; font-weight: 700; }
+    .change-short { color: #c62828; font-size: 1.1rem; font-weight: 700; }
   `]
 })
 export class PharmacyComponent implements OnInit {

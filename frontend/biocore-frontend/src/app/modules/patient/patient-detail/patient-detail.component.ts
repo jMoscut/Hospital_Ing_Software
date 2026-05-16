@@ -330,83 +330,74 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     </div>
   `,
   styles: [`
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { display: flex; align-items: center; gap: 8px; font-size: 1.6rem; font-weight: 500; color: #1565c0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #D0D9E3; }
+    .page-header h1 { display: flex; align-items: center; gap: 8px; font-size: 1.55rem; font-weight: 700; color: #243C2C; letter-spacing: -0.3px; }
     .header-actions { display: flex; align-items: center; gap: 12px; }
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
 
-    /* Info */
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .info-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: #f8f9ff; border-radius: 8px; }
-    .info-item mat-icon { color: #1565c0; margin-top: 2px; }
-    .info-item label { display: block; font-size: 0.75rem; color: #757575; text-transform: uppercase; margin-bottom: 4px; }
-    .info-item span { font-size: 0.95rem; font-weight: 500; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .info-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: #FAFAF5; border-radius: 12px; border: 1px solid #D0D9E3; }
+    .info-item mat-icon { color: #59789F; margin-top: 2px; flex-shrink: 0; }
+    .info-item label { display: block; font-size: 0.7rem; color: #8aada7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+    .info-item span { font-size: 0.93rem; font-weight: 500; color: #243C2C; }
     .text-muted { color: #9e9e9e !important; font-weight: 400 !important; }
     .edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 8px; }
 
-    /* Consultation accordion */
-    .consult-panel { margin-bottom: 10px; border-radius: 10px !important; }
+    .consult-panel { margin-bottom: 10px; border-radius: 12px !important; }
     .panel-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-    .ticket-num-badge { background: #1D6C61; color: white; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 1rem; white-space: nowrap; }
+    .ticket-num-badge { background: linear-gradient(135deg,#243C2C,#59789F); color: white; padding: 4px 12px; border-radius: 8px; font-weight: 800; font-size: 0.95rem; white-space: nowrap; box-shadow: 0 2px 6px rgba(36,60,44,0.3); }
     .panel-meta { display: flex; flex-direction: column; gap: 2px; }
-    .panel-clinic { font-weight: 600; font-size: 0.9rem; }
-    .panel-date { font-size: 0.75rem; color: #757575; }
+    .panel-clinic { font-weight: 700; font-size: 0.9rem; color: #243C2C; }
+    .panel-date { font-size: 0.73rem; color: #6b8c84; }
     .panel-desc { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
-    .panel-doctor { font-size: 0.82rem; color: #1D6C61; }
+    .panel-doctor { font-size: 0.82rem; color: #59789F; font-weight: 600; }
 
-    /* Status chips */
-    .status-chip { padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
-    .status-completed { background: #e8f5e9; color: #2e7d32; }
+    .status-chip { padding: 3px 10px; border-radius: 10px; font-size: 0.73rem; font-weight: 700; }
+    .status-completed { background: #EBF0DC; color: #1a5e1e; }
     .status-absent { background: #ffebee; color: #c62828; }
     .status-waiting { background: #fff8e1; color: #f57f17; }
-    .status-in-consultation { background: #e8f5e9; color: #2e7d32; }
-    .status-being-called { background: #e3f2fd; color: #1565c0; }
+    .status-in-consultation { background: #EBF0DC; color: #1a5e1e; }
+    .status-being-called { background: #e3f2fd; color: #59789F; }
     .status-cancelled-no-payment { background: #fce4ec; color: #880e4f; }
 
-    /* Detail sections */
     .detail-section { padding: 16px 0; }
-    .section-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #1D6C61; margin-bottom: 12px; }
-    .diagnosis-text { font-size: 0.95rem; line-height: 1.6; color: #333; background: #f8f9ff; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+    .section-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.88rem; color: #243C2C; margin-bottom: 12px; }
+    .diagnosis-text { font-size: 0.93rem; line-height: 1.7; color: #2d4a47; background: #FAFAF5; padding: 14px 16px; border-radius: 10px; white-space: pre-wrap; border: 1px solid #D0D9E3; }
     .no-data { color: #9e9e9e; font-size: 0.85rem; font-style: italic; }
 
-    /* Vitals */
     .vitals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
-    .vital-item { background: #f0faf8; border-radius: 8px; padding: 10px 12px; text-align: center; }
-    .vital-label { display: block; font-size: 0.7rem; color: #757575; text-transform: uppercase; margin-bottom: 4px; }
-    .vital-value { font-size: 1rem; font-weight: 700; color: #1D6C61; }
+    .vital-item { background: #F5F2DC; border-radius: 10px; padding: 10px 12px; text-align: center; border: 1px solid #C5CDD8; }
+    .vital-label { display: block; font-size: 0.68rem; color: #8aada7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+    .vital-value { font-size: 1rem; font-weight: 800; color: #59789F; }
 
-    /* Prescription */
-    .rx-notes { font-size: 0.85rem; color: #555; margin-bottom: 10px; font-style: italic; }
+    .rx-notes { font-size: 0.85rem; color: #4a6560; margin-bottom: 10px; font-style: italic; }
     .medicine-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-    .medicine-item { display: flex; align-items: flex-start; gap: 10px; background: #f8fff8; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #1D6C61; }
+    .medicine-item { display: flex; align-items: flex-start; gap: 10px; background: #FAFAF5; border-radius: 10px; padding: 10px 14px; border-left: 3px solid #243C2C; border: 1px solid #D0D9E3; border-left-width: 3px; }
     .med-info { flex: 1; }
-    .med-name { font-weight: 600; font-size: 0.9rem; display: block; }
-    .med-detail { font-size: 0.78rem; color: #757575; display: block; margin-top: 2px; }
-    .med-instructions { font-size: 0.75rem; color: #9e9e9e; display: block; font-style: italic; }
-    .dispatched-badge { background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
-    .rx-status { font-size: 0.78rem; font-weight: 600; display: inline-block; padding: 3px 10px; border-radius: 8px; }
+    .med-name { font-weight: 700; font-size: 0.9rem; display: block; color: #243C2C; }
+    .med-detail { font-size: 0.78rem; color: #6b8c84; display: block; margin-top: 2px; }
+    .med-instructions { font-size: 0.73rem; color: #9e9e9e; display: block; font-style: italic; margin-top: 2px; }
+    .dispatched-badge { background: #EBF0DC; color: #1a5e1e; padding: 2px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .rx-status { font-size: 0.75rem; font-weight: 700; display: inline-block; padding: 3px 10px; border-radius: 8px; }
     .rx-pending { background: #fff3e0; color: #e65100; }
-    .rx-dispatched { background: #e8f5e9; color: #2e7d32; }
-    .rx-partially_dispatched { background: #e3f2fd; color: #1565c0; }
+    .rx-dispatched { background: #EBF0DC; color: #1a5e1e; }
+    .rx-partially_dispatched { background: #e3f2fd; color: #59789F; }
 
-    /* Lab */
-    .lab-item { display: flex; align-items: flex-start; gap: 10px; background: #f0f4ff; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #1565c0; margin-bottom: 6px; }
+    .lab-item { display: flex; align-items: flex-start; gap: 10px; background: #F5F2DC; border-radius: 10px; padding: 10px 14px; border-left: 3px solid #243C2C; margin-bottom: 6px; border: 1px solid #C5CDD8; }
     .lab-info { flex: 1; }
-    .lab-name { font-weight: 600; font-size: 0.9rem; display: block; }
-    .lab-detail { font-size: 0.78rem; color: #757575; display: block; margin-top: 2px; }
-    .lab-notes { font-size: 0.75rem; color: #9e9e9e; display: block; font-style: italic; }
-    .lab-status-badge { padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .lab-name { font-weight: 700; font-size: 0.9rem; display: block; color: #243C2C; }
+    .lab-detail { font-size: 0.78rem; color: #6b8c84; display: block; margin-top: 2px; }
+    .lab-notes { font-size: 0.73rem; color: #9e9e9e; display: block; font-style: italic; }
+    .lab-status-badge { padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
 
-    /* Visit list (legacy tabs) */
-    .queue-ticket { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: white; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e8e8e8; }
+    .queue-ticket { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: white; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(36,60,44,0.07); border: 1px solid #D0D9E3; }
     .ticket-info { flex: 1; }
-    .ticket-patient { font-weight: 500; }
-    .ticket-meta { font-size: 0.78rem; color: #757575; margin-top: 2px; }
+    .ticket-patient { font-weight: 600; color: #243C2C; }
+    .ticket-meta { font-size: 0.78rem; color: #6b8c84; margin-top: 2px; }
 
-    /* Empty */
-    .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
-    .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; display: block; }
+    .empty-state { text-align: center; padding: 56px 24px; color: #9e9e9e; }
+    .empty-state mat-icon { font-size: 52px; width: 52px; height: 52px; color: #7A9445; opacity: 0.4; margin-bottom: 10px; display: block; margin: 0 auto 10px; }
   `]
 })
 export class PatientDetailComponent implements OnInit {

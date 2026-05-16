@@ -268,29 +268,28 @@ import { NotificationService } from '../../shared/services/notification.service'
     </div>
   `,
   styles: [`
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1565c0; margin: 0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #D0D9E3; }
+    .page-header h1 { font-size: 1.55rem; font-weight: 700; color: #243C2C; margin: 0; letter-spacing: -0.3px; }
     .tab-content { padding: 24px 0; }
     .search-row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 8px; }
     .report-controls { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 8px; flex-wrap: wrap; }
-    .report-meta { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; padding: 12px 0; font-size:.9rem; }
+    .report-meta { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; padding: 12px 0; font-size:.9rem; color: #4a6560; }
     .report-table { width: 100%; }
     .mt-16 { margin-top: 16px; }
     .flex-center { display: flex; justify-content: center; padding: 32px; }
 
-    /* Expedient */
-    .expedient-panel { background: #f8f9ff; border-radius: 8px; padding: 16px; margin-top: 8px; }
+    .expedient-panel { background: #FAFAF5; border-radius: 14px; padding: 18px 20px; margin-top: 8px; border: 1px solid #C5CDD8; }
     .exp-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
-    .exp-code { font-family: monospace; font-size: 1.1rem; font-weight: 700; color: #1565c0; }
-    .exp-name { font-size: 1rem; color: #333; }
-    .exp-summary { display: flex; gap: 24px; margin-bottom: 16px; }
-    .exp-stat { text-align: center; background: white; padding: 16px 24px; border-radius: 8px; }
-    .exp-num { display: block; font-size: 2rem; font-weight: 700; color: #1565c0; }
-    .exp-label { font-size: 0.8rem; color: #757575; }
-    .exp-list { border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-top: 8px; }
-    .exp-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: .9rem; }
+    .exp-code { font-family: monospace; font-size: 1.1rem; font-weight: 800; color: #59789F; }
+    .exp-name { font-size: 1rem; color: #243C2C; font-weight: 600; }
+    .exp-summary { display: flex; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+    .exp-stat { text-align: center; background: white; padding: 16px 24px; border-radius: 12px; border: 1px solid #D0D9E3; }
+    .exp-num { display: block; font-size: 2rem; font-weight: 800; color: #59789F; letter-spacing: -1px; }
+    .exp-label { font-size: 0.78rem; color: #8aada7; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+    .exp-list { border: 1px solid #D0D9E3; border-radius: 12px; overflow: hidden; margin-top: 8px; }
+    .exp-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 18px; cursor: pointer; border-bottom: 1px solid #f0f4f3; font-size: .9rem; transition: background 0.15s; }
     .exp-list-item:last-child { border-bottom: none; }
-    .exp-list-item:hover { background: #e3f2fd; }
+    .exp-list-item:hover { background: #F5F2DC; }
 
     @media print {
       body > * { display: none !important; }

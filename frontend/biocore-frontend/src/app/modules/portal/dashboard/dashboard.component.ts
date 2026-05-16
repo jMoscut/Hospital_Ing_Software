@@ -113,25 +113,60 @@ import { Ticket } from '../../../core/models/ticket.model';
     </div>
   `,
   styles: [`
-    .page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1565c0; margin: 0; }
-    .realtime-badge {
-      display: flex; align-items: center; gap: 4px;
-      background: #e8f5e9; color: #2e7d32; padding: 4px 12px;
-      border-radius: 16px; font-size: 0.8rem; font-weight: 500;
+    .page-header {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 28px;
+      padding-bottom: 20px; border-bottom: 1px solid #C5CDD8;
     }
-    .realtime-badge mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .stat-card { padding: 24px; text-align: center; color: white; }
-    .stat-card mat-icon { font-size: 36px; width: 36px; height: 36px; opacity: 0.85; }
-    .stat-number { font-size: 2.5rem; font-weight: 700; line-height: 1; margin: 8px 0; }
-    .stat-label { font-size: 0.85rem; opacity: 0.9; }
-    .stat-blue { background: linear-gradient(135deg, #1565c0, #1976d2); }
-    .stat-orange { background: linear-gradient(135deg, #e65100, #f57c00); }
-    .stat-green { background: linear-gradient(135deg, #2e7d32, #388e3c); }
-    .stat-purple { background: linear-gradient(135deg, #6a1b9a, #7b1fa2); }
-    .stat-red { background: linear-gradient(135deg, #b71c1c, #c62828); }
-    .stat-teal { background: linear-gradient(135deg, #00695c, #00796b); }
+    .page-header h1 {
+      font-size: 1.65rem; font-weight: 700; color: #243C2C; margin: 0; letter-spacing: -0.3px;
+    }
+    .realtime-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: #EDE9C0; color: #59789F;
+      padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+      border: 1px solid rgba(36,60,44,0.2); margin-left: auto;
+    }
+    .realtime-badge mat-icon { font-size: 14px !important; width: 14px !important; height: 14px !important; color: #7A9445; }
+
+    .stat-card {
+      padding: 28px 24px 24px; text-align: center; color: white;
+      border-radius: 18px !important; border: none !important; position: relative; overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18) !important;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 32px rgba(0,0,0,0.25) !important; }
+    .stat-card::before {
+      content: ''; position: absolute; top: -24px; right: -24px;
+      width: 90px; height: 90px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); pointer-events: none;
+    }
+    .stat-card::after {
+      content: ''; position: absolute; bottom: -32px; left: -16px;
+      width: 100px; height: 100px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); pointer-events: none;
+    }
+    .stat-card mat-icon {
+      font-size: 36px !important; width: 36px !important; height: 36px !important;
+      display: block; margin: 0 auto 14px; opacity: 0.95;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+    .stat-number { font-size: 3rem; font-weight: 800; line-height: 1; margin: 0 0 10px; letter-spacing: -1px; color: white !important; }
+    .stat-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; opacity: 0.88; color: white !important; }
+    .stat-card, .stat-card * { color: white !important; }
+
+    /* Bosque palette — each card a distinct color */
+    .stat-blue   { background: linear-gradient(145deg, #1a2f22, #243C2C) !important; }  /* Dark Green — Pacientes Hoy */
+    .stat-orange { background: linear-gradient(145deg, #3d5c80, #59789F) !important; }  /* Glaucous — En Espera */
+    .stat-green  { background: linear-gradient(145deg, #5a6e30, #7A9445) !important; }  /* Moss Green — En Consulta */
+    .stat-purple { background: linear-gradient(145deg, #243C2C, #59789F) !important; }  /* Dark+Glaucous — Atendidos */
+    .stat-red    { background: linear-gradient(145deg, #9b1212, #c62828) !important; }  /* Red — Ausentes (semántico) */
+    .stat-teal   { background: linear-gradient(145deg, #59789F, #7A9445) !important; }  /* Glaucous+Moss — Pagos Hoy */
+
     .quick-actions { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 0; }
+    ::ng-deep .mat-mdc-card .mat-mdc-card-title { font-size: 1.1rem !important; font-weight: 600 !important; color: #243C2C !important; }
+
+    .queue-ticket { transition: background 0.15s; }
+    .queue-ticket:hover { background: #F0EDD5 !important; }
   `]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -179,7 +214,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   isAdmin(): boolean { return this.authService.hasRole('ADMIN'); }
-  canAccessEmergency(): boolean { return this.authService.hasRole('ADMIN', 'HEALTH_STAFF', 'NURSE'); }
+  canAccessEmergency(): boolean { return this.authService.hasRole('HEALTH_STAFF', 'NURSE'); }
 
   ngOnDestroy(): void { this.sub?.unsubscribe(); }
 }

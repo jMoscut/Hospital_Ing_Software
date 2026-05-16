@@ -307,7 +307,7 @@ public class TicketService {
 
         if (ticket.getStatus() == TicketStatus.CALLED_TO_VITAL_SIGNS) {
             if (!vitalSignsRepository.existsByTicketId(ticketId)) {
-                throw new RuntimeException("RN-03: Debe registrar los signos vitales antes de continuar");
+                throw new RuntimeException("Debe registrar los signos vitales antes de continuar");
             }
             ticket.setStatus(TicketStatus.READY_FOR_DOCTOR);
         } else if (ticket.getStatus() == TicketStatus.BEING_CALLED) {
