@@ -26,7 +26,7 @@ El sistema opera con **7 roles de usuario** y cubre los flujos de trabajo de rec
 - **Consulta médica** — Prescripciones, órdenes de laboratorio, historial por ticket
 - **Laboratorio** — Órdenes, recolección de muestras, resultados en PDF con notificación por email
 - **Farmacia** — Venta libre (OTC) y despacho con receta médica
-- **Caja / Pagos** — Citas, laboratorio, farmacia con descuento por seguro
+- **Caja / Pagos** — Citas, laboratorio, farmacia con descuento por seguro y reagendamiento
 - **Emergencias** — Registro rápido, signos vitales, reporte médico
 - **Dashboard administrativo** — Estadísticas en tiempo real
 - **Portal del paciente** — Acceso a citas, recetas y resultados de laboratorio propios
@@ -93,7 +93,7 @@ Hospital_Ing_Software/
 | Rol | Descripción | Módulos |
 |-----|-------------|---------|
 | `ADMIN` | Administrador | Todo + Reportería + Personal |
-| `HEALTH_STAFF` | Recepcionista | Recepción, Cola, Emergencias |
+| `HEALTH_STAFF` | Recepcionista / Enfermería | Recepción, Cola, Signos Vitales, Emergencias |
 | `DOCTOR` | Médico | Consulta, Prescripciones, Laboratorio |
 | `LAB_TECHNICIAN` | Laboratorista | Órdenes de Lab, Resultados |
 | `PHARMACIST` | Farmacéutico | Inventario, Ventas, Despacho |
