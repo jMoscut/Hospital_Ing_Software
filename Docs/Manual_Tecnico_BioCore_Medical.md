@@ -141,8 +141,7 @@ BioCore Medical es un sistema integral de gestión hospitalaria desarrollado par
 | Rol | Descripción | Accesos principales |
 |-----|-------------|---------------------|
 | `ADMIN` | Administrador del sistema | Todo + reportería + gestión de personal |
-| `HEALTH_STAFF` | Personal de salud / Recepcionista | Recepción, cola, emergencias |
-| `NURSE` | Enfermería | Recepción, cola, signos vitales, emergencias |
+| `HEALTH_STAFF` | Personal de salud / Recepcionista / Enfermería | Recepción, cola, signos vitales, emergencias |
 | `DOCTOR` | Médico (clínica normal) | Consulta médica, prescripciones, órdenes de lab |
 | `DOCTOR` (emergencia) | Médico de emergencias | Emergencias médicas, reportes clínicos |
 | `LAB_TECHNICIAN` | Laboratorista | Órdenes de laboratorio, resultados |
@@ -252,8 +251,8 @@ biocore-frontend/src/
 | `/laboratory` | LaboratoryComponent | Sí | LAB_TECHNICIAN |
 | `/pharmacy` | PharmacyComponent | Sí | PHARMACIST |
 | `/payments` | PaymentsComponent | Sí | CASHIER |
-| `/emergency` | EmergencyComponent | Sí | HEALTH_STAFF, NURSE |
-| `/health-staff` | HealthStaffComponent | Sí | HEALTH_STAFF, NURSE |
+| `/emergency` | EmergencyComponent | Sí | HEALTH_STAFF |
+| `/health-staff` | HealthStaffComponent | Sí | HEALTH_STAFF |
 | `/appointments` | AppointmentsComponent | Sí | Todos |
 | `/reports` | ReportingComponent | Sí | ADMIN |
 | `/mis-citas` | MisCitasComponent | Sí | PATIENT |
@@ -746,22 +745,29 @@ sequenceDiagram
 
 ### 6.3 Flujo de Cola de Atención (CU-03)
 
+> **Nota:** El ticket **no es creado por enfermería**. Se origina automáticamente al agendar y pagar la cita en Caja (ver secuencia 6.6). Esto es consistente con la relación `APPOINTMENTS ||--o| TICKETS : "origina"` en el ER. La enfermería retoma el flujo una vez el ticket ya existe en estado `WAITING`.
+
 ```mermaid
 sequenceDiagram
-    actor Nurse as Enfermería
+    actor Cashier as Cajero
+    actor Nurse as Personal de Salud
     actor Doctor as Médico
+    participant PayComp as PaymentsComponent
     participant HS as HealthStaffComponent
     participant Consult as ConsultationComponent
+    participant ApptSvc as AppointmentService
     participant TickSvc as TicketService
     participant VitalSvc as VitalSignsService
     participant API as Backend API
 
-    Nurse->>HS: Crea ticket del paciente
-    HS->>TickSvc: create(patientId, clinicId, priority)
-    TickSvc->>API: POST /tickets
-    API-->>TickSvc: Ticket WAITING
+    note over Cashier,API: Paso previo — Caja crea la cita y el pago (ver 6.6)
+    Cashier->>PayComp: Procesa pago de consulta
+    PayComp->>ApptSvc: book(patientId, clinicId, date, time, type)
+    ApptSvc->>API: POST /appointments
+    API-->>PayComp: Appointment → origina Ticket WAITING
 
-    Nurse->>HS: Llama a signos vitales
+    note over Nurse,API: Enfermería retoma desde el ticket ya existente
+    Nurse->>HS: Llama a signos vitales (Monitoreo de Cola)
     HS->>TickSvc: callToVitalSigns(clinicId)
     TickSvc->>API: PUT /tickets/clinic/{id}/call-to-vital-signs
     API-->>HS: Ticket CALLED_TO_VITAL_SIGNS
@@ -772,12 +778,12 @@ sequenceDiagram
     note over API: Ticket pasa a READY_FOR_DOCTOR
 
     Doctor->>Consult: Ve pacientes listos
-    Doctor->>Consult: Llama al paciente
+    Doctor->>Consult: Llama al paciente al consultorio
     Consult->>TickSvc: callToConsultation(ticketId)
     TickSvc->>API: PUT /tickets/{id}/call-to-consultation
     API-->>Consult: Ticket BEING_CALLED
 
-    Doctor->>Consult: Completa consulta
+    Doctor->>Consult: Completa consulta (Completar Consulta)
     Consult->>TickSvc: complete(ticketId)
     TickSvc->>API: PUT /tickets/{id}/complete
     API-->>Consult: Ticket COMPLETED
@@ -788,8 +794,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Doc as Doctor
-    actor Lab as Laboratorista
-    participant ConsultComp as ConsultationComponent
+    actor Lab as Laboratorista    participant ConsultComp as ConsultationComponent
     participant LabComp as LaboratoryComponent
     participant LabSvc as LabService
     participant API as Backend API
@@ -881,7 +886,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Recep as Recepcionista
+    actor Recep as Personal de Salud
     actor Doc as Doctor Emergencias
     participant EmgComp as EmergencyComponent
     participant EmgConsult as EmergencyConsultationComponent
