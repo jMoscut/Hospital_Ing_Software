@@ -43,7 +43,7 @@ public class AppointmentController {
         }
     }
 
-    /** Cashier looks up appointment by voucher code before payment */
+    /** Cashier looks up appointment by cui before payment */
     @GetMapping("/voucher/{code}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getByVoucher(@PathVariable String code) {
         try {
