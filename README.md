@@ -13,7 +13,7 @@
 
 ## Descripción
 
-BioCore Medical es un sistema hospitalario completo que digitaliza y automatiza los procesos de atención médica: desde el registro del paciente hasta la entrega de resultados de laboratorio, despacho de medicamentos y gestión de pagos.
+BioCore Medical es un sistema hospitalario completo que digitaliza y automatiza los procesos de atención médica: desde el registro del paciente hasta la entrega de resultados de laboratorio.
 
 El sistema opera con **7 roles de usuario** y cubre los flujos de trabajo de recepción, consulta médica, laboratorio, farmacia, caja y administración.
 
@@ -62,29 +62,139 @@ El sistema opera con **7 roles de usuario** y cubre los flujos de trabajo de rec
 
 ```
 Hospital_Ing_Software/
+│
 ├── frontend/
-│   └── biocore-frontend/       # Aplicación Angular 17
-│       ├── src/app/
-│       │   ├── core/           # Auth, guards, interceptors, models
-│       │   ├── shared/         # Servicios HTTP compartidos
-│       │   └── modules/        # Componentes por funcionalidad
-│       ├── angular.json
-│       └── package.json
+│   └── biocore-frontend/                    # Aplicación Angular 17
+│       ├── src/
+│       │   ├── app/
+│       │   │   ├── core/                    # Configuración centralizada
+│       │   │   │   ├── auth/                # Servicios de autenticación
+│       │   │   │   ├── guards/              # Guardias de rutas (role-based)
+│       │   │   │   ├── interceptors/        # Interceptores HTTP (JWT)
+│       │   │   │   └── models/              # Interfaces y tipos globales
+│       │   │   │
+│       │   │   ├── shared/                  # Código compartido
+│       │   │   │   └── services/            # Servicios HTTP y utilitarios
+│       │   │   │
+│       │   │   └── modules/                 # Módulos funcionales (lazy-loaded)
+│       │   │       ├── appointments/        # Gestión de citas
+│       │   │       ├── call-screen/         # Pantalla de sala de espera
+│       │   │       ├── consultation/        # Módulo de consulta médica
+│       │   │       ├── emergency/           # Módulo de emergencias
+│       │   │       ├── emergency-consultation/ # Consulta de emergencia
+│       │   │       ├── health-staff/        # Panel de recepción/enfermería
+│       │   │       ├── laboratory/          # Módulo de laboratorio
+│       │   │       ├── mis-citas/           # Portal paciente (mis citas)
+│       │   │       ├── patient/             # Gestión de pacientes
+│       │   │       ├── payments/            # Módulo de pagos/caja
+│       │   │       ├── pharmacy/            # Módulo de farmacia
+│       │   │       ├── portal/              # Portal del paciente
+│       │   │       ├── public-register/     # Registro público
+│       │   │       ├── reporting/           # Reportes y estadísticas
+│       │   │       └── user-management/     # Gestión de usuarios/personal
+│       │   │
+│       │   ├── environments/                # Configuración por ambiente
+│       │   ├── styles.scss                  # Estilos globales
+│       │   ├── main.ts                      # Bootstrap de la aplicación
+│       │   └── index.html                   # HTML principal
+│       │
+│       ├── angular.json                     # Configuración de Angular CLI
+│       ├── tsconfig.json                    # Configuración de TypeScript
+│       ├── tsconfig.app.json                # TypeScript para la aplicación
+│       ├── package.json                     # Dependencias npm
+│       ├── package-lock.json                # Lock file
+│       ├── Dockerfile                       # Contenerización
+│       ├── .dockerignore                    # Exclusiones Docker
+│       ├── nginx.conf                       # Configuración NGINX (producción)
+│       └── railway.toml                     # Configuración Railway
 │
 ├── backend/
-│   └── biocore-backend/        # API Spring Boot
-│       ├── src/main/java/com/biocore/
-│       │   ├── controller/     # REST endpoints
-│       │   ├── model/          # Entidades JPA (23 tablas)
-│       │   ├── service/        # Lógica de negocio
-│       │   ├── repository/     # Spring Data JPA
-│       │   ├── dto/            # Request / Response DTOs
-│       │   └── security/       # JWT provider y filtros
-│       └── pom.xml
+│   └── biocore-backend/                     # API Spring Boot
+│       ├── src/main/
+│       │   ├── java/com/biocore/
+│       │   │   ├── BiocoreApplication.java  # Clase principal
+│       │   │   │
+│       │   │   ├── config/                  # Configuración (CORS, JWT, etc.)
+│       │   │   │
+│       │   │   ├── controller/              # Controladores REST
+│       │   │   │   └── *Controller.java
+│       │   │   │
+│       │   │   ├── service/                 # Lógica de negocio
+│       │   │   │   └── *Service.java
+│       │   │   │
+│       │   │   ├── repository/              # Interfaces Spring Data JPA
+│       │   │   │   └── *Repository.java
+│       │   │   │
+│       │   │   ├── entity/                  # Entidades JPA (23 tablas)
+│       │   │   │   └── *.java
+│       │   │   │
+│       │   │   ├── dto/                     # Data Transfer Objects
+│       │   │   │   ├── request/             # DTOs de entrada
+│       │   │   │   └── response/            # DTOs de salida
+│       │   │   │
+│       │   │   ├── security/                # Seguridad
+│       │   │   │   ├── JwtProvider.java     # Proveedor JWT
+│       │   │   │   ├── JwtFilter.java       # Filtro JWT
+│       │   │   │   └── SecurityConfig.java  # Configuración de seguridad
+│       │   │   │
+│       │   │   └── enums/                   # Enumeraciones
+│       │   │       └── UserRole.java
+│       │   │
+│       │   └── resources/
+│       │       └── application.properties   # Propiedades de la aplicación
+│       │
+│       ├── pom.xml                          # Dependencias Maven
+│       ├── target/                          # Artefactos compilados
+│       └── uploads/                         # Almacenamiento de archivos
 │
-├── MANUAL_TECNICO.md           # Documentación técnica completa
-└── README.md                   # Este archivo
+├── Docs/
+│   ├── Manual_Tecnico_BioCore_Medical.md           # Documentación técnica
+│   ├── Manual_Tecnico_BioCore_Medical.pdf          # (formato PDF)
+│   ├── Manual_Usuario_BioCore_Medical_v2.2.md      # Manual de usuario
+│   ├── Manual_Usuario_BioCore_Medical_v2.2.pdf     # (formato PDF)
+│   ├── BioCore_Medical_Casos_de_Uso.md             # Casos de uso
+│   └── BioCore_Medical_Casos_de_Uso.pdf            # (formato PDF)
+│
+└── README.md                                 # Este archivo
+
 ```
+
+---
+
+## Organización de Módulos Frontend
+
+Cada módulo en `src/app/modules/` sigue la estructura:
+
+```
+modulo/
+├── components/        # Componentes del módulo
+├── pages/            # Páginas/vistas principales
+├── services/         # Servicios específicos del módulo
+├── models/           # Tipos/interfaces locales
+└── modulo.routes.ts  # Rutas del módulo
+```
+
+---
+
+## Organización del Backend
+
+### Capas de la Aplicación
+
+```
+Controller (REST Endpoints)
+    ↓
+Service (Lógica de Negocio)
+    ↓
+Repository (Acceso a Datos)
+    ↓
+Entity (Modelo de Base de Datos)
+```
+
+### Seguridad
+
+- **JWT (JSON Web Tokens)** para autenticación
+- **Roles basados en autorización** (ADMIN, DOCTOR, PATIENT, etc.)
+- **Filtros de seguridad** en cada request
 
 ---
 
@@ -237,9 +347,9 @@ Todos los endpoints (excepto `/api/auth/**` y `/api/public/**`) requieren `Autho
 El sistema utiliza **23 tablas** en PostgreSQL gestionadas automáticamente por Hibernate (`ddl-auto=update`).
 
 Tablas principales:
-`users` · `patients` · `clinics` · `tickets` · `appointments` · `vital_signs` · `prescriptions` · `prescription_items` · `medicines` · `lab_exams` · `lab_orders` · `lab_results` · `payments` · `pharmacy_sales` · `pharmacy_sale_items` · `insurances` · `documents` · `emergency_reports` · `emergency_medical_reports` · `doctor_clinic_assignments` · `doctor_schedules` · `clinic_schedules` · `slot_reservations`
+`users` · `patients` · `clinics` · `tickets` · `appointments` · `vital_signs` · `prescriptions` · `prescription_items` · `medicines` · `lab_exams` · `lab_orders` · `lab_results` · `pharmacy_sales` · `payments` · `emergency_records` · `user_roles` · `insurances` · y más...
 
-Ver [MANUAL_TECNICO.md](./MANUAL_TECNICO.md) para el diagrama ER completo y descripción de cada tabla.
+Ver [Manual_Tecnico_BioCore_Medical.md](./Docs/Manual_Tecnico_BioCore_Medical.md) para el diagrama ER completo y descripción de cada tabla.
 
 ---
 
@@ -263,16 +373,11 @@ El sistema está desplegado en **Railway**:
 
 ## Documentación
 
-El archivo [MANUAL_TECNICO.md](./MANUAL_TECNICO.md) incluye:
+El directorio `Docs/` incluye:
 
-- Herramientas y versiones completas
-- Historial de versiones GitHub
-- Estructura de módulos frontend y backend
-- Diagramas de clases (UML) — 5 diagramas por dominio
-- Diagramas de secuencia — 8 flujos de trabajo completos
-- Diagrama entidad-relación — 3 diagramas ER por módulo
-- Diagrama de despliegue — arquitectura en producción
-- Inventario de 23 tablas con campos y restricciones
+- **Manual Técnico** — Herramientas, versiones, historial, arquitectura, diagramas UML, ER y de secuencia
+- **Manual de Usuario** — Guía de uso completa por rol
+- **Casos de Uso** — Descripción de flujos de negocio principales
 
 ---
 
@@ -295,5 +400,4 @@ El archivo [MANUAL_TECNICO.md](./MANUAL_TECNICO.md) incluye:
 
 ## Licencia
 
-Proyecto académico — Ingeniería de Software — 2026  
-Universidad de San Carlos de Guatemala
+Proyecto académico — Ingeniería de Software — 2026
