@@ -400,5 +400,4 @@ El directorio `Docs/` incluye:
 
 ## Licencia
 
-Proyecto académico — Ingeniería de Software — 2026  
-Universidad de San Carlos de Guatemala
+Proyecto académico — Ingeniería de Software — 2026
