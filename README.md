@@ -239,7 +239,7 @@ El sistema utiliza **23 tablas** en PostgreSQL gestionadas automáticamente por 
 Tablas principales:
 `users` · `patients` · `clinics` · `tickets` · `appointments` · `vital_signs` · `prescriptions` · `prescription_items` · `medicines` · `lab_exams` · `lab_orders` · `lab_results` · `payments` · `pharmacy_sales` · `pharmacy_sale_items` · `insurances` · `documents` · `emergency_reports` · `emergency_medical_reports` · `doctor_clinic_assignments` · `doctor_schedules` · `clinic_schedules` · `slot_reservations`
 
-Ver [MANUAL_TECNICO.md](./MANUAL_TECNICO.md) para el diagrama ER completo y descripción de cada tabla.
+Ver [Manual_Tecnico_BioCore_Medical.md](./Docs/Manual_Tecnico_BioCore_Medical.md) para el diagrama ER completo y descripción de cada tabla.
 
 ---
 
@@ -263,7 +263,7 @@ El sistema está desplegado en **Railway**:
 
 ## Documentación
 
-El archivo [MANUAL_TECNICO.md](./MANUAL_TECNICO.md) incluye:
+El archivo [Manual_Tecnico_BioCore_Medical.md](./Docs/Manual_Tecnico_BioCore_Medical.md). incluye:
 
 - Herramientas y versiones completas
 - Historial de versiones GitHub
