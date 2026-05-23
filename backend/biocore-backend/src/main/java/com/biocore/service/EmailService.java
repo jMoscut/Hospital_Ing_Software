@@ -146,7 +146,7 @@ public class EmailService {
             mailSender.send(mimeMessage);
             log.info("Notificación con PDF enviada a {} para orden {}", patient.getEmail(), order.getId());
         } catch (Exception e) {
-            log.error("Error al enviar notificación de laboratorio: {}", e.getMessage());
+            log.error("Error al enviar notificación de laboratorio: {} — {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -216,7 +216,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Diagnóstico enviado a {} para ticket {}", patient.getEmail(), ticket.getTicketNumber());
         } catch (Exception e) {
-            log.error("Error al enviar diagnóstico: {}", e.getMessage());
+            log.error("Error al enviar diagnóstico: {} — {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -260,7 +260,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Comprobante enviado a {} factura {}", patient.getEmail(), payment.getInvoiceNumber());
         } catch (Exception e) {
-            log.error("Error al enviar comprobante de pago: {}", e.getMessage());
+            log.error("Error al enviar comprobante de pago: {} — {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -296,7 +296,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Reporte de emergencia enviado a {} ticket {}", patient.getEmail(), ticketNumber);
         } catch (Exception e) {
-            log.error("Error al enviar reporte de emergencia: {}", e.getMessage());
+            log.error("Error al enviar reporte de emergencia: {} — {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -346,7 +346,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Comprobante farmacia enviado a {} venta {}", patient.getEmail(), sale.getSaleCode());
         } catch (Exception e) {
-            log.error("Error al enviar comprobante de farmacia: {}", e.getMessage());
+            log.error("Error al enviar comprobante de farmacia: {} — {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -393,7 +393,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Confirmación de cita enviada a {} ticket {}", patient.getEmail(), ticketNumber);
         } catch (Exception e) {
-            log.error("Error al enviar confirmación de cita: {}", e.getMessage());
+            log.error("Error al enviar confirmación de cita: {} — {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 }
