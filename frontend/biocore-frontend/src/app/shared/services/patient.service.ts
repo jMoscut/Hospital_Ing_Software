@@ -34,4 +34,8 @@ export class PatientService {
   update(id: number, data: PatientCreateRequest): Observable<ApiResponse<Patient>> {
     return this.http.put<ApiResponse<Patient>>(`${this.url}/${id}`, data);
   }
+
+  delete(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.url}/${id}`);
+  }
 }

@@ -20,6 +20,8 @@ public class DoctorScheduleDTO {
     private LocalDate specificDate;
     private String startTime;
     private String endTime;
+    private String lunchStartTime;
+    private String lunchEndTime;
     private boolean active;
 
     public static DoctorScheduleDTO from(DoctorSchedule s) {
@@ -33,6 +35,8 @@ public class DoctorScheduleDTO {
                 .specificDate(s.getSpecificDate())
                 .startTime(s.getStartTime())
                 .endTime(s.getEndTime())
+                .lunchStartTime(s.getLunchStartTime())
+                .lunchEndTime(s.getLunchEndTime())
                 .active(s.isActive())
                 .build();
     }

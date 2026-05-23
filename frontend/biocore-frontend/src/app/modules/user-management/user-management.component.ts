@@ -13,7 +13,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { UserService } from '../../shared/services/payment.service';
-import { ClinicService, DoctorScheduleService } from '../../shared/services/ticket.service';
+import { ClinicService, DoctorScheduleService, ClinicScheduleService } from '../../shared/services/ticket.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Clinic } from '../../core/models/ticket.model';
 
@@ -65,7 +65,7 @@ function defaultSettings(): NotifSettings {
               <mat-card-header>
                 <mat-icon mat-card-avatar>person_add</mat-icon>
                 <mat-card-title>Nuevo Usuario</mat-card-title>
-                <mat-card-subtitle>FA01 · Registrar personal médico o administrativo</mat-card-subtitle>
+                <mat-card-subtitle>Registrar personal médico o administrativo</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
                 <form [formGroup]="userForm" class="form-grid">
@@ -82,7 +82,8 @@ function defaultSettings(): NotifSettings {
                   <mat-form-field appearance="outline">
                     <mat-label>Usuario *</mat-label>
                     <input matInput formControlName="username">
-                    <mat-error>Requerido</mat-error>
+                    <mat-hint>Mín. 4 caracteres, solo letras y números</mat-hint>
+                    <mat-error>Mín. 4 caracteres, solo letras y números, sin espacios</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Contraseña *</mat-label>
@@ -116,7 +117,7 @@ function defaultSettings(): NotifSettings {
                     *ngIf="['DOCTOR','LAB_TECHNICIAN','HEALTH_STAFF'].includes(userForm.value.role)">
                     <mat-label>N° Colegiado {{ isCollegiateRequired() ? '*' : '(opcional)' }}</mat-label>
                     <input matInput formControlName="collegiateNumber">
-                    <mat-error>Requerido para este rol (RN-M05: debe ser único)</mat-error>
+                    <mat-error>Requerido para este rol</mat-error>
                   </mat-form-field>
                 </form>
                 <div class="error-msg" *ngIf="createError">
@@ -184,7 +185,7 @@ function defaultSettings(): NotifSettings {
                       <!-- FA04 / FA03: Asignar o reasignar clínica a médicos -->
                       <button mat-icon-button color="primary" *ngIf="u.role === 'DOCTOR'"
                               (click)="openAssignDialog(u)"
-                              [title]="u.assignedClinic ? 'Reasignar clínica (FA03)' : 'Asignar clínica (FA04)'">
+                              [title]="u.assignedClinic ? 'Reasignar clínica' : 'Asignar clínica'">
                         <mat-icon>{{ u.assignedClinic ? 'sync_alt' : 'add_location' }}</mat-icon>
                       </button>
                       <button mat-icon-button color="accent" (click)="openEditDialog(u)" title="Editar usuario">
@@ -294,13 +295,11 @@ function defaultSettings(): NotifSettings {
                       <strong>{{ selectedDays.length }} día(s) seleccionado(s):</strong>
                       <span class="day-chip" *ngFor="let d of selectedDays">{{ formatSelectedDay(d) }}</span>
                     </div>
+                    <div style="margin-bottom:8px;font-size:0.85rem;color:#555">
+                      <mat-icon style="font-size:16px;vertical-align:middle">business</mat-icon>
+                      Clínica: <strong>{{ scheduleDoctor?.assignedClinic || 'Sin asignar' }}</strong>
+                    </div>
                     <div class="apply-form-row">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Clínica *</mat-label>
-                        <mat-select [(ngModel)]="applyClinicId" [ngModelOptions]="{standalone:true}">
-                          <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
-                        </mat-select>
-                      </mat-form-field>
                       <mat-form-field appearance="outline">
                         <mat-label>Hora inicio *</mat-label>
                         <mat-select [(ngModel)]="applyStartTime" [ngModelOptions]="{standalone:true}">
@@ -310,6 +309,21 @@ function defaultSettings(): NotifSettings {
                       <mat-form-field appearance="outline">
                         <mat-label>Hora fin *</mat-label>
                         <mat-select [(ngModel)]="applyEndTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Almuerzo inicio</mat-label>
+                        <mat-select [(ngModel)]="applyLunchStartTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option [value]="null">— Sin almuerzo —</mat-option>
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Almuerzo fin</mat-label>
+                        <mat-select [(ngModel)]="applyLunchEndTime" [ngModelOptions]="{standalone:true}"
+                                    [disabled]="!applyLunchStartTime">
+                          <mat-option [value]="null">—</mat-option>
                           <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
                         </mat-select>
                       </mat-form-field>
@@ -334,6 +348,10 @@ function defaultSettings(): NotifSettings {
                       <mat-card-subtitle>Se aplica cada semana en el día indicado</mat-card-subtitle>
                     </mat-card-header>
                     <mat-card-content>
+                      <div style="margin-bottom:8px;font-size:0.85rem;color:#555">
+                        <mat-icon style="font-size:16px;vertical-align:middle">business</mat-icon>
+                        Clínica: <strong>{{ scheduleDoctor?.assignedClinic || 'Sin asignar' }}</strong>
+                      </div>
                       <form [formGroup]="scheduleForm" class="form-grid" style="margin-top:8px">
                         <mat-form-field appearance="outline">
                           <mat-label>Día de la semana *</mat-label>
@@ -348,12 +366,6 @@ function defaultSettings(): NotifSettings {
                           </mat-select>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
-                          <mat-label>Clínica *</mat-label>
-                          <mat-select formControlName="clinicId">
-                            <mat-option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field appearance="outline">
                           <mat-label>Hora inicio *</mat-label>
                           <mat-select formControlName="startTime">
                             <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
@@ -362,6 +374,21 @@ function defaultSettings(): NotifSettings {
                         <mat-form-field appearance="outline">
                           <mat-label>Hora fin *</mat-label>
                           <mat-select formControlName="endTime">
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Almuerzo inicio</mat-label>
+                          <mat-select formControlName="lunchStartTime">
+                            <mat-option [value]="null">— Sin almuerzo —</mat-option>
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Almuerzo fin</mat-label>
+                          <mat-select formControlName="lunchEndTime"
+                                      [attr.disabled]="!scheduleForm.get('lunchStartTime')?.value ? true : null">
+                            <mat-option [value]="null">—</mat-option>
                             <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
                           </mat-select>
                         </mat-form-field>
@@ -394,7 +421,12 @@ function defaultSettings(): NotifSettings {
                     </ng-container>
                     <ng-container matColumnDef="time">
                       <th mat-header-cell *matHeaderCellDef>Horario</th>
-                      <td mat-cell *matCellDef="let s">{{ s.startTime }} – {{ s.endTime }}</td>
+                      <td mat-cell *matCellDef="let s">
+                        {{ s.startTime }} – {{ s.endTime }}
+                        <span *ngIf="s.lunchStartTime" style="font-size:0.75rem;color:#888;margin-left:6px">
+                          (almuerzo {{ s.lunchStartTime }}–{{ s.lunchEndTime }})
+                        </span>
+                      </td>
                     </ng-container>
                     <ng-container matColumnDef="clinic">
                       <th mat-header-cell *matHeaderCellDef>Área / Clínica</th>
@@ -420,6 +452,191 @@ function defaultSettings(): NotifSettings {
                 </div>
               </mat-card-content>
             </mat-card>
+
+            <!-- Lab clinic schedules -->
+            <mat-card style="margin-top:16px">
+              <mat-card-header>
+                <mat-icon mat-card-avatar>biotech</mat-icon>
+                <mat-card-title>Horarios de Laboratorio</mat-card-title>
+                <mat-card-subtitle>Configura horario de atención por día · slots cada 30 minutos</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <mat-form-field appearance="outline" style="width:100%;margin-top:8px">
+                  <mat-label>Seleccionar Laboratorio</mat-label>
+                  <mat-select [(ngModel)]="labScheduleClinic" (ngModelChange)="onLabClinicChange()" [ngModelOptions]="{standalone:true}">
+                    <mat-option *ngFor="let c of labClinics" [value]="c">{{ c.name }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <div *ngIf="labScheduleClinic">
+
+                  <!-- Calendar navigation -->
+                  <div class="cal-nav">
+                    <button mat-icon-button (click)="labPrevPeriod()"><mat-icon>chevron_left</mat-icon></button>
+                    <span class="cal-period-label">{{ labPeriodLabel }}</span>
+                    <button mat-icon-button (click)="labNextPeriod()"><mat-icon>chevron_right</mat-icon></button>
+                    <div class="cal-view-btns">
+                      <button [class.cal-view-active]="labCalView==='month'" (click)="labSetCalView('month')">Mes</button>
+                      <button [class.cal-view-active]="labCalView==='week'" (click)="labSetCalView('week')">Semana</button>
+                    </div>
+                    <button mat-button color="warn" *ngIf="labSelectedDays.length>0"
+                            (click)="labClearSelection()" style="margin-left:auto">
+                      <mat-icon>clear</mat-icon> Limpiar ({{ labSelectedDays.length }})
+                    </button>
+                  </div>
+
+                  <!-- Month view -->
+                  <div class="cal-month" *ngIf="labCalView==='month'">
+                    <div class="cal-dow-row">
+                      <span *ngFor="let d of ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']">{{ d }}</span>
+                    </div>
+                    <div class="cal-cells">
+                      <div class="cal-cell"
+                           *ngFor="let cell of labMonthCells"
+                           [class.other-month]="!cell.inMonth"
+                           [class.cal-selected]="cell.inMonth && labIsSelected(cell.date)"
+                           [class.has-sched]="cell.inMonth && cell.hasSchedule"
+                           [class.is-today]="cell.isToday"
+                           (click)="cell.inMonth && labToggleDay(cell.date)">
+                        <span class="cal-day-num">{{ cell.day }}</span>
+                        <span class="cal-dot" *ngIf="cell.inMonth && cell.hasSchedule"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Week view -->
+                  <div class="cal-week" *ngIf="labCalView==='week'">
+                    <div class="week-col"
+                         *ngFor="let day of labWeekDays"
+                         [class.cal-selected]="labIsSelected(day.date)"
+                         [class.is-today]="day.isToday"
+                         (click)="labToggleDay(day.date)">
+                      <div class="week-col-header">
+                        <span class="week-dow">{{ day.dowLabel }}</span>
+                        <span class="week-daynum" [class.is-today]="day.isToday">{{ day.dayNum }}</span>
+                      </div>
+                      <div class="week-sched-item" *ngFor="let s of labGetSchedulesForDate(day.date)">
+                        <span style="font-size:0.75rem;font-weight:600">{{ s.startTime }}–{{ s.endTime }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Apply panel (shown when days selected) -->
+                  <div class="apply-panel" *ngIf="labSelectedDays.length > 0">
+                    <div class="apply-selected-label">
+                      <mat-icon style="color:#1D6C61;font-size:18px">event</mat-icon>
+                      <strong>{{ labSelectedDays.length }} día(s) seleccionado(s):</strong>
+                      <span class="day-chip" *ngFor="let d of labSelectedDays">{{ formatSelectedDay(d) }}</span>
+                    </div>
+                    <div class="apply-form-row">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Hora inicio *</mat-label>
+                        <mat-select [(ngModel)]="labApplyStartTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Hora fin *</mat-label>
+                        <mat-select [(ngModel)]="labApplyEndTime" [ngModelOptions]="{standalone:true}">
+                          <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" (click)="applyLabSchedule()"
+                              [disabled]="labApplyLoading" style="height:56px;white-space:nowrap">
+                        <mat-icon>save</mat-icon>
+                        {{ labApplyLoading ? 'Guardando...' : 'Aplicar a ' + labSelectedDays.length + ' día(s)' }}
+                      </button>
+                    </div>
+                    <div class="error-msg" *ngIf="labApplyError">
+                      <mat-icon>error_outline</mat-icon> {{ labApplyError }}
+                    </div>
+                  </div>
+
+                  <!-- Recurring weekly form -->
+                  <mat-card style="margin-top:16px;background:#fafafa">
+                    <mat-card-header>
+                      <mat-card-title style="font-size:0.9rem">
+                        <mat-icon style="vertical-align:middle;font-size:18px;margin-right:6px">repeat</mat-icon>
+                        Patrón semanal recurrente
+                      </mat-card-title>
+                      <mat-card-subtitle>Se aplica cada semana en el día indicado</mat-card-subtitle>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <form [formGroup]="labScheduleForm" class="form-grid" style="margin-top:8px">
+                        <mat-form-field appearance="outline">
+                          <mat-label>Día de la semana *</mat-label>
+                          <mat-select formControlName="dayOfWeek">
+                            <mat-option value="MONDAY">Lunes</mat-option>
+                            <mat-option value="TUESDAY">Martes</mat-option>
+                            <mat-option value="WEDNESDAY">Miércoles</mat-option>
+                            <mat-option value="THURSDAY">Jueves</mat-option>
+                            <mat-option value="FRIDAY">Viernes</mat-option>
+                            <mat-option value="SATURDAY">Sábado</mat-option>
+                            <mat-option value="SUNDAY">Domingo</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Hora inicio *</mat-label>
+                          <mat-select formControlName="startTime">
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline">
+                          <mat-label>Hora fin *</mat-label>
+                          <mat-select formControlName="endTime">
+                            <mat-option *ngFor="let t of timeSlots" [value]="t">{{ t }}</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                      </form>
+                      <div class="error-msg" *ngIf="labScheduleError">
+                        <mat-icon>error_outline</mat-icon> {{ labScheduleError }}
+                      </div>
+                      <div style="margin-top:8px">
+                        <button mat-raised-button color="accent" (click)="saveLabSchedule()" [disabled]="savingLabSchedule">
+                          <mat-icon>repeat</mat-icon> {{ savingLabSchedule ? 'Guardando...' : 'Agregar patrón semanal' }}
+                        </button>
+                      </div>
+                    </mat-card-content>
+                  </mat-card>
+
+                  <!-- Schedule list -->
+                  <h3 class="sched-section-title" style="margin-top:16px">Horarios configurados</h3>
+                  <table mat-table [dataSource]="labClinicSchedules" *ngIf="labClinicSchedules.length > 0" class="schedule-table">
+                    <ng-container matColumnDef="type">
+                      <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                      <td mat-cell *matCellDef="let s">
+                        <span [class]="s.dayOfWeek ? 'sched-chip-recurring' : 'sched-chip-specific'">
+                          {{ s.dayOfWeek ? 'Semanal' : 'Fecha única' }}
+                        </span>
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="day">
+                      <th mat-header-cell *matHeaderCellDef>Día / Fecha</th>
+                      <td mat-cell *matCellDef="let s">{{ s.dayOfWeek ? dayLabel(s.dayOfWeek) : s.specificDate }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="time">
+                      <th mat-header-cell *matHeaderCellDef>Horario</th>
+                      <td mat-cell *matCellDef="let s">{{ s.startTime }} – {{ s.endTime }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="actions">
+                      <th mat-header-cell *matHeaderCellDef></th>
+                      <td mat-cell *matCellDef="let s">
+                        <button mat-icon-button color="warn" (click)="deleteLabSchedule(s.id)">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="labScheduleColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: labScheduleColumns;"></tr>
+                  </table>
+                  <div *ngIf="labClinicSchedules.length === 0"
+                       style="padding:16px;text-align:center;color:#9e9e9e">
+                    <mat-icon style="font-size:32px;width:32px;height:32px">event_busy</mat-icon>
+                    <p>Sin horarios configurados</p>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
           </div>
         </mat-tab>
 
@@ -434,7 +651,7 @@ function defaultSettings(): NotifSettings {
               <mat-card-header>
                 <mat-icon mat-card-avatar>notifications_active</mat-icon>
                 <mat-card-title>Configuración de Notificaciones</mat-card-title>
-                <mat-card-subtitle>FA02 · Pantallas de llamado y sistema de audio (RN-N01, RN-N02)</mat-card-subtitle>
+                <mat-card-subtitle>Pantallas de llamado y sistema de audio</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
 
@@ -443,7 +660,7 @@ function defaultSettings(): NotifSettings {
                   <div class="notif-row">
                     <div>
                       <strong>Activar pantalla de llamado</strong>
-                      <p>Muestra el turno del paciente en la pantalla de sala de espera [RN-N01]</p>
+                      <p>Muestra el turno del paciente en la pantalla de sala de espera</p>
                     </div>
                     <mat-slide-toggle [(ngModel)]="notifSettings.visualEnabled"
                                       (change)="saveSettings()" color="primary">
@@ -468,7 +685,7 @@ function defaultSettings(): NotifSettings {
                   <div class="notif-row">
                     <div>
                       <strong>Activar sistema de audio</strong>
-                      <p>Anuncia en voz alta el turno y clínica del paciente [RN-N02]</p>
+                      <p>Anuncia en voz alta el turno y clínica del paciente</p>
                     </div>
                     <mat-slide-toggle [(ngModel)]="notifSettings.audioEnabled"
                                       (change)="saveSettings()" color="primary">
@@ -517,7 +734,7 @@ function defaultSettings(): NotifSettings {
 
                 <div class="save-row">
                   <mat-icon style="color:#2e7d32">check_circle</mat-icon>
-                  <span>Los cambios se guardan automáticamente y se aplican en tiempo real [RN-N03]</span>
+                  <span>Los cambios se guardan automáticamente y se aplican en tiempo real</span>
                 </div>
               </mat-card-content>
             </mat-card>
@@ -591,7 +808,7 @@ function defaultSettings(): NotifSettings {
           </mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <p class="hint-text">RN-M01: Máx. de médicos por clínica. RN-M02: Solo una clínica activa por médico.</p>
+          <p class="hint-text">Máx. de médicos por clínica.Solo una clínica activa por médico.</p>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Clínica de Destino</mat-label>
             <mat-select [(ngModel)]="selectedClinicId" [ngModelOptions]="{standalone: true}">
@@ -620,8 +837,8 @@ function defaultSettings(): NotifSettings {
   styles: [`
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1D6C61; margin: 0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #C5CDD8; }
+    .page-header h1 { font-size: 1.7rem; font-weight: 700; margin: 0; background: linear-gradient(135deg,#243C2C,#59789F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 8px; }
     .mb-16 { margin-bottom: 16px; }
     .full-width { width: 100%; }
@@ -629,18 +846,18 @@ function defaultSettings(): NotifSettings {
 
     .user-table { width: 100%; }
     .role-chip { padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
-    .role-doctor { background: #e3f2fd; color: #1565c0; }
-    .role-admin { background: #fce4ec; color: #c62828; }
-    .role-nurse { background: #f3e5f5; color: #6a1b9a; }
-    .role-lab { background: #e8f5e9; color: #2e7d32; }
-    .role-pharmacy { background: #fff3e0; color: #e65100; }
-    .role-cashier { background: #f5f5f5; color: #424242; }
-    .role-staff { background: #e0f7fa; color: #006064; }
-    .clinic-badge { background: #d0f4ef; color: #1D6C61; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; }
-    .unassigned-badge { background: #fff3e0; color: #e65100; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; }
-    .collegiate-badge { background: #e8eaf6; color: #3949ab; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-left: 6px; }
-    .area-badge { background: #e8f5e9; color: #2e7d32; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; display:inline-flex;align-items:center;gap:4px; }
-    .auto-area-info { display:flex;align-items:center;gap:6px;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:8px 12px;font-size:0.82rem;margin-top:-4px; }
+    .role-doctor   { background: #D6E3F0; color: #3d5c80; }   /* Glaucous */
+    .role-admin    { background: #243C2C; color: #ECE69D; }   /* Dark Green + Vanilla */
+    .role-nurse    { background: #C8D8A8; color: #3d5528; }   /* Moss Green */
+    .role-lab      { background: #EBF0DC; color: #243C2C; }   /* Light Moss */
+    .role-pharmacy { background: #ECE69D; color: #4A4210; }   /* Vanilla */
+    .role-cashier  { background: #C5CDD8; color: #2A3D4F; }   /* Powder Blue */
+    .role-staff    { background: #D8E8C8; color: #3d5528; }   /* Light Moss */
+    .clinic-badge      { background: #D6E3F0; color: #3d5c80; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
+    .unassigned-badge  { background: #ECE69D; color: #4A4210; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
+    .collegiate-badge  { background: #C5CDD8; color: #2A3D4F; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-left: 6px; font-weight: 600; }
+    .area-badge        { background: #C8D8A8; color: #3d5528; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; display:inline-flex;align-items:center;gap:4px; }
+    .auto-area-info { display:flex;align-items:center;gap:6px;background:#F5F2DC;border:1px solid #C5CDD8;color:#243C2C;border-radius:10px;padding:8px 12px;font-size:0.82rem;margin-top:-4px; }
     .error-msg { display: flex; align-items: center; gap: 8px; color: #c62828; font-size: 0.88rem; margin-top: 4px; }
 
     .empty-state { text-align: center; padding: 32px; color: #9e9e9e; }
@@ -648,61 +865,64 @@ function defaultSettings(): NotifSettings {
 
     /* Notification settings */
     .notif-section { margin-bottom: 32px; }
-    .notif-section h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 600; color: #1D6C61; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px; }
-    .notif-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; gap: 16px; }
+    .notif-section h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; color: #243C2C; margin-bottom: 16px; border-bottom: 2px solid #C5CDD8; padding-bottom: 8px; }
+    .notif-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 10px; border: 1px solid #F5F2DC; gap: 16px; margin-bottom: 4px; transition: background 0.15s; }
+    .notif-row:hover { background: #F5F2DC; }
     .notif-row > div { flex: 1; }
-    .notif-row strong { font-size: 0.92rem; }
+    .notif-row strong { font-size: 0.92rem; color: #243C2C; }
     .notif-row p { font-size: 0.78rem; color: #757575; margin: 2px 0 0; }
     .notif-input { display: flex; align-items: center; gap: 8px; }
-    .number-input { width: 64px; padding: 6px 10px; border: 1px solid #bbb; border-radius: 6px; font-size: 1rem; text-align: center; }
-    .volume-slider { width: 140px; accent-color: #1D6C61; }
+    .number-input { width: 64px; padding: 6px 10px; border: 1px solid #A9B6C4; border-radius: 8px; font-size: 1rem; text-align: center; transition: border-color 0.15s; }
+    .number-input:focus { border-color: #243C2C; outline: none; }
+    .volume-slider { width: 140px; accent-color: #243C2C; }
     .notif-select { width: 180px; }
-    .save-row { display: flex; align-items: center; gap: 8px; color: #2e7d32; font-size: 0.85rem; margin-top: 24px; background: #e8f5e9; padding: 12px 16px; border-radius: 8px; }
+    .save-row { display: flex; align-items: center; gap: 8px; color: #243C2C; font-size: 0.85rem; margin-top: 24px; background: linear-gradient(135deg,#EBF0DC,#F5F2DC); border: 1px solid #A9B6C4; padding: 12px 16px; border-radius: 10px; font-weight: 500; }
 
     /* Assign dialog */
     .assign-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .assign-dialog { width: 420px; }
+    .assign-dialog { width: 420px; border-radius: 16px !important; }
 
     /* Schedule tab */
-    .sched-section-title { font-size: 0.95rem; font-weight: 600; color: #1D6C61; margin: 16px 0 8px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+    .sched-section-title { font-size: 0.95rem; font-weight: 700; color: #243C2C; margin: 16px 0 8px; border-bottom: 2px solid #C5CDD8; padding-bottom: 6px; }
     .schedule-table { width: 100%; margin-bottom: 8px; }
-    .sched-chip-recurring { background: #e3f2fd; color: #1565c0; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
+    .sched-chip-recurring { background: #e3f2fd; color: #59789F; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
     .sched-chip-specific   { background: #f3e5f5; color: #6a1b9a; padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; }
 
     /* Calendar */
     .cal-nav { display:flex; align-items:center; gap:8px; margin:16px 0 8px; flex-wrap:wrap; }
-    .cal-period-label { font-size:1rem; font-weight:600; color:#1D6C61; min-width:180px; }
-    .cal-view-btns { display:flex; border:1px solid #bdbdbd; border-radius:6px; overflow:hidden; margin-left:8px; }
-    .cal-view-btns button { border:none; background:none; padding:6px 16px; cursor:pointer; font-size:0.85rem; color:#616161; }
-    .cal-view-btns button.cal-view-active { background:#1D6C61; color:#fff; }
+    .cal-period-label { font-size:1rem; font-weight:700; color:#243C2C; min-width:180px; }
+    .cal-view-btns { display:flex; border:1px solid #A9B6C4; border-radius:8px; overflow:hidden; margin-left:8px; }
+    .cal-view-btns button { border:none; background:none; padding:6px 16px; cursor:pointer; font-size:0.85rem; color:#616161; transition:background 0.15s; }
+    .cal-view-btns button:hover { background:#F5F2DC; }
+    .cal-view-btns button.cal-view-active { background:linear-gradient(135deg,#243C2C,#59789F); color:#fff; }
     .cal-month { margin-bottom:16px; }
-    .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:0.78rem; font-weight:600; color:#757575; padding:4px 0; border-bottom:1px solid #e0e0e0; }
+    .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:0.78rem; font-weight:700; color:#757575; padding:4px 0; border-bottom:2px solid #C5CDD8; }
     .cal-cells { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-    .cal-cell { min-height:56px; border-radius:6px; padding:4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; transition:background 0.15s; position:relative; }
-    .cal-cell:hover:not(.other-month) { background:#e8f5e9; }
+    .cal-cell { min-height:56px; border-radius:8px; padding:4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; transition:all 0.15s; position:relative; }
+    .cal-cell:hover:not(.other-month) { background:#F5F2DC; transform:translateY(-1px); }
     .cal-cell.other-month { opacity:0.3; cursor:default; }
-    .cal-cell.cal-selected { background:#1D6C61 !important; color:#fff; }
+    .cal-cell.cal-selected { background:linear-gradient(135deg,#243C2C,#59789F) !important; color:#fff; box-shadow:0 2px 8px rgba(36,60,44,0.25); }
     .cal-cell.cal-selected .cal-day-num { color:#fff; }
-    .cal-cell.is-today .cal-day-num { background:#1D6C61; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
-    .cal-cell.cal-selected.is-today .cal-day-num { background:#fff; color:#1D6C61; }
+    .cal-cell.is-today .cal-day-num { background:#243C2C; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+    .cal-cell.cal-selected.is-today .cal-day-num { background:#fff; color:#243C2C; }
     .cal-day-num { font-size:0.88rem; font-weight:500; }
-    .cal-dot { width:6px; height:6px; border-radius:50%; background:#4caf50; flex-shrink:0; }
-    .cal-cell.cal-selected .cal-dot { background:#a5d6a7; }
+    .cal-dot { width:6px; height:6px; border-radius:50%; background:#7A9445; flex-shrink:0; }
+    .cal-cell.cal-selected .cal-dot { background:#A9B6C4; }
     .cal-week { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:16px; }
-    .week-col { border:1px solid #e0e0e0; border-radius:8px; padding:8px 4px; cursor:pointer; min-height:80px; transition:background 0.15s; }
-    .week-col:hover { background:#e8f5e9; }
-    .week-col.cal-selected { background:#1D6C61; color:#fff; border-color:#1D6C61; }
+    .week-col { border:1px solid #C5CDD8; border-radius:10px; padding:8px 4px; cursor:pointer; min-height:80px; transition:all 0.15s; }
+    .week-col:hover { background:#F5F2DC; border-color:#7A9445; transform:translateY(-1px); }
+    .week-col.cal-selected { background:linear-gradient(135deg,#243C2C,#59789F); color:#fff; border-color:#243C2C; box-shadow:0 2px 8px rgba(36,60,44,0.25); }
     .week-col-header { text-align:center; margin-bottom:6px; }
-    .week-dow { display:block; font-size:0.72rem; color:#757575; text-transform:uppercase; }
-    .week-col.cal-selected .week-dow { color:#a5d6a7; }
+    .week-dow { display:block; font-size:0.72rem; color:#757575; text-transform:uppercase; font-weight:600; }
+    .week-col.cal-selected .week-dow { color:#A9B6C4; }
     .week-daynum { display:inline-block; font-size:1rem; font-weight:600; }
-    .week-daynum.is-today { background:#1D6C61; color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; }
-    .week-col.cal-selected .week-daynum.is-today { background:#fff; color:#1D6C61; }
+    .week-daynum.is-today { background:#243C2C; color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; }
+    .week-col.cal-selected .week-daynum.is-today { background:#fff; color:#243C2C; }
     .week-sched-item { display:flex; flex-direction:column; background:rgba(255,255,255,0.2); border-radius:4px; padding:2px 4px; margin-top:4px; }
     .week-col.cal-selected .week-sched-item { background:rgba(255,255,255,0.2); }
-    .apply-panel { background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:16px; margin:12px 0; }
+    .apply-panel { background:linear-gradient(135deg,#EBF0DC,#F5F2DC); border:1px solid #A9B6C4; border-radius:12px; padding:16px; margin:12px 0; }
     .apply-selected-label { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; font-size:0.88rem; }
-    .day-chip { background:#1D6C61; color:#fff; border-radius:12px; padding:2px 10px; font-size:0.75rem; }
+    .day-chip { background:linear-gradient(135deg,#243C2C,#59789F); color:#fff; border-radius:12px; padding:2px 10px; font-size:0.75rem; font-weight:600; }
     .apply-form-row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
   `]
 })
@@ -732,9 +952,31 @@ export class UserManagementComponent implements OnInit {
   scheduleForm!: FormGroup;
   savingSchedule = false;
   scheduleError = '';
-  timeSlots = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00',
-               '14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+  timeSlots = [
+    '00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00',
+    '08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00',
+    '16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'
+  ];
   get doctors(): any[] { return this.users.filter(u => u.role === 'DOCTOR'); }
+
+  // Lab schedule tab
+  labClinics: any[] = [];
+  labScheduleClinic: any = null;
+  labClinicSchedules: any[] = [];
+  labScheduleColumns = ['type', 'day', 'time', 'actions'];
+  labScheduleForm!: FormGroup;
+  savingLabSchedule = false;
+  labScheduleError = '';
+  // Lab calendar
+  labCalView: 'month' | 'week' = 'month';
+  labCalDate = new Date();
+  labMonthCells: CalCell[] = [];
+  labWeekDays: WeekDay[] = [];
+  labSelectedDays: string[] = [];
+  labApplyStartTime: string | null = null;
+  labApplyEndTime: string | null = null;
+  labApplyError = '';
+  labApplyLoading = false;
 
   // Calendar
   calView: 'month' | 'week' = 'month';
@@ -747,6 +989,8 @@ export class UserManagementComponent implements OnInit {
   applyClinicId: number | null = null;
   applyStartTime: string | null = null;
   applyEndTime: string | null = null;
+  applyLunchStartTime: string | null = null;
+  applyLunchEndTime: string | null = null;
   applyError = '';
   applyLoading = false;
 
@@ -755,6 +999,7 @@ export class UserManagementComponent implements OnInit {
     private userService: UserService,
     private clinicService: ClinicService,
     private scheduleService: DoctorScheduleService,
+    private clinicScheduleService: ClinicScheduleService,
     private notification: NotificationService
   ) {}
 
@@ -765,7 +1010,7 @@ export class UserManagementComponent implements OnInit {
     this.userForm = this.fb.group({
       firstName:        ['', Validators.required],
       lastName:         ['', Validators.required],
-      username:         ['', Validators.required],
+      username:         ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^[a-zA-Z0-9]+$/)]],
       password:         ['', [Validators.required, Validators.minLength(8)]],
       email:            ['', [Validators.required, Validators.email]],
       role:             ['DOCTOR', Validators.required],
@@ -785,8 +1030,16 @@ export class UserManagementComponent implements OnInit {
     });
 
     this.scheduleForm = this.fb.group({
-      dayOfWeek: [null],
-      clinicId:  [null, Validators.required],
+      dayOfWeek:      [null],
+      clinicId:       [null, Validators.required],
+      startTime:      [null, Validators.required],
+      endTime:        [null, Validators.required],
+      lunchStartTime: [null],
+      lunchEndTime:   [null]
+    });
+
+    this.labScheduleForm = this.fb.group({
+      dayOfWeek: [null, Validators.required],
       startTime: [null, Validators.required],
       endTime:   [null, Validators.required]
     });
@@ -795,7 +1048,10 @@ export class UserManagementComponent implements OnInit {
     // Only the 3 consultation clinics are valid for doctor assignment
     const allowedClinics = ['Consulta Externa', 'Medicina General', 'Emergencias'];
     this.clinicService.getAll().subscribe(res => {
-      if (res.success) this.clinics = res.data.filter((c: Clinic) => allowedClinics.includes(c.name));
+      if (res.success) {
+        this.clinics = res.data.filter((c: Clinic) => allowedClinics.includes(c.name));
+        this.labClinics = res.data.filter((c: Clinic) => c.type === 'LABORATORY');
+      }
     });
   }
 
@@ -865,7 +1121,7 @@ export class UserManagementComponent implements OnInit {
           }
           this.assigning = false;
         },
-        error: err => { this.notification.error(err.error?.message || 'Error: Verifique capacidad (RN-M01)'); this.assigning = false; }
+        error: err => { this.notification.error(err.error?.message || 'Error: Verifique capacidad'); this.assigning = false; }
       });
     };
 
@@ -996,7 +1252,14 @@ export class UserManagementComponent implements OnInit {
   onScheduleDoctorChange(): void {
     this.doctorSchedules = [];
     this.clearSelection();
-    if (this.scheduleDoctor) this.loadSchedules();
+    const cid = this.scheduleDoctor?.assignedClinicId ?? null;
+    this.applyClinicId = cid;
+    if (this.scheduleDoctor) {
+      this.scheduleForm.patchValue({ clinicId: cid });
+      this.loadSchedules();
+    } else {
+      this.scheduleForm.patchValue({ clinicId: null });
+    }
   }
 
   loadSchedules(): void {
@@ -1016,21 +1279,24 @@ export class UserManagementComponent implements OnInit {
     const v = this.scheduleForm.value;
     this.scheduleError = '';
     if (!v.dayOfWeek) { this.scheduleError = 'Seleccione el día de la semana'; return; }
-    if (!v.clinicId)  { this.scheduleError = 'Seleccione la clínica'; return; }
+    if (!v.clinicId)  { this.scheduleError = 'El médico no tiene clínica asignada'; return; }
     if (!v.startTime || !v.endTime) { this.scheduleError = 'Ingrese hora inicio y fin'; return; }
+    if (v.lunchStartTime && !v.lunchEndTime) { this.scheduleError = 'Ingrese hora fin de almuerzo'; return; }
 
     this.savingSchedule = true;
     this.scheduleService.create({
-      doctorId:  this.scheduleDoctor.id,
-      clinicId:  v.clinicId,
-      dayOfWeek: v.dayOfWeek,
-      startTime: v.startTime,
-      endTime:   v.endTime
+      doctorId:       this.scheduleDoctor.id,
+      clinicId:       v.clinicId,
+      dayOfWeek:      v.dayOfWeek,
+      startTime:      v.startTime,
+      endTime:        v.endTime,
+      lunchStartTime: v.lunchStartTime || null,
+      lunchEndTime:   v.lunchEndTime || null
     }).subscribe({
       next: res => {
         if (res.success) {
           this.notification.success('Patrón semanal agregado');
-          this.scheduleForm.patchValue({ dayOfWeek: null, startTime: null, endTime: null });
+          this.scheduleForm.patchValue({ dayOfWeek: null, startTime: null, endTime: null, lunchStartTime: null, lunchEndTime: null });
           this.loadSchedules();
         } else {
           this.scheduleError = res.message || 'Error al guardar';
@@ -1046,18 +1312,21 @@ export class UserManagementComponent implements OnInit {
 
   applySchedule(): void {
     this.applyError = '';
-    if (!this.applyClinicId) { this.applyError = 'Seleccione la clínica'; return; }
+    if (!this.applyClinicId) { this.applyError = 'El médico no tiene clínica asignada'; return; }
     if (!this.applyStartTime || !this.applyEndTime) { this.applyError = 'Ingrese hora inicio y fin'; return; }
+    if (this.applyLunchStartTime && !this.applyLunchEndTime) { this.applyError = 'Ingrese hora fin de almuerzo'; return; }
     if (!this.scheduleDoctor) return;
 
     this.applyLoading = true;
     const requests = this.selectedDays.map(date =>
       this.scheduleService.create({
-        doctorId:     this.scheduleDoctor.id,
-        clinicId:     this.applyClinicId,
-        specificDate: date,
-        startTime:    this.applyStartTime,
-        endTime:      this.applyEndTime
+        doctorId:       this.scheduleDoctor.id,
+        clinicId:       this.applyClinicId,
+        specificDate:   date,
+        startTime:      this.applyStartTime,
+        endTime:        this.applyEndTime,
+        lunchStartTime: this.applyLunchStartTime || null,
+        lunchEndTime:   this.applyLunchEndTime || null
       })
     );
 
@@ -1080,8 +1349,184 @@ export class UserManagementComponent implements OnInit {
     if (!confirm('¿Eliminar este horario?')) return;
     this.scheduleService.delete(id).subscribe({
       next: () => { this.notification.success('Horario eliminado'); this.loadSchedules(); },
-      error: () => this.notification.error('Error al eliminar horario')
+      error: err => this.notification.error(err.error?.message || 'Error al eliminar horario')
     });
+  }
+
+  // ── Lab schedule tab ──────────────────────────────────────────────────────
+
+  onLabClinicChange(): void {
+    this.labClinicSchedules = [];
+    this.labClearSelection();
+    if (this.labScheduleClinic) this.loadLabSchedules();
+  }
+
+  loadLabSchedules(): void {
+    this.clinicScheduleService.getByClinic(this.labScheduleClinic.id).subscribe({
+      next: res => {
+        if (res.success) { this.labClinicSchedules = res.data; this.buildLabCalendar(); }
+      },
+      error: () => this.notification.error('Error al cargar horarios de laboratorio')
+    });
+  }
+
+  saveLabSchedule(): void {
+    this.labScheduleError = '';
+    const v = this.labScheduleForm.value;
+    if (!v.dayOfWeek)            { this.labScheduleError = 'Seleccione el día de la semana'; return; }
+    if (!v.startTime || !v.endTime) { this.labScheduleError = 'Ingrese hora inicio y fin'; return; }
+    if (!this.labScheduleClinic) { this.labScheduleError = 'Seleccione un laboratorio'; return; }
+
+    this.savingLabSchedule = true;
+    this.clinicScheduleService.create({
+      clinicId:  this.labScheduleClinic.id,
+      dayOfWeek: v.dayOfWeek,
+      startTime: v.startTime,
+      endTime:   v.endTime
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Horario de laboratorio guardado');
+          this.labScheduleForm.patchValue({ dayOfWeek: null, startTime: null, endTime: null });
+          this.loadLabSchedules();
+        } else {
+          this.labScheduleError = res.message || 'Error al guardar';
+        }
+        this.savingLabSchedule = false;
+      },
+      error: err => {
+        this.labScheduleError = err.error?.message || 'Error al guardar horario';
+        this.savingLabSchedule = false;
+      }
+    });
+  }
+
+  deleteLabSchedule(id: number): void {
+    if (!confirm('¿Eliminar este horario de laboratorio?')) return;
+    this.clinicScheduleService.delete(id).subscribe({
+      next: () => { this.notification.success('Horario eliminado'); this.loadLabSchedules(); },
+      error: err => this.notification.error(err.error?.message || 'Error al eliminar horario')
+    });
+  }
+
+  applyLabSchedule(): void {
+    this.labApplyError = '';
+    if (!this.labApplyStartTime || !this.labApplyEndTime) { this.labApplyError = 'Ingrese hora inicio y fin'; return; }
+    if (!this.labScheduleClinic) return;
+
+    this.labApplyLoading = true;
+    const requests = this.labSelectedDays.map(date =>
+      this.clinicScheduleService.create({
+        clinicId:     this.labScheduleClinic.id,
+        specificDate: date,
+        startTime:    this.labApplyStartTime,
+        endTime:      this.labApplyEndTime
+      })
+    );
+
+    forkJoin(requests).subscribe({
+      next: () => {
+        this.notification.success(`Horario aplicado a ${this.labSelectedDays.length} día(s)`);
+        this.labClearSelection();
+        this.loadLabSchedules();
+        this.labApplyLoading = false;
+      },
+      error: err => {
+        this.labApplyError = err.error?.message || 'Error al guardar algunos horarios';
+        this.labApplyLoading = false;
+        this.loadLabSchedules();
+      }
+    });
+  }
+
+  // ── Lab Calendar ──────────────────────────────────────────────────────────
+
+  get labPeriodLabel(): string {
+    if (this.labCalView === 'month') {
+      const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      return `${months[this.labCalDate.getMonth()]} ${this.labCalDate.getFullYear()}`;
+    }
+    if (!this.labWeekDays.length) return '';
+    return `Semana: ${this.labWeekDays[0].date} – ${this.labWeekDays[6].date}`;
+  }
+
+  labSetCalView(v: 'month' | 'week'): void { this.labCalView = v; this.buildLabCalendar(); }
+
+  labPrevPeriod(): void {
+    if (this.labCalView === 'month') {
+      this.labCalDate = new Date(this.labCalDate.getFullYear(), this.labCalDate.getMonth() - 1, 1);
+    } else {
+      const d = new Date(this.labCalDate); d.setDate(d.getDate() - 7); this.labCalDate = d;
+    }
+    this.buildLabCalendar();
+  }
+
+  labNextPeriod(): void {
+    if (this.labCalView === 'month') {
+      this.labCalDate = new Date(this.labCalDate.getFullYear(), this.labCalDate.getMonth() + 1, 1);
+    } else {
+      const d = new Date(this.labCalDate); d.setDate(d.getDate() + 7); this.labCalDate = d;
+    }
+    this.buildLabCalendar();
+  }
+
+  buildLabCalendar(): void {
+    if (this.labCalView === 'month') this.buildLabMonth(); else this.buildLabWeek();
+  }
+
+  buildLabMonth(): void {
+    const year = this.labCalDate.getFullYear();
+    const month = this.labCalDate.getMonth();
+    const today = this.dateToISO(new Date());
+    const cells: CalCell[] = [];
+    const firstOfMonth = new Date(year, month, 1);
+    let dow = firstOfMonth.getDay() || 7;
+    const start = new Date(year, month, 1 - (dow - 1));
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const iso = this.dateToISO(d);
+      const inMonth = d.getMonth() === month;
+      cells.push({ date: iso, day: d.getDate(), inMonth, hasSchedule: this.labHasSchedule(iso), isToday: iso === today });
+    }
+    if (cells.slice(35).every(c => !c.inMonth)) cells.splice(35, 7);
+    this.labMonthCells = cells;
+  }
+
+  buildLabWeek(): void {
+    const today = this.dateToISO(new Date());
+    const d = new Date(this.labCalDate);
+    const dow = d.getDay() || 7;
+    d.setDate(d.getDate() - (dow - 1));
+    const labels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    this.labWeekDays = labels.map((label, i) => {
+      const day = new Date(d); day.setDate(d.getDate() + i);
+      const iso = this.dateToISO(day);
+      return { date: iso, dowLabel: label, dayNum: day.getDate(), isToday: iso === today };
+    });
+  }
+
+  labToggleDay(date: string): void {
+    const idx = this.labSelectedDays.indexOf(date);
+    if (idx >= 0) this.labSelectedDays.splice(idx, 1); else this.labSelectedDays.push(date);
+    this.labSelectedDays = [...this.labSelectedDays];
+  }
+
+  labIsSelected(date: string): boolean { return this.labSelectedDays.includes(date); }
+
+  labClearSelection(): void { this.labSelectedDays = []; this.labApplyError = ''; }
+
+  labHasSchedule(date: string): boolean {
+    const d = new Date(date + 'T12:00:00');
+    const dow = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][d.getDay()];
+    return this.labClinicSchedules.some(s => s.specificDate === date || s.dayOfWeek === dow);
+  }
+
+  labGetSchedulesForDate(date: string): any[] {
+    const d = new Date(date + 'T12:00:00');
+    const dow = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][d.getDay()];
+    return this.labClinicSchedules.filter(s => s.specificDate === date || s.dayOfWeek === dow);
   }
 
   // ── Calendar ───────────────────────────────────────────────────────────────

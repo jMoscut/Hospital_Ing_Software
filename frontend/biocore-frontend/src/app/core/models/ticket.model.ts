@@ -1,4 +1,4 @@
-export type TicketStatus = 'WAITING' | 'CALLED_TO_VITAL_SIGNS' | 'READY_FOR_DOCTOR' | 'BEING_CALLED' | 'IN_CONSULTATION' | 'COMPLETED' | 'ABSENT' | 'CANCELLED_NO_PAYMENT';
+export type TicketStatus = 'WAITING' | 'CALLED_TO_VITAL_SIGNS' | 'READY_FOR_DOCTOR' | 'BEING_CALLED' | 'IN_CONSULTATION' | 'COMPLETED' | 'ABSENT' | 'CANCELLED_NO_PAYMENT' | 'ABSENT_PENDING_RESCHEDULE' | 'RESCHEDULED' | 'PENDING_PAYMENT';
 export type TicketPriority = 'NORMAL' | 'URGENT';
 
 export interface Ticket {
@@ -22,6 +22,8 @@ export interface Ticket {
   calledAt?: string;
   consultationStartAt?: string;
   completedAt?: string;
+  labExamName?: string;
+  labSampleType?: string;
 }
 
 export interface Clinic {

@@ -73,9 +73,9 @@ import { environment } from '../../../environments/environment';
                   <div class="ticket-meta">{{ t.type }}</div>
                 </div>
                 <button mat-raised-button color="primary" style="flex-shrink:0"
-                        [disabled]="!!currentTicket"
+                        [disabled]="!!currentTicket || callingToConsult"
                         (click)="callToConsultation(t)">
-                  <mat-icon>campaign</mat-icon> Llamar
+                  <mat-icon>campaign</mat-icon> {{ callingToConsult ? 'Llamando...' : 'Llamar' }}
                 </button>
               </div>
               <p *ngIf="readyPatients.length === 0" class="empty-msg">
@@ -220,8 +220,8 @@ import { environment } from '../../../environments/environment';
                   <strong>Signos Vitales registrados — Paciente listo</strong>
                   <p>Revise los signos vitales y llame al paciente a su consultorio.</p>
                 </div>
-                <button mat-raised-button color="primary" (click)="callToConsultation(currentTicket)">
-                  <mat-icon>campaign</mat-icon> Llamar al Consultorio
+                <button mat-raised-button color="primary" [disabled]="callingToConsult" (click)="callToConsultation(currentTicket)">
+                  <mat-icon>campaign</mat-icon> {{ callingToConsult ? 'Llamando...' : 'Llamar al Consultorio' }}
                 </button>
               </div>
 
@@ -233,8 +233,8 @@ import { environment } from '../../../environments/environment';
                   <strong style="color:#1565c0">Paciente en camino al consultorio</strong>
                   <p>Confirme su llegada para iniciar la consulta.</p>
                 </div>
-                <button mat-raised-button color="accent" (click)="startConsultation()">
-                  <mat-icon>play_circle</mat-icon> Iniciar Consulta
+                <button mat-raised-button color="accent" [disabled]="starting" (click)="startConsultation()">
+                  <mat-icon>play_circle</mat-icon> {{ starting ? 'Iniciando...' : 'Iniciar Consulta' }}
                 </button>
               </div>
 
@@ -396,8 +396,8 @@ import { environment } from '../../../environments/environment';
                 </form>
 
                 <div class="action-buttons">
-                  <button mat-raised-button color="primary" (click)="completeDiagnosis()">
-                    <mat-icon>check_circle</mat-icon> Completar Consulta
+                  <button mat-raised-button color="primary" [disabled]="completing" (click)="completeDiagnosis()">
+                    <mat-icon>check_circle</mat-icon> {{ completing ? 'Guardando...' : 'Completar Consulta' }}
                   </button>
                 </div>
               </div>
@@ -415,100 +415,98 @@ import { environment } from '../../../environments/environment';
     </div>
   `,
   styles: [`
-    .consultation-layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 500; color: #1565c0; margin: 0; }
+    .consultation-layout { display: grid; grid-template-columns: 330px 1fr; gap: 24px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #D0D9E3; }
+    .page-header h1 { font-size: 1.55rem; font-weight: 700; color: #243C2C; margin: 0; letter-spacing: -0.3px; }
     .header-right { display: flex; align-items: center; gap: 12px; }
-    .realtime-badge { display: flex; align-items: center; gap: 4px; background: #e8f5e9; color: #2e7d32; padding: 4px 12px; border-radius: 16px; font-size: 0.8rem; }
+    .realtime-badge { display: flex; align-items: center; gap: 4px; background: #EBF0DC; color: #243C2C; padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; border: 1px solid rgba(36,60,44,0.2); }
     .call-btn { width: 100%; margin-bottom: 8px; }
-    .last-called { background: #e3f2fd; border-radius: 8px; padding: 12px; font-size: 0.9rem; margin-top: 8px; }
-    .last-called strong { font-size: 1.2rem; color: #1565c0; }
-    .pos-badge { background: #e0e0e0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; }
+    .last-called { background: #F5F2DC; border-radius: 10px; padding: 12px 16px; font-size: 0.9rem; margin-top: 8px; border: 1px solid #C5CDD8; }
+    .last-called strong { font-size: 1.2rem; color: #59789F; }
+    .pos-badge { background: #D0D9E3; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #243C2C; }
     .ticket-number.urgent { color: #c62828; }
     .empty-msg { text-align: center; color: #9e9e9e; padding: 24px 0; }
     .hint { font-size: 0.8rem; color: #9e9e9e; margin: 4px 0; }
-    .vitals-waiting { display:flex;align-items:flex-start;gap:12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:16px;margin-bottom:16px; }
+    .vitals-waiting { display:flex;align-items:flex-start;gap:12px;background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:16px;margin-bottom:16px; }
     .vitals-waiting mat-icon { color:#f57f17;font-size:28px;width:28px;height:28px;flex-shrink:0;margin-top:2px; }
     .vitals-waiting strong { display:block;color:#e65100;margin-bottom:4px; }
     .vitals-waiting p { font-size:0.82rem;color:#666;margin:0; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin-icon { animation: spin 2s linear infinite; }
-    .vitals-received { background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:16px;margin-bottom:16px; }
-    .vitals-header { display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#2e7d32; }
-    .vitals-from { font-size:0.75rem;color:#66bb6a;margin-left:auto;background:#c8e6c9;padding:2px 8px;border-radius:10px; }
+    .vitals-received { background:linear-gradient(135deg,#EBF0DC,#F5F2DC);border:1px solid #A9B6C4;border-radius:12px;padding:16px;margin-bottom:16px; }
+    .vitals-header { display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#243C2C; }
+    .vitals-from { font-size:0.72rem;color:#7A9445;margin-left:auto;background:#D8E4C8;padding:2px 8px;border-radius:10px;font-weight:600; }
     .vitals-grid-display { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
-    .vital-item { background:white;border-radius:6px;padding:10px 12px; }
-    .vital-label { display:block;font-size:0.72rem;color:#757575;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px; }
-    .vital-value { font-size:1.2rem;font-weight:700;color:#1D6C61; }
+    .vital-item { background:white;border-radius:10px;padding:10px 12px;border:1px solid #D0D9E3; }
+    .vital-label { display:block;font-size:0.68rem;color:#8aada7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-weight:700; }
+    .vital-value { font-size:1.2rem;font-weight:800;color:#59789F; }
     .full-width { width: 100%; }
     .medicine-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
     .lab-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .med-code { font-family: monospace; font-size: 0.75rem; color: #1D6C61; background: #d0f4ef; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
-    .exam-code { font-family: monospace; font-size: 0.75rem; color: #3EB9A8; background: #193A31; padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
-    .med-stock { font-size: 0.78rem; color: #666; }
-    .med-stock.low { color: #c62828; font-weight: 600; }
-    .availability-bar { display:flex; align-items:center; gap:10px; padding:8px 16px; border-radius:20px; background:#fce4ec; color:#c62828; font-size:0.88rem; font-weight:600; transition:all 0.3s; }
+    .med-code { font-family: monospace; font-size: 0.72rem; color: #59789F; background: #D8E4C8; padding: 2px 6px; border-radius: 6px; margin-right: 4px; border: 1px solid #A9B6C4; }
+    .exam-code { font-family: monospace; font-size: 0.72rem; color: #59789F; background: #243C2C; padding: 2px 6px; border-radius: 6px; margin-right: 4px; }
+    .med-stock { font-size: 0.78rem; color: #6b8c84; }
+    .med-stock.low { color: #c62828; font-weight: 700; }
+    .availability-bar { display:flex; align-items:center; gap:10px; padding:8px 18px; border-radius:20px; background:#fce4ec; color:#c62828; font-size:0.88rem; font-weight:700; transition:all 0.3s; border:1px solid #ffcdd2; }
     .availability-bar mat-icon { font-size:20px; width:20px; height:20px; }
-    .availability-bar.available { background:#e8f5e9; color:#2e7d32; }
-    .ready-ticket { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+    .availability-bar.available { background:#EBF0DC; color:#243C2C; border-color:#C5CDD8; }
+    .ready-ticket { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f4f3; }
     .ready-ticket:last-child { border-bottom:none; }
-    .ready-banner { display:flex; align-items:center; gap:12px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:16px; margin-bottom:16px; flex-wrap:wrap; }
-    .ready-banner mat-icon { color:#2e7d32; font-size:28px; width:28px; height:28px; flex-shrink:0; }
-    .ready-banner strong { display:block; color:#2e7d32; margin-bottom:4px; }
-    .ready-banner p { font-size:0.82rem; color:#555; margin:0; }
+    .ready-banner { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#EBF0DC,#F5F2DC); border:1px solid #A9B6C4; border-radius:12px; padding:16px 18px; margin-bottom:16px; flex-wrap:wrap; }
+    .ready-banner mat-icon { color:#7A9445; font-size:28px; width:28px; height:28px; flex-shrink:0; }
+    .ready-banner strong { display:block; color:#243C2C; margin-bottom:4px; }
+    .ready-banner p { font-size:0.82rem; color:#4a6560; margin:0; }
     .action-buttons { display: flex; gap: 12px; }
     .empty-consultation { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; text-align: center; }
-    .big-icon { font-size: 64px; width: 64px; height: 64px; color: #9e9e9e; margin-bottom: 16px; }
-    .success-msg { color: #2e7d32; font-size: 0.85rem; margin-left: 8px; }
+    .big-icon { font-size: 64px; width: 64px; height: 64px; color: #ccc; margin-bottom: 16px; }
+    .success-msg { color: #7A9445; font-size: 0.85rem; margin-left: 8px; }
     .ml-8 { margin-left: 8px; }
     .mt-16 { margin-top: 16px; }
     .mb-16 { margin-bottom: 16px; }
-    h4 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
-    h5 { font-size: 0.9rem; font-weight: 600; color: #1D6C61; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-    .appt-row { display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5; }
+    h4 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: #243C2C; }
+    h5 { font-size: 0.88rem; font-weight: 700; color: #59789F; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .appt-row { display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f0f4f3; }
     .appt-row:last-child { border-bottom:none; }
-    .appt-time { font-size:1.1rem;font-weight:700;color:#1D6C61;min-width:52px; }
+    .appt-time { font-size:1.05rem;font-weight:800;color:#59789F;min-width:52px;letter-spacing:-0.3px; }
     .appt-info { flex:1; }
-    .appt-patient { font-weight:500;font-size:0.9rem; }
-    .appt-type { font-size:0.78rem;color:#757575; }
-    .appt-chip { padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:500;white-space:nowrap; }
+    .appt-patient { font-weight:600;font-size:0.9rem;color:#243C2C; }
+    .appt-type { font-size:0.78rem;color:#6b8c84; }
+    .appt-chip { padding:2px 10px;border-radius:10px;font-size:0.73rem;font-weight:600;white-space:nowrap; }
     .appt-pending { background:#fff3e0;color:#e65100; }
-    .appt-confirmed { background:#e8f5e9;color:#2e7d32; }
+    .appt-confirmed { background:#EBF0DC;color:#243C2C; }
     .appt-cancelled { background:#ffebee;color:#c62828; }
-    /* Appointment calendar */
-    .cal-nav { display:flex;align-items:center;justify-content:space-between;background:#f0faf8;border-radius:8px;padding:4px 10px;margin-bottom:8px; }
-    .cal-month-label { font-size:0.9rem;font-weight:700;color:#1D6C61; }
-    .cal-nav-btn { background:none;border:none;cursor:pointer;font-size:1.6rem;line-height:1;color:#1D6C61;padding:0 6px;border-radius:4px; }
-    .cal-nav-btn:hover { background:#d0f4ef; }
+    /* Calendar */
+    .cal-nav { display:flex;align-items:center;justify-content:space-between;background:#F5F2DC;border-radius:10px;padding:6px 12px;margin-bottom:8px;border:1px solid #C5CDD8; }
+    .cal-month-label { font-size:0.9rem;font-weight:700;color:#243C2C; }
+    .cal-nav-btn { background:none;border:none;cursor:pointer;font-size:1.5rem;line-height:1;color:#59789F;padding:0 6px;border-radius:6px;transition:background 0.15s; }
+    .cal-nav-btn:hover { background:#D8E4C8; }
     .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px; }
-    .cal-wd { text-align:center;font-size:0.65rem;font-weight:700;color:#9e9e9e;padding:4px 0;text-transform:uppercase; }
-    .cal-day { text-align:center;padding:6px 2px;border-radius:6px;font-size:0.82rem;cursor:pointer;position:relative;transition:background 0.15s;user-select:none; }
-    .cal-day:not(:empty):hover { background:#e0f7f4; }
-    .cal-today { border:2px solid #3EB9A8;font-weight:700; }
-    .cal-selected { background:#1D6C61!important;color:white; }
-    .cal-has-appt { font-weight:700;color:#1D6C61; }
+    .cal-wd { text-align:center;font-size:0.62rem;font-weight:700;color:#8aada7;padding:4px 0;text-transform:uppercase;letter-spacing:0.3px; }
+    .cal-day { text-align:center;padding:6px 2px;border-radius:8px;font-size:0.82rem;cursor:pointer;position:relative;transition:all 0.15s;user-select:none; }
+    .cal-day:not(:empty):hover { background:#D8E4C8; }
+    .cal-today { border:2px solid #7A9445;font-weight:700;color:#59789F; }
+    .cal-selected { background:linear-gradient(135deg,#243C2C,#59789F)!important;color:white; }
+    .cal-has-appt { font-weight:800;color:#59789F; }
     .cal-selected.cal-has-appt { color:white; }
-    .cal-dot { display:block;width:5px;height:5px;background:#3EB9A8;border-radius:50%;margin:1px auto 0; }
-    .cal-selected .cal-dot { background:white; }
-    .cal-day-detail { background:#f8fffe;border:1px solid #d0ede9;border-radius:8px;padding:12px;margin-top:8px; }
-    .cal-day-title { display:flex;align-items:center;gap:6px;font-weight:600;color:#1D6C61;font-size:0.88rem;margin-bottom:8px; }
-    .cal-day-title mat-icon { font-size:16px;width:16px;height:16px; }
-
-    /* Custom (off-catalog) medicines */
-    .custom-med-header { display:flex;align-items:center;gap:6px;background:#fff3e0;border:1px solid #ffcc80;border-radius:6px;padding:6px 12px;margin-bottom:10px;font-size:0.82rem;color:#e65100;font-weight:500; }
-
-    /* Documents section */
-    .docs-section { background:#f3f8ff;border:1px solid #bbdefb;border-radius:8px;padding:14px 16px; }
-    .docs-header { display:flex;align-items:center;gap:8px;font-size:0.95rem;color:#1565c0;margin-bottom:10px; }
+    .cal-dot { display:block;width:4px;height:4px;background:#7A9445;border-radius:50%;margin:2px auto 0; }
+    .cal-selected .cal-dot { background:rgba(255,255,255,0.7); }
+    .cal-day-detail { background:#F5F2DC;border:1px solid #C5CDD8;border-radius:10px;padding:12px;margin-top:8px; }
+    .cal-day-title { display:flex;align-items:center;gap:6px;font-weight:700;color:#243C2C;font-size:0.88rem;margin-bottom:8px; }
+    .cal-day-title mat-icon { font-size:16px;width:16px;height:16px;color:#59789F; }
+    /* Custom medicines */
+    .custom-med-header { display:flex;align-items:center;gap:6px;background:#fff3e0;border:1px solid #ffcc80;border-radius:8px;padding:6px 12px;margin-bottom:10px;font-size:0.82rem;color:#e65100;font-weight:600; }
+    /* Documents */
+    .docs-section { background:#F5F2DC;border:1px solid #C5CDD8;border-radius:12px;padding:14px 16px; }
+    .docs-header { display:flex;align-items:center;gap:8px;font-size:0.95rem;color:#59789F;margin-bottom:10px; }
     .docs-header mat-icon { font-size:20px;width:20px;height:20px; }
-    .docs-count { color:#1976d2;font-size:0.82rem; }
+    .docs-count { color:#59789F;font-size:0.82rem; }
     .docs-empty { font-size:0.85rem;color:#78909c; }
     .docs-list { display:flex;flex-direction:column;gap:6px; }
-    .doc-link { display:flex;align-items:center;gap:8px;background:white;border:1px solid #e3f2fd;border-radius:6px;padding:8px 12px;text-decoration:none;color:#212121;transition:background 0.15s;cursor:pointer;width:100%;text-align:left; }
-    .doc-link:hover { background:#e3f2fd; }
+    .doc-link { display:flex;align-items:center;gap:8px;background:white;border:1px solid #D0D9E3;border-radius:8px;padding:8px 12px;text-decoration:none;color:#212121;transition:background 0.15s;cursor:pointer;width:100%;text-align:left; }
+    .doc-link:hover { background:#EDE9C0; }
     .doc-pdf-icon { color:#e53935;font-size:20px;width:20px;height:20px;flex-shrink:0; }
     .doc-link-name { flex:1;font-size:0.88rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-    .doc-open-icon { font-size:16px;width:16px;height:16px;color:#1976d2;flex-shrink:0; }
+    .doc-open-icon { font-size:16px;width:16px;height:16px;color:#59789F;flex-shrink:0; }
   `]
 })
 export class ConsultationComponent implements OnInit, OnDestroy {
@@ -517,6 +515,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   currentTicket: Ticket | null = null;
   lastCalledTicket: Ticket | null = null;
   currentVitals: VitalSigns | null = null;
+  vitalsNotFound = false;
   medicines: Medicine[] = [];
   labExams: LabExam[] = [];
   labCategories: string[] = [];
@@ -525,6 +524,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   labOrderItems: any[] = [];
   consultationForm!: FormGroup;
   calling = false;
+  callingToConsult = false;
+  starting = false;
+  completing = false;
+  justCompletedTicketId: number | null = null;
   doctorAvailable = false;
   assignedClinicId: number | null = null;
   assignedClinicName = '';
@@ -602,27 +605,55 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           this.assignedClinicName = myTicket.clinicName;
         }
 
+        const statusRank: Record<string, number> = {
+          'WAITING': 0, 'CALLED_TO_VITAL_SIGNS': 1, 'READY_FOR_DOCTOR': 2,
+          'BEING_CALLED': 3, 'IN_CONSULTATION': 4, 'COMPLETED': 5
+        };
         const isNew     = !this.currentTicket || this.currentTicket.id !== myTicket.id;
-        const changed   = this.currentTicket && this.currentTicket.status !== myTicket.status;
+        const curRank   = statusRank[this.currentTicket?.status ?? ''] ?? -1;
+        const newRank   = statusRank[myTicket.status] ?? -1;
+        // Ignore stale poll responses that would downgrade status (race condition)
+        const changed   = this.currentTicket && myTicket.status !== this.currentTicket.status && newRank >= curRank;
+
+        if (isNew) {
+          // Stale poll after finalize() — don't re-show the form for the ticket we just completed
+          if (myTicket.id === this.justCompletedTicketId) return;
+          this.justCompletedTicketId = null;
+        }
 
         if (isNew || changed) {
           this.currentTicket = myTicket;
           this.currentVitals = null;
+          this.vitalsNotFound = false;
           this.loadCurrentVitals();
           if (isNew) {
             this.appointmentDocs = [];
             this.loadAppointmentDocs();
           }
         }
-      } else if (!this.assignedClinicId && res.data.length > 0) {
-        this.assignedClinicId = res.data[0]?.clinicId;
-        this.assignedClinicName = res.data[0]?.clinicName;
+      } else {
+        // No active ticket for this doctor — check if currentTicket was resolved externally
+        // (e.g., health staff marked patient absent from vital signs area)
+        if (this.currentTicket) {
+          const stillActive = res.data.some((t: Ticket) =>
+            t.id === this.currentTicket!.id && activeStatuses.includes(t.status)
+          );
+          if (!stillActive) {
+            this.currentTicket = null;
+            this.currentVitals = null;
+            this.vitalsNotFound = false;
+          }
+        }
+        if (!this.assignedClinicId && res.data.length > 0) {
+          this.assignedClinicId = res.data[0]?.clinicId;
+          this.assignedClinicName = res.data[0]?.clinicName;
+        }
       }
 
       if (this.assignedClinicId) this.loadClinicQueue();
 
-      // Keep retrying vitals until they arrive
-      if (this.currentTicket && !this.currentVitals) {
+      // Keep retrying vitals until they arrive (stop if 404 — ticket has no vitals)
+      if (this.currentTicket && !this.currentVitals && !this.vitalsNotFound) {
         this.loadCurrentVitals();
       }
     });
@@ -656,31 +687,49 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   callToConsultation(ticket: Ticket): void {
+    if (this.callingToConsult) return;
+    this.callingToConsult = true;
     this.ticketService.callToConsultation(ticket.id).subscribe({
       next: res => {
+        this.callingToConsult = false;
         if (res.success) {
           this.currentTicket = res.data;
           this.currentVitals = null;
+          this.vitalsNotFound = false;
           this.appointmentDocs = [];
           this.loadCurrentVitals();
           this.loadAppointmentDocs();
           this.notification.info(`${res.data.ticketNumber} llamado al consultorio`);
         }
       },
-      error: err => this.notification.error(err.error?.message || 'Error al llamar paciente')
+      error: err => {
+        this.callingToConsult = false;
+        this.notification.error(err.error?.message || 'Error al llamar paciente');
+      }
     });
   }
 
   startConsultation(): void {
-    if (!this.currentTicket) return;
+    if (!this.currentTicket || this.starting) return;
+    this.starting = true;
     this.ticketService.confirmArrival(this.currentTicket.id).subscribe({
       next: res => {
+        this.starting = false;
         if (res.success) {
           this.currentTicket = res.data;
           this.notification.success('Consulta iniciada');
         }
       },
-      error: err => this.notification.error(err.error?.message || 'Error al iniciar consulta')
+      error: err => {
+        this.starting = false;
+        const msg: string = err?.error?.message || '';
+        // Backend already transitioned (network glitch) — sync state silently
+        if (msg.includes('IN_CONSULTATION')) {
+          if (this.currentTicket) this.currentTicket = { ...this.currentTicket, status: 'IN_CONSULTATION' as any };
+          return;
+        }
+        this.notification.error(msg || 'Error al iniciar consulta');
+      }
     });
   }
 
@@ -725,10 +774,10 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   private loadCurrentVitals(): void {
-    if (!this.currentTicket) return;
+    if (!this.currentTicket || this.vitalsNotFound) return;
     this.vitalSignsService.getByTicket(this.currentTicket.id).subscribe({
       next: res => { if (res.success) this.currentVitals = res.data; },
-      error: () => {}
+      error: () => { this.vitalsNotFound = true; }
     });
   }
 
@@ -746,21 +795,30 @@ export class ConsultationComponent implements OnInit, OnDestroy {
   }
 
   completeDiagnosis(): void {
-    if (!this.currentTicket) return;
+    if (!this.currentTicket || this.completing) return;
     const userId = this.authService.getUserId();
+    if (!userId) { this.notification.error('Sesión expirada. Cierre sesión y vuelva a entrar.'); return; }
+    this.completing = true;
 
     const finalize = () => {
       this.ticketService.complete(this.currentTicket!.id).subscribe({
         next: () => {
-          this.notification.success('Consulta completada');
-          this.doctorAvailable = false;
+          this.notification.success('Consulta completada — notificación enviada al paciente');
+          this.completing = false;
+          this.doctorAvailable = true;
+          this.justCompletedTicketId = this.currentTicket!.id;
           this.currentTicket = null;
           this.currentVitals = null;
+          this.vitalsNotFound = false;
           this.prescriptionItems = [];
           this.customMedItems = [];
           this.labOrderItems = [];
           this.consultationForm.reset();
           this.loadClinicQueue();
+        },
+        error: err => {
+          this.completing = false;
+          this.notification.error(err?.error?.message || 'Error al completar la consulta');
         }
       });
     };
@@ -779,17 +837,20 @@ export class ConsultationComponent implements OnInit, OnDestroy {
           notes: l.notes
         }).subscribe({
           next: () => { if (--pending === 0) { this.notification.success('Órdenes de laboratorio generadas'); onDone(); } },
-          error: () => { if (--pending === 0) onDone(); }
+          error: err => { this.notification.error(err?.error?.message || 'Error al guardar orden de laboratorio'); if (--pending === 0) onDone(); }
         });
       });
     };
 
     const allItems = [
-      ...this.prescriptionItems,
+      ...this.prescriptionItems.map((item: any) => ({
+        ...item,
+        quantity: (item.quantity != null && item.quantity > 0) ? item.quantity : 1
+      })),
       ...this.customMedItems.filter(c => c.name?.trim()).map(c => ({
         medicineId: null,
         customMedicineName: c.name.trim(),
-        quantity: c.quantity || 1,
+        quantity: (c.quantity != null && c.quantity > 0) ? c.quantity : 1,
         dosage: c.dosage,
         instructions: c.instructions
       }))
@@ -805,7 +866,7 @@ export class ConsultationComponent implements OnInit, OnDestroy {
         items: allItems
       }).subscribe({
         next: () => { this.notification.success('Receta generada'); createLabOrders(finalize); },
-        error: () => createLabOrders(finalize)
+        error: err => { this.notification.error(err?.error?.message || 'Error al guardar receta'); createLabOrders(finalize); }
       });
     } else {
       createLabOrders(finalize);

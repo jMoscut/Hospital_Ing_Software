@@ -24,6 +24,6 @@ export interface Dashboard {
   patientsWaiting: number;
   patientsInConsultation: number;
   patientsAttended: number;
-  patientsCancelled: number;
+  patientsAbsent: number;
   totalPaidToday: number;
 }

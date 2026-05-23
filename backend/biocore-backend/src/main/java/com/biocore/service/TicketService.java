@@ -22,6 +22,7 @@ import com.biocore.repository.DoctorClinicAssignmentRepository;
 import com.biocore.repository.LabExamRepository;
 import com.biocore.repository.LabOrderRepository;
 import com.biocore.repository.PatientRepository;
+import com.biocore.entity.Clinic;
 import com.biocore.repository.PrescriptionRepository;
 import com.biocore.repository.TicketRepository;
 import com.biocore.repository.UserRepository;
@@ -62,6 +63,7 @@ public class TicketService {
     private final AppointmentRepository appointmentRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final EmailService emailService;
+    private final DoctorScheduleService doctorScheduleService;
 
     @Transactional(readOnly = true)
     public List<TicketDTO> getAll() {
@@ -170,8 +172,33 @@ public class TicketService {
                 TicketStatus.READY_FOR_DOCTOR, TicketStatus.BEING_CALLED,
                 TicketStatus.IN_CONSULTATION, TicketStatus.COMPLETED);
         return ticketRepository.findTodayAllActive(statuses, today(), todayStart()).stream()
-                .map(TicketDTO::from)
+                .map(this::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    private static final Pattern LAB_CODE_PATTERN = Pattern.compile("\\[([A-Z]+-\\d+)\\]");
+
+    private TicketDTO toDTO(Ticket t) {
+        if ("LABORATORIO".equals(t.getType())) {
+            // Try existing LabOrder first (post-collection)
+            List<LabOrder> orders = labOrderRepository.findByTicketId(t.getId());
+            if (!orders.isEmpty()) {
+                return TicketDTO.from(t, orders.get(0));
+            }
+            // Pre-collection: parse exam code from ticket notes [LAB-001] Name — desc
+            String notes = t.getNotes() != null ? t.getNotes() : "";
+            Matcher m = LAB_CODE_PATTERN.matcher(notes);
+            if (m.find()) {
+                LabExam exam = labExamRepository.findByCode(m.group(1)).orElse(null);
+                if (exam != null) {
+                    TicketDTO dto = TicketDTO.from(t);
+                    dto.setLabExamName(exam.getName());
+                    dto.setLabSampleType(exam.getSampleType() != null ? exam.getSampleType().name() : null);
+                    return dto;
+                }
+            }
+        }
+        return TicketDTO.from(t);
     }
 
     /** RN-C04: No puede llamarse nuevo paciente si hay consulta activa */
@@ -209,9 +236,28 @@ public class TicketService {
             throw new RuntimeException("No hay pacientes en espera para esta clínica");
         }
 
-        Ticket next = waitingTickets.get(0);
+        // Check if this is a lab clinic (lab tickets have no pre-assigned doctor)
+        Clinic callingClinic = clinicRepository.findById(clinicId).orElse(null);
+        boolean isLabClinic = callingClinic != null &&
+                (callingClinic.getType() == com.biocore.enums.ClinicType.LABORATORY ||
+                 (callingClinic.getName() != null && callingClinic.getName().toLowerCase().contains("lab")));
 
-        if ("LABORATORIO".equals(next.getType())) {
+        Ticket next;
+        if (isLabClinic) {
+            // Lab: just pick the first WAITING ticket — no doctor pre-assignment required
+            next = waitingTickets.stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("No hay pacientes en espera para esta clínica"));
+        } else {
+            // Regular clinic: only pick a ticket whose assigned doctor is currently available
+            next = waitingTickets.stream()
+                    .filter(t -> t.getDoctor() != null && Boolean.TRUE.equals(t.getDoctor().isAvailable()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException(
+                            "No hay pacientes elegibles — los médicos asignados no están disponibles. " +
+                            "Espere a que un médico se marque disponible."));
+        }
+
+        if (isLabClinic || "LABORATORIO".equals(next.getType())) {
             LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
             List<User> onlineTechs = userRepository.findByRoleAndActiveTrue(Role.LAB_TECHNICIAN).stream()
                     .filter(u -> u.isAvailable() && u.getOnlineAt() != null && u.getOnlineAt().isAfter(threshold))
@@ -261,7 +307,7 @@ public class TicketService {
 
         if (ticket.getStatus() == TicketStatus.CALLED_TO_VITAL_SIGNS) {
             if (!vitalSignsRepository.existsByTicketId(ticketId)) {
-                throw new RuntimeException("RN-03: Debe registrar los signos vitales antes de continuar");
+                throw new RuntimeException("Debe registrar los signos vitales antes de continuar");
             }
             ticket.setStatus(TicketStatus.READY_FOR_DOCTOR);
         } else if (ticket.getStatus() == TicketStatus.BEING_CALLED) {
@@ -328,7 +374,11 @@ public class TicketService {
     @Transactional
     public TicketDTO markAbsent(Long ticketId) {
         Ticket ticket = getTicketOrThrow(ticketId);
-        ticket.setStatus(TicketStatus.ABSENT);
+        // Second absence (rescheduled ticket) → final ABSENT; first → allow reschedule
+        TicketStatus newStatus = Boolean.TRUE.equals(ticket.getRescheduled())
+                ? TicketStatus.ABSENT
+                : TicketStatus.ABSENT_PENDING_RESCHEDULE;
+        ticket.setStatus(newStatus);
         // Free the assigned doctor so the next patient can be called
         if (ticket.getDoctor() != null) {
             userRepository.findById(ticket.getDoctor().getId()).ifPresent(doc -> {
@@ -337,6 +387,92 @@ public class TicketService {
             });
         }
         return TicketDTO.from(ticketRepository.save(ticket));
+    }
+
+    @Transactional
+    public TicketDTO reschedule(Long ticketId, java.time.LocalDate newDate, String newTime) {
+        Ticket original = getTicketOrThrow(ticketId);
+        if (original.getStatus() != TicketStatus.ABSENT_PENDING_RESCHEDULE) {
+            throw new RuntimeException("Este ticket no puede reagendarse (estado: " + original.getStatus() + ")");
+        }
+
+        // Assign doctor for non-lab slots
+        Clinic reschedClinic = original.getClinic();
+        boolean isLab = reschedClinic != null &&
+                (reschedClinic.getType() == com.biocore.enums.ClinicType.LABORATORY ||
+                 (reschedClinic.getName() != null && reschedClinic.getName().toLowerCase().contains("lab")));
+        User assignedDoctor = null;
+        if (!isLab && reschedClinic != null) {
+            java.util.Set<Long> bookedIds = new java.util.HashSet<>(
+                    appointmentRepository.findBookedDoctorIds(reschedClinic.getId(), newDate, newTime,
+                            com.biocore.enums.AppointmentStatus.CANCELLED));
+            java.util.List<User> available = doctorScheduleService.getAvailableDoctorsForSlot(
+                    reschedClinic.getId(), newDate, newTime, bookedIds);
+            if (!available.isEmpty()) {
+                final java.time.LocalDate fd = newDate;
+                assignedDoctor = available.stream()
+                        .min(java.util.Comparator.comparingLong(doc -> appointmentRepository
+                                .countByDoctorAndDate(doc.getId(), fd, com.biocore.enums.AppointmentStatus.CANCELLED)))
+                        .orElse(available.get(0));
+            }
+        }
+
+        // Build a new confirmed appointment to block the slot in real-time availability
+        Appointment appt = Appointment.builder()
+                .patient(original.getPatient())
+                .clinic(original.getClinic())
+                .doctor(assignedDoctor)
+                .type(original.getType())
+                .scheduledDate(newDate)
+                .scheduledTime(newTime)
+                .status(com.biocore.enums.AppointmentStatus.CONFIRMED)
+                .amount(java.math.BigDecimal.ZERO)
+                .notes("Reagendado desde ticket #" + original.getTicketNumber())
+                .build();
+        Appointment savedAppt = appointmentRepository.save(appt);
+
+        String ticketNumber = generateTicketNumber();
+
+        Ticket newTicket = Ticket.builder()
+                .patient(original.getPatient())
+                .clinic(original.getClinic())
+                .doctor(assignedDoctor)
+                .status(TicketStatus.WAITING)
+                .priority(original.getPriority())
+                .appointment(savedAppt)
+                .type(original.getType())
+                .notes("Reagendado desde " + original.getTicketNumber())
+                .scheduledDate(newDate)
+                .scheduledTime(newTime)
+                .ticketNumber(ticketNumber)
+                .rescheduled(true)
+                .build();
+        ticketRepository.save(newTicket);
+
+        original.setStatus(TicketStatus.RESCHEDULED);
+        ticketRepository.save(original);
+
+        return TicketDTO.from(newTicket);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketDTO> getPendingReschedule(Long patientId) {
+        return ticketRepository.findByPatientId(patientId).stream()
+                .filter(t -> t.getStatus() == TicketStatus.ABSENT_PENDING_RESCHEDULE)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(TicketDTO::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketDTO> getPendingRescheduleByDpi(String dpi) {
+        Patient patient = patientRepository.findByDpiAndActiveTrue(dpi)
+                .orElseThrow(() -> new RuntimeException("Paciente no encontrado con DPI: " + dpi));
+        return ticketRepository.findByPatientId(patient.getId()).stream()
+                .filter(t -> t.getStatus() == TicketStatus.ABSENT_PENDING_RESCHEDULE)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(TicketDTO::from)
+                .collect(Collectors.toList());
     }
 
     private Ticket getTicketOrThrow(Long id) {

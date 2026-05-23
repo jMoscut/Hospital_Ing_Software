@@ -12,4 +12,5 @@ import java.util.Optional;
 public interface ClinicRepository extends JpaRepository<Clinic, Long> {
     List<Clinic> findByActiveTrue();
     Optional<Clinic> findByType(ClinicType type);
+    boolean existsByType(ClinicType type);
 }

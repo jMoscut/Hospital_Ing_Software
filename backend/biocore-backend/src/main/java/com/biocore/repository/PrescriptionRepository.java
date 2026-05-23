@@ -44,4 +44,18 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
     List<Prescription> findByStatus(PrescriptionStatus status);
     List<Prescription> findByDoctorId(Long doctorId);
     List<Prescription> findByTicketId(Long ticketId);
+    Optional<Prescription> findByCode(String code);
+
+    @Query("SELECT DISTINCT p FROM Prescription p " +
+           "LEFT JOIN FETCH p.patient " +
+           "LEFT JOIN FETCH p.doctor " +
+           "LEFT JOIN FETCH p.ticket " +
+           "LEFT JOIN FETCH p.items i " +
+           "LEFT JOIN FETCH i.medicine " +
+           "WHERE p.patient.dpi = :dpi " +
+           "ORDER BY p.createdAt DESC")
+    List<Prescription> findByPatientDpi(@Param("dpi") String dpi);
+
+    @Query(value = "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 5) AS INTEGER)), 0) FROM prescriptions WHERE code IS NOT NULL AND code ~ '^REC-[0-9]+$'", nativeQuery = true)
+    int findMaxCodeNumber();
 }

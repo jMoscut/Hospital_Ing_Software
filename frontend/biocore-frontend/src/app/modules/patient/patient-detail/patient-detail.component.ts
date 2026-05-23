@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,10 +16,28 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { PatientService } from '../../../shared/services/patient.service';
 import { LabService } from '../../../shared/services/lab.service';
-import { PaymentService, InsuranceService } from '../../../shared/services/payment.service';
-import { TicketService, PrescriptionService, VitalSignsService } from '../../../shared/services/ticket.service';
+import { environment } from '../../../../environments/environment';
+import { PaymentService, InsuranceService, EmergencyService, PharmacySaleService } from '../../../shared/services/payment.service';
+import { TicketService, PrescriptionService, VitalSignsService, AppointmentService } from '../../../shared/services/ticket.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
+import { AuthService } from '../../../core/auth/auth.service';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-patient-detail',
@@ -39,14 +58,14 @@ import { Patient } from '../../../core/models/patient.model';
         <div class="header-actions">
           <mat-chip color="primary">{{ patient.patientCode }}</mat-chip>
           <ng-container *ngIf="!editMode">
-            <button mat-stroked-button color="primary" (click)="startEdit()">
+            <button *ngIf="canEdit" mat-stroked-button color="primary" (click)="startEdit()">
               <mat-icon>edit</mat-icon> Editar
             </button>
             <button mat-button routerLink="/patients">
               <mat-icon>arrow_back</mat-icon> Volver
             </button>
           </ng-container>
-          <ng-container *ngIf="editMode">
+          <ng-container *ngIf="editMode && canEdit">
             <button mat-raised-button color="primary" (click)="saveEdit()" [disabled]="saving || editForm.invalid">
               <mat-icon>save</mat-icon> {{ saving ? 'Guardando...' : 'Guardar' }}
             </button>
@@ -65,8 +84,8 @@ import { Patient } from '../../../core/models/patient.model';
             <form *ngIf="editMode" [formGroup]="editForm" class="edit-grid">
               <mat-form-field appearance="outline"><mat-label>Nombres *</mat-label><input matInput formControlName="firstName"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Apellidos *</mat-label><input matInput formControlName="lastName"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>DPI *</mat-label><input matInput formControlName="dpi"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Fecha de Nacimiento</mat-label><mat-icon matPrefix>cake</mat-icon><input matInput type="date" formControlName="birthDate"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>DPI *</mat-label><input matInput formControlName="dpi" maxlength="13" (keypress)="onlyDigits($event)"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Fecha de Nacimiento</mat-label><mat-icon matPrefix>cake</mat-icon><input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today"><mat-error *ngIf="editForm.get('birthDate')?.errors?.['yearTooEarly']">Año mínimo 1900</mat-error><mat-error *ngIf="editForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error><mat-error *ngIf="editForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Teléfono</mat-label><input matInput formControlName="phone"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Correo Electrónico</mat-label><input matInput formControlName="email"></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Dirección</mat-label><input matInput formControlName="address"></mat-form-field>
@@ -175,7 +194,7 @@ import { Patient } from '../../../core/models/patient.model';
                       <div class="medicine-item" *ngFor="let item of rx.items">
                         <mat-icon style="font-size:16px;color:#1D6C61">medication</mat-icon>
                         <div class="med-info">
-                          <span class="med-name">{{ item.medicineName }}</span>
+                          <span class="med-name">{{ item.medicineName || item.customMedicineName }}</span>
                           <span class="med-detail">Cant: {{ item.quantity }} · {{ item.dosage }}</span>
                           <span class="med-instructions" *ngIf="item.instructions">{{ item.instructions }}</span>
                         </div>
@@ -212,6 +231,18 @@ import { Patient } from '../../../core/models/patient.model';
                   <ng-template #noLab><p class="no-data">Sin órdenes de laboratorio</p></ng-template>
                 </div>
 
+                <!-- ── Emergency Medical Report ── -->
+                <ng-container *ngIf="t.type === 'EMERGENCIA' && getEmergencyReport(t.id) as er">
+                  <mat-divider></mat-divider>
+                  <div class="detail-section">
+                    <div class="section-title"><mat-icon>emergency</mat-icon> Reporte de Emergencia</div>
+                    <div class="diagnosis-text" *ngIf="er.diagnosis"><strong>Diagnóstico:</strong> {{ er.diagnosis }}</div>
+                    <div class="diagnosis-text" *ngIf="er.treatment" style="margin-top:8px"><strong>Tratamiento:</strong> {{ er.treatment }}</div>
+                    <div class="diagnosis-text" *ngIf="er.medications" style="margin-top:8px"><strong>Medicamentos:</strong> {{ er.medications }}</div>
+                    <p class="no-data" *ngIf="!er.diagnosis && !er.treatment && !er.medications">Sin detalles en el reporte</p>
+                  </div>
+                </ng-container>
+
               </mat-expansion-panel>
             </mat-accordion>
 
@@ -224,11 +255,21 @@ import { Patient } from '../../../core/models/patient.model';
             <div class="queue-ticket" *ngFor="let o of labOrders">
               <mat-icon style="color:#1565c0">science</mat-icon>
               <div class="ticket-info">
-                <div class="ticket-patient">{{ o.sampleType }} · Dr. {{ o.doctorName }}</div>
+                <div class="ticket-patient">{{ o.labExamName || o.sampleType }} · Dr. {{ o.doctorName }}</div>
                 <div class="ticket-meta">{{ o.orderDate }} · Vence: {{ o.expirationDate }}</div>
+                <div *ngIf="o.resultNotes" style="font-size:0.8rem;color:#555;margin-top:2px">{{ o.resultNotes }}</div>
               </div>
-              <span [style.background]="o.status==='COMPLETED'?'#e8f5e9':o.status==='EXPIRED'?'#ffebee':'#fff3e0'"
-                    style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ o.status }}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button *ngIf="o.hasAttachment"
+                        mat-icon-button
+                        style="color:#c62828"
+                        title="Ver PDF resultado"
+                        (click)="openLabPdf(o.id)">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                </button>
+                <span [style.background]="o.status==='COMPLETED'?'#e8f5e9':o.status==='EXPIRED'?'#ffebee':'#fff3e0'"
+                      style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ o.status }}</span>
+              </div>
             </div>
             <p *ngIf="labOrders.length === 0" class="text-center" style="color:#9e9e9e;padding:24px">Sin órdenes de laboratorio</p>
           </div>
@@ -237,15 +278,51 @@ import { Patient } from '../../../core/models/patient.model';
         <!-- ── Tab 4: Pagos ── -->
         <mat-tab label="Pagos">
           <div class="tab-content">
-            <div class="queue-ticket" *ngFor="let p of payments">
-              <mat-icon style="color:#2e7d32">payments</mat-icon>
-              <div class="ticket-info">
-                <div class="ticket-patient">{{ p.type }} · Q{{ p.netAmount }}</div>
-                <div class="ticket-meta">{{ p.createdAt | date:'dd/MM/yyyy' }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+            <ng-container *ngIf="appointments.length > 0 || payments.length > 0 || pharmacySales.length > 0; else noPagos">
+
+              <!-- Citas pagadas -->
+              <div *ngIf="appointments.length > 0" style="margin-bottom:16px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Citas y Consultas</p>
+                <div class="queue-ticket" *ngFor="let a of appointments">
+                  <mat-icon style="color:#1565c0">event</mat-icon>
+                  <div class="ticket-info">
+                    <div class="ticket-patient">{{ a.type }} · {{ a.clinicName }}</div>
+                    <div class="ticket-meta">{{ a.scheduledDate | date:'dd/MM/yyyy' }} · Q{{ a.amount }}<span *ngIf="a.voucherCode"> · {{ a.voucherCode }}</span></div>
+                  </div>
+                  <span style="padding:4px 12px;border-radius:12px;font-size:0.8rem;background:#e8f5e9;color:#2e7d32">Pagado</span>
+                </div>
               </div>
-              <span [class]="p.status==='PAID'?'status-completed':'status-waiting'" style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ p.status }}</span>
-            </div>
-            <p *ngIf="payments.length === 0" class="text-center" style="color:#9e9e9e;padding:24px">Sin pagos registrados</p>
+
+              <!-- Pagos caja -->
+              <div *ngIf="payments.length > 0" style="margin-bottom:16px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Pagos en Caja</p>
+                <div class="queue-ticket" *ngFor="let p of payments">
+                  <mat-icon style="color:#2e7d32">payments</mat-icon>
+                  <div class="ticket-info">
+                    <div class="ticket-patient">{{ p.type }} · Q{{ p.netAmount }}</div>
+                    <div class="ticket-meta">{{ p.createdAt | date:'dd/MM/yyyy' }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+                  </div>
+                  <span [class]="p.status==='PAID'?'status-completed':'status-waiting'" style="padding:4px 12px;border-radius:12px;font-size:0.8rem;">{{ p.status === 'PAID' ? 'Pagado' : p.status }}</span>
+                </div>
+              </div>
+
+              <!-- Farmacia -->
+              <div *ngIf="pharmacySales.length > 0">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
+                <div class="queue-ticket" *ngFor="let s of pharmacySales">
+                  <mat-icon style="color:#6a1b9a">medication</mat-icon>
+                  <div class="ticket-info">
+                    <div class="ticket-patient">{{ s.saleCode || 'Venta farmacia' }}<span *ngIf="s.invoiceNumber"> · Factura {{ s.invoiceNumber }}</span></div>
+                    <div class="ticket-meta">{{ s.paidAt ? (s.paidAt | date:'dd/MM/yyyy') : (s.createdAt | date:'dd/MM/yyyy') }} · Q{{ s.totalAmount }}</div>
+                  </div>
+                  <span style="padding:4px 12px;border-radius:12px;font-size:0.8rem;background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
+                </div>
+              </div>
+
+            </ng-container>
+            <ng-template #noPagos>
+              <p class="text-center" style="color:#9e9e9e;padding:24px">Sin pagos registrados</p>
+            </ng-template>
           </div>
         </mat-tab>
 
@@ -253,102 +330,102 @@ import { Patient } from '../../../core/models/patient.model';
     </div>
   `,
   styles: [`
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h1 { display: flex; align-items: center; gap: 8px; font-size: 1.6rem; font-weight: 500; color: #1565c0; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #D0D9E3; }
+    .page-header h1 { display: flex; align-items: center; gap: 8px; font-size: 1.55rem; font-weight: 700; color: #243C2C; letter-spacing: -0.3px; }
     .header-actions { display: flex; align-items: center; gap: 12px; }
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
 
-    /* Info */
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .info-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: #f8f9ff; border-radius: 8px; }
-    .info-item mat-icon { color: #1565c0; margin-top: 2px; }
-    .info-item label { display: block; font-size: 0.75rem; color: #757575; text-transform: uppercase; margin-bottom: 4px; }
-    .info-item span { font-size: 0.95rem; font-weight: 500; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .info-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: #FAFAF5; border-radius: 12px; border: 1px solid #D0D9E3; }
+    .info-item mat-icon { color: #59789F; margin-top: 2px; flex-shrink: 0; }
+    .info-item label { display: block; font-size: 0.7rem; color: #8aada7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+    .info-item span { font-size: 0.93rem; font-weight: 500; color: #243C2C; }
     .text-muted { color: #9e9e9e !important; font-weight: 400 !important; }
     .edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 8px; }
 
-    /* Consultation accordion */
-    .consult-panel { margin-bottom: 10px; border-radius: 10px !important; }
+    .consult-panel { margin-bottom: 10px; border-radius: 12px !important; }
     .panel-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-    .ticket-num-badge { background: #1D6C61; color: white; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 1rem; white-space: nowrap; }
+    .ticket-num-badge { background: linear-gradient(135deg,#243C2C,#59789F); color: white; padding: 4px 12px; border-radius: 8px; font-weight: 800; font-size: 0.95rem; white-space: nowrap; box-shadow: 0 2px 6px rgba(36,60,44,0.3); }
     .panel-meta { display: flex; flex-direction: column; gap: 2px; }
-    .panel-clinic { font-weight: 600; font-size: 0.9rem; }
-    .panel-date { font-size: 0.75rem; color: #757575; }
+    .panel-clinic { font-weight: 700; font-size: 0.9rem; color: #243C2C; }
+    .panel-date { font-size: 0.73rem; color: #6b8c84; }
     .panel-desc { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
-    .panel-doctor { font-size: 0.82rem; color: #1D6C61; }
+    .panel-doctor { font-size: 0.82rem; color: #59789F; font-weight: 600; }
 
-    /* Status chips */
-    .status-chip { padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
-    .status-completed { background: #e8f5e9; color: #2e7d32; }
+    .status-chip { padding: 3px 10px; border-radius: 10px; font-size: 0.73rem; font-weight: 700; }
+    .status-completed { background: #EBF0DC; color: #1a5e1e; }
     .status-absent { background: #ffebee; color: #c62828; }
     .status-waiting { background: #fff8e1; color: #f57f17; }
-    .status-in-consultation { background: #e8f5e9; color: #2e7d32; }
-    .status-being-called { background: #e3f2fd; color: #1565c0; }
+    .status-in-consultation { background: #EBF0DC; color: #1a5e1e; }
+    .status-being-called { background: #e3f2fd; color: #59789F; }
     .status-cancelled-no-payment { background: #fce4ec; color: #880e4f; }
 
-    /* Detail sections */
     .detail-section { padding: 16px 0; }
-    .section-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #1D6C61; margin-bottom: 12px; }
-    .diagnosis-text { font-size: 0.95rem; line-height: 1.6; color: #333; background: #f8f9ff; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+    .section-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.88rem; color: #243C2C; margin-bottom: 12px; }
+    .diagnosis-text { font-size: 0.93rem; line-height: 1.7; color: #2d4a47; background: #FAFAF5; padding: 14px 16px; border-radius: 10px; white-space: pre-wrap; border: 1px solid #D0D9E3; }
     .no-data { color: #9e9e9e; font-size: 0.85rem; font-style: italic; }
 
-    /* Vitals */
     .vitals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
-    .vital-item { background: #f0faf8; border-radius: 8px; padding: 10px 12px; text-align: center; }
-    .vital-label { display: block; font-size: 0.7rem; color: #757575; text-transform: uppercase; margin-bottom: 4px; }
-    .vital-value { font-size: 1rem; font-weight: 700; color: #1D6C61; }
+    .vital-item { background: #F5F2DC; border-radius: 10px; padding: 10px 12px; text-align: center; border: 1px solid #C5CDD8; }
+    .vital-label { display: block; font-size: 0.68rem; color: #8aada7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+    .vital-value { font-size: 1rem; font-weight: 800; color: #59789F; }
 
-    /* Prescription */
-    .rx-notes { font-size: 0.85rem; color: #555; margin-bottom: 10px; font-style: italic; }
+    .rx-notes { font-size: 0.85rem; color: #4a6560; margin-bottom: 10px; font-style: italic; }
     .medicine-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-    .medicine-item { display: flex; align-items: flex-start; gap: 10px; background: #f8fff8; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #1D6C61; }
+    .medicine-item { display: flex; align-items: flex-start; gap: 10px; background: #FAFAF5; border-radius: 10px; padding: 10px 14px; border-left: 3px solid #243C2C; border: 1px solid #D0D9E3; border-left-width: 3px; }
     .med-info { flex: 1; }
-    .med-name { font-weight: 600; font-size: 0.9rem; display: block; }
-    .med-detail { font-size: 0.78rem; color: #757575; display: block; margin-top: 2px; }
-    .med-instructions { font-size: 0.75rem; color: #9e9e9e; display: block; font-style: italic; }
-    .dispatched-badge { background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
-    .rx-status { font-size: 0.78rem; font-weight: 600; display: inline-block; padding: 3px 10px; border-radius: 8px; }
+    .med-name { font-weight: 700; font-size: 0.9rem; display: block; color: #243C2C; }
+    .med-detail { font-size: 0.78rem; color: #6b8c84; display: block; margin-top: 2px; }
+    .med-instructions { font-size: 0.73rem; color: #9e9e9e; display: block; font-style: italic; margin-top: 2px; }
+    .dispatched-badge { background: #EBF0DC; color: #1a5e1e; padding: 2px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .rx-status { font-size: 0.75rem; font-weight: 700; display: inline-block; padding: 3px 10px; border-radius: 8px; }
     .rx-pending { background: #fff3e0; color: #e65100; }
-    .rx-dispatched { background: #e8f5e9; color: #2e7d32; }
-    .rx-partially_dispatched { background: #e3f2fd; color: #1565c0; }
+    .rx-dispatched { background: #EBF0DC; color: #1a5e1e; }
+    .rx-partially_dispatched { background: #e3f2fd; color: #59789F; }
 
-    /* Lab */
-    .lab-item { display: flex; align-items: flex-start; gap: 10px; background: #f0f4ff; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #1565c0; margin-bottom: 6px; }
+    .lab-item { display: flex; align-items: flex-start; gap: 10px; background: #F5F2DC; border-radius: 10px; padding: 10px 14px; border-left: 3px solid #243C2C; margin-bottom: 6px; border: 1px solid #C5CDD8; }
     .lab-info { flex: 1; }
-    .lab-name { font-weight: 600; font-size: 0.9rem; display: block; }
-    .lab-detail { font-size: 0.78rem; color: #757575; display: block; margin-top: 2px; }
-    .lab-notes { font-size: 0.75rem; color: #9e9e9e; display: block; font-style: italic; }
-    .lab-status-badge { padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .lab-name { font-weight: 700; font-size: 0.9rem; display: block; color: #243C2C; }
+    .lab-detail { font-size: 0.78rem; color: #6b8c84; display: block; margin-top: 2px; }
+    .lab-notes { font-size: 0.73rem; color: #9e9e9e; display: block; font-style: italic; }
+    .lab-status-badge { padding: 2px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
 
-    /* Visit list (legacy tabs) */
-    .queue-ticket { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: white; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e8e8e8; }
+    .queue-ticket { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: white; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(36,60,44,0.07); border: 1px solid #D0D9E3; }
     .ticket-info { flex: 1; }
-    .ticket-patient { font-weight: 500; }
-    .ticket-meta { font-size: 0.78rem; color: #757575; margin-top: 2px; }
+    .ticket-patient { font-weight: 600; color: #243C2C; }
+    .ticket-meta { font-size: 0.78rem; color: #6b8c84; margin-top: 2px; }
 
-    /* Empty */
-    .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
-    .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; display: block; }
+    .empty-state { text-align: center; padding: 56px 24px; color: #9e9e9e; }
+    .empty-state mat-icon { font-size: 52px; width: 52px; height: 52px; color: #7A9445; opacity: 0.4; margin-bottom: 10px; display: block; margin: 0 auto 10px; }
   `]
 })
 export class PatientDetailComponent implements OnInit {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+
+  apiUrl = environment.apiUrl;
   patient: Patient | null = null;
   tickets: any[] = [];
   completedTickets: any[] = [];
   labOrders: any[] = [];
   payments: any[] = [];
+  pharmacySales: any[] = [];
+  appointments: any[] = [];
   prescriptions: any[] = [];
+  emergencyReports: any[] = [];
   vitalsCache: Record<number, any> = {};
   patientId!: number;
+  canEdit = false;
   editMode = false;
   saving = false;
   editForm!: FormGroup;
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
   insurances: any[] = [];
 
   constructor(
     private route: ActivatedRoute,
     private fb: FormBuilder,
+    private http: HttpClient,
     private patientService: PatientService,
     private ticketService: TicketService,
     private prescriptionService: PrescriptionService,
@@ -356,10 +433,26 @@ export class PatientDetailComponent implements OnInit {
     private labService: LabService,
     private paymentService: PaymentService,
     private insuranceService: InsuranceService,
-    private notification: NotificationService
+    private emergencyService: EmergencyService,
+    private pharmacySaleService: PharmacySaleService,
+    private appointmentService: AppointmentService,
+    private notification: NotificationService,
+    private auth: AuthService
   ) {}
 
+  openLabPdf(orderId: number): void {
+    this.http.get(`${this.apiUrl}/lab-orders/${orderId}/result-file`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        win?.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      },
+      error: () => this.notification.error('No se pudo abrir el PDF')
+    });
+  }
+
   ngOnInit(): void {
+    this.canEdit = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
     this.patientId = Number(this.route.snapshot.paramMap.get('id'));
     this.patientService.getById(this.patientId).subscribe(res => {
       if (res.success) {
@@ -385,9 +478,22 @@ export class PatientDetailComponent implements OnInit {
     this.paymentService.getByPatient(id).subscribe(res => {
       if (res.success) this.payments = res.data;
     });
+    this.pharmacySaleService.getByPatient(id).subscribe(res => {
+      if (res.success) this.pharmacySales = res.data;
+    });
+    this.appointmentService.getByPatient(id).subscribe(res => {
+      if (res.success) this.appointments = res.data.filter((a: any) => a.status === 'CONFIRMED');
+    });
     this.prescriptionService.getByPatient(id).subscribe(res => {
       if (res.success) this.prescriptions = res.data;
     });
+    this.emergencyService.getMedicalReportsByPatient(id).subscribe(res => {
+      if (res.success) this.emergencyReports = res.data;
+    });
+  }
+
+  getEmergencyReport(ticketId: number): any | null {
+    return this.emergencyReports.find(r => r.ticketId === ticketId) ?? null;
   }
 
   onExpandTicket(ticket: any): void {
@@ -428,7 +534,7 @@ export class PatientDetailComponent implements OnInit {
       firstName:        [this.patient.firstName,        Validators.required],
       lastName:         [this.patient.lastName,         Validators.required],
       dpi:              [this.patient.dpi,              Validators.required],
-      birthDate:        [this.patient.birthDate         || ''],
+      birthDate:        [this.patient.birthDate         || '', [birthDateValidator]],
       phone:            [this.patient.phone             || ''],
       email:            [this.patient.email             || ''],
       address:          [this.patient.address           || ''],

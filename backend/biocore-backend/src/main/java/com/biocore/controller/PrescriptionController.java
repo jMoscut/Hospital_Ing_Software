@@ -6,6 +6,7 @@ import com.biocore.dto.PrescriptionRequest;
 import com.biocore.service.PrescriptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/prescriptions")
 @RequiredArgsConstructor
@@ -24,10 +26,10 @@ public class PrescriptionController {
     @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
     public ResponseEntity<ApiResponse<PrescriptionDTO>> create(@Valid @RequestBody PrescriptionRequest req) {
         try {
-            return ResponseEntity.status(201).body(
-                    ApiResponse.ok("Receta generada", PrescriptionDTO.from(prescriptionService.create(req))));
+            return ResponseEntity.status(201).body(ApiResponse.ok("Receta generada", prescriptionService.create(req)));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            log.error("Error creating prescription — {}: {}", e.getClass().getSimpleName(), e.getMessage(), e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getClass().getSimpleName() + ": " + e.getMessage()));
         }
     }
 
@@ -51,6 +53,24 @@ public class PrescriptionController {
     @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<PrescriptionDTO>>> getPendingForPharmacy() {
         List<PrescriptionDTO> dtos = prescriptionService.getPending()
+                .stream().map(PrescriptionDTO::from).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok(dtos));
+    }
+
+    @GetMapping("/by-code/{code}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
+    public ResponseEntity<ApiResponse<PrescriptionDTO>> getByCode(@PathVariable String code) {
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(PrescriptionDTO.from(prescriptionService.getByCode(code))));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/by-dpi/{dpi}")
+    @PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PrescriptionDTO>>> getByDpi(@PathVariable String dpi) {
+        List<PrescriptionDTO> dtos = prescriptionService.getByPatientDpi(dpi)
                 .stream().map(PrescriptionDTO::from).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok(dtos));
     }

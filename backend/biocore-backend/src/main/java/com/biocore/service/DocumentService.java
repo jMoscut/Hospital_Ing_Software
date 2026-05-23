@@ -5,6 +5,9 @@ import com.biocore.entity.Document;
 import com.biocore.repository.AppointmentRepository;
 import com.biocore.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -41,6 +44,8 @@ public class DocumentService {
 
         return List.of(files).stream().map(file -> {
             try {
+                validatePdf(file);
+
                 String original = file.getOriginalFilename();
                 String safeName = System.currentTimeMillis() + "_" +
                         (original != null ? original.replaceAll("[^a-zA-Z0-9._-]", "_") : "document.pdf");
@@ -59,6 +64,35 @@ public class DocumentService {
                 throw new RuntimeException("Error al guardar archivo: " + file.getOriginalFilename(), e);
             }
         }).collect(Collectors.toList());
+    }
+
+    private void validatePdf(MultipartFile file) throws IOException {
+        String name = file.getOriginalFilename() != null ? file.getOriginalFilename() : "archivo";
+
+        if (file.isEmpty() || file.getSize() == 0) {
+            throw new RuntimeException("\"" + name + "\": el archivo está vacío.");
+        }
+
+        byte[] bytes = file.getBytes();
+
+        if (bytes.length < 5 || !new String(bytes, 0, 5).startsWith("%PDF-")) {
+            throw new RuntimeException("\"" + name + "\": no es un archivo PDF válido.");
+        }
+
+        try (PDDocument doc = Loader.loadPDF(bytes)) {
+            if (doc.isEncrypted()) {
+                throw new RuntimeException("\"" + name + "\": el PDF está cifrado o protegido con contraseña.");
+            }
+            if (doc.getNumberOfPages() == 0) {
+                throw new RuntimeException("\"" + name + "\": el PDF está en blanco (no contiene páginas).");
+            }
+        } catch (InvalidPasswordException e) {
+            throw new RuntimeException("\"" + name + "\": el PDF está protegido con contraseña.");
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("\"" + name + "\": el archivo PDF no es válido o está dañado.");
+        }
     }
 
     @Transactional(readOnly = true)

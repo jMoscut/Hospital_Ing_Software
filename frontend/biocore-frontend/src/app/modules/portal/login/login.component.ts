@@ -141,44 +141,106 @@ import { AuthService } from '../../../core/auth/auth.service';
     </div>
   `,
   styles: [`
-    .login-page { display: flex; min-height: 100vh; }
-    .login-left {
-      flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
-      background: linear-gradient(135deg, #193A31, #1D6C61);
-      color: white; padding: 60px 40px;
-    }
-    .login-brand { text-align: center; margin-bottom: 48px; }
-    .brand-icon { font-size: 80px; width: 80px; height: 80px; color: #3EB9A8; margin-bottom: 16px; }
-    .login-brand h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
-    .login-brand p { color: rgba(255,255,255,0.75); font-size: 1rem; }
-    .login-features { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
-    .feature { display: flex; align-items: center; gap: 12px; font-size: 1rem; }
-    .feature mat-icon { color: #3EB9A8; }
-    .patient-link { text-align: center; }
-    .patient-link p { color: rgba(255,255,255,0.7); margin-bottom: 12px; }
-    .register-btn { color: white !important; border-color: rgba(255,255,255,0.5) !important; }
+    * { box-sizing: border-box; }
 
-    .login-right {
-      flex: 0 0 460px; display: flex; align-items: center; justify-content: center;
-      background: #f5f7fa; padding: 40px;
+    .login-page { display: flex; min-height: 100vh; }
+
+    /* ── LEFT PANEL ── */
+    .login-left {
+      flex: 1;
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      background: linear-gradient(150deg, #243C2C 0%, #243C2C 45%, #243C2C 100%);
+      color: white; padding: 64px 56px;
+      position: relative; overflow: hidden;
     }
-    .login-card { width: 100%; max-width: 400px; padding: 8px; }
-    .full-width { width: 100%; margin-bottom: 8px; }
-    .submit-btn { height: 48px; font-size: 1rem; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .login-left::before {
+      content: ''; position: absolute; top: -100px; right: -100px;
+      width: 380px; height: 380px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(89,120,159,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .login-left::after {
+      content: ''; position: absolute; bottom: -120px; left: -80px;
+      width: 420px; height: 420px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(89,120,159,0.10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .login-brand { margin-bottom: 52px; position: relative; z-index: 1; }
+    .brand-icon {
+      font-size: 72px !important; width: 72px !important; height: 72px !important;
+      color: #7A9445; margin-bottom: 20px; display: block;
+      filter: drop-shadow(0 0 20px rgba(89,120,159,0.5));
+    }
+    .login-brand h1 {
+      font-size: 2.2rem; font-weight: 700; letter-spacing: -0.5px;
+      margin: 0 0 8px;
+      background: linear-gradient(135deg, #ffffff 30%, #a8e6df 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .login-brand p { color: rgba(255,255,255,0.55); font-size: 0.95rem; margin: 0; letter-spacing: 0.3px; }
+
+    .login-features { display: flex; flex-direction: column; gap: 18px; margin-bottom: 48px; position: relative; z-index: 1; }
+    .feature { display: flex; align-items: center; gap: 14px; font-size: 0.93rem; color: rgba(255,255,255,0.82); }
+    .feature mat-icon {
+      color: #7A9445; font-size: 18px !important; width: 18px !important; height: 18px !important;
+      background: transparent; flex-shrink: 0;
+    }
+
+    .patient-link { padding-top: 36px; border-top: 1px solid rgba(255,255,255,0.08); position: relative; z-index: 1; }
+    .patient-link p { color: rgba(255,255,255,0.45); margin-bottom: 14px; font-size: 0.875rem; }
+    .register-btn {
+      color: #7A9445 !important; border-color: rgba(89,120,159,0.35) !important;
+      border-radius: 10px !important; padding: 0 20px !important; height: 42px !important;
+      font-size: 0.9rem !important; font-weight: 500 !important;
+      transition: all 0.2s ease !important;
+    }
+    .register-btn:hover { background: rgba(89,120,159,0.12) !important; border-color: #7A9445 !important; }
+
+    /* ── RIGHT PANEL ── */
+    .login-right {
+      flex: 0 0 500px; display: flex; align-items: center; justify-content: center;
+      background: #f2f5f4; padding: 48px 40px;
+    }
+    .login-card {
+      width: 100%; max-width: 420px;
+      border-radius: 20px !important;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06) !important;
+      padding: 12px 8px;
+      border: 1px solid rgba(0,0,0,0.05) !important;
+      background: white !important;
+    }
+
+    ::ng-deep .login-card .mat-mdc-card-header { padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; margin-bottom: 4px; }
+    ::ng-deep .login-card .mat-mdc-card-title { font-size: 1.35rem !important; font-weight: 700 !important; color: #243C2C !important; }
+    ::ng-deep .login-card .mat-mdc-card-subtitle { color: #6b7280 !important; font-size: 0.875rem !important; margin-top: 3px !important; }
+
+    .full-width { width: 100%; margin-bottom: 6px; }
+    .submit-btn {
+      height: 52px !important; font-size: 1rem !important; font-weight: 600 !important;
+      border-radius: 12px !important; margin-top: 12px !important; letter-spacing: 0.3px !important;
+      display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important;
+      width: 100% !important;
+    }
+
     .error-alert {
-      display: flex; align-items: center; gap: 8px;
-      background: #ffebee; color: #c62828; border-radius: 8px;
-      padding: 12px 16px; margin-bottom: 16px; font-size: 0.9rem;
+      display: flex; align-items: center; gap: 10px;
+      background: #fef2f2; color: #dc2626;
+      border: 1px solid #fecaca; border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 20px; font-size: 0.875rem; font-weight: 500;
     }
     .info-alert {
-      display: flex; align-items: center; gap: 8px;
-      background: #fff3e0; color: #e65100; border-radius: 8px;
-      padding: 12px 16px; margin-bottom: 16px; font-size: 0.85rem;
+      display: flex; align-items: center; gap: 10px;
+      background: #fff7ed; color: #c2410c;
+      border: 1px solid #fed7aa; border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 20px; font-size: 0.85rem;
     }
-    @media (max-width: 768px) {
-      .login-left { display: none; }
-      .login-right { flex: 1; }
-    }
+
+    ::ng-deep .login-card .mat-mdc-card-actions { padding-top: 12px !important; border-top: 1px solid #f4f4f4 !important; margin-top: 4px !important; }
+
+    @media (max-width: 900px) { .login-left { display: none; } .login-right { flex: 1; background: white; } }
+    @media (max-width: 480px) { .login-right { padding: 24px 16px; } }
   `]
 })
 export class LoginComponent implements OnInit {

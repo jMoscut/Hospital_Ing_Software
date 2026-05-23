@@ -65,7 +65,7 @@ public class PublicController {
                 return ResponseEntity.badRequest().body(ApiResponse.error(
                         "La contraseña debe tener mínimo 8 caracteres, al menos una mayúscula y un número (RN-P001)."));
             }
-            PatientDTO dto = patientService.create(req);
+            PatientDTO dto = patientService.createFromPortal(req);
             return ResponseEntity.status(201).body(
                     ApiResponse.ok("Registro exitoso. Su código de paciente es: " + dto.getPatientCode(), dto));
         } catch (Exception e) {

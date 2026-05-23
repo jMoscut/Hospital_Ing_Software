@@ -2,6 +2,7 @@ package com.biocore.service;
 
 import com.biocore.dto.AssignClinicRequest;
 import com.biocore.dto.UserCreateRequest;
+import com.biocore.dto.UserUpdateRequest;
 import com.biocore.dto.UserDTO;
 import com.biocore.entity.Clinic;
 import com.biocore.entity.DoctorClinicAssignment;
@@ -82,7 +83,8 @@ public class UserService {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .email(req.getEmail())
                 .specialty(req.getSpecialty())
-                .collegiateNumber(req.getCollegiateNumber())
+                .collegiateNumber(req.getCollegiateNumber() != null && !req.getCollegiateNumber().isBlank()
+                        ? req.getCollegiateNumber() : null)
                 .role(req.getRole())
                 .active(true)
                 .build();
@@ -91,7 +93,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserDTO update(Long id, UserCreateRequest req) {
+    public UserDTO update(Long id, UserUpdateRequest req) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
 
@@ -99,7 +101,8 @@ public class UserService {
         user.setLastName(req.getLastName());
         user.setEmail(req.getEmail());
         user.setSpecialty(req.getSpecialty());
-        user.setCollegiateNumber(req.getCollegiateNumber());
+        user.setCollegiateNumber(req.getCollegiateNumber() != null && !req.getCollegiateNumber().isBlank()
+                ? req.getCollegiateNumber() : null);
         user.setRole(req.getRole());
 
         if (req.getPassword() != null && !req.getPassword().isBlank()) {

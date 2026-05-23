@@ -33,6 +33,9 @@ public class Prescription {
     @JoinColumn(name = "ticket_id")
     private Ticket ticket;
 
+    @Column(unique = true, length = 12)
+    private String code;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

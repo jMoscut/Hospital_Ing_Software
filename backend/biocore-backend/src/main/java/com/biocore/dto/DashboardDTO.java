@@ -14,6 +14,6 @@ public class DashboardDTO {
     private long patientsWaiting;
     private long patientsInConsultation;
     private long patientsAttended;
-    private long patientsCancelled;
+    private long patientsAbsent;
     private long totalPaidToday;
 }

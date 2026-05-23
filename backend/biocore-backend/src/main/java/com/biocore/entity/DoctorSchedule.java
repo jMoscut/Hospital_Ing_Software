@@ -48,6 +48,14 @@ public class DoctorSchedule {
     @Column(name = "end_time", nullable = false, length = 5)
     private String endTime;
 
+    /** Optional: lunch break start — slots within [lunchStartTime, lunchEndTime) are excluded */
+    @Column(name = "lunch_start_time", length = 5)
+    private String lunchStartTime;
+
+    /** Optional: lunch break end (exclusive) */
+    @Column(name = "lunch_end_time", length = 5)
+    private String lunchEndTime;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean active = true;

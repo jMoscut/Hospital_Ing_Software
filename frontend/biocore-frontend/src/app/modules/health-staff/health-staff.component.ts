@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +18,22 @@ import { InsuranceService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Clinic, Ticket } from '../../core/models/ticket.model';
 import { Patient } from '../../core/models/patient.model';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-health-staff',
@@ -85,8 +101,9 @@ import { Patient } from '../../core/models/patient.model';
                       <mat-form-field appearance="outline" class="wide">
                         <mat-label>DPI del Paciente (13 dígitos)</mat-label>
                         <mat-icon matPrefix>badge</mat-icon>
-                        <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
-                        <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                        <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                               (keypress)="onlyDigits($event)">
+                        <mat-error>El DPI debe tener 13 dígitos y no puede iniciar con 0</mat-error>
                       </mat-form-field>
                       <div class="step-actions">
                         <button mat-raised-button color="primary"
@@ -128,11 +145,15 @@ import { Patient } from '../../core/models/patient.model';
                         <mat-form-field appearance="outline">
                           <mat-label>Fecha de Nacimiento</mat-label>
                           <mat-icon matPrefix>cake</mat-icon>
-                          <input matInput type="date" formControlName="birthDate">
+                          <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                          <mat-error>Fecha inválida (año entre 1900 y año actual)</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Teléfono</mat-label>
-                          <input matInput formControlName="phone">
+                          <input matInput formControlName="phone" type="tel" maxlength="8"
+                                 (keypress)="onlyDigits($event)">
+                          <mat-hint>8 dígitos, no inicia en 0</mat-hint>
+                          <mat-error>Teléfono inválido (8 dígitos, no inicia en 0)</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="outline">
                           <mat-label>Correo Electrónico *</mat-label>
@@ -186,23 +207,7 @@ import { Patient } from '../../core/models/patient.model';
           </ng-template>
           <div class="tab-content">
 
-            <!-- Llamar siguiente paciente -->
-            <div class="call-next-bar">
-              <mat-form-field appearance="outline" style="min-width:200px;margin-bottom:0">
-                <mat-label>Clínica</mat-label>
-                <mat-select [(ngModel)]="selectedVitalsClinicId">
-                  <mat-option *ngFor="let c of visitClinics" [value]="c.id">{{ c.name }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <button mat-raised-button color="primary" [disabled]="!selectedVitalsClinicId || callingVitals"
-                      (click)="callNextToVitalSigns()">
-                <mat-spinner *ngIf="callingVitals" diameter="18" style="display:inline-block;margin-right:6px"></mat-spinner>
-                <mat-icon *ngIf="!callingVitals">campaign</mat-icon>
-                {{ callingVitals ? 'Llamando...' : 'Llamar Siguiente' }}
-              </button>
-            </div>
-
-            <p class="hint-text" style="margin-top:12px">Pacientes en área de signos vitales. Haga clic para registrar signos.</p>
+            <p class="hint-text">Pacientes en área de signos vitales. Haga clic para registrar signos.</p>
 
             <div *ngIf="calledTickets.length === 0" class="empty-state">
               <mat-icon>health_and_safety</mat-icon>
@@ -218,6 +223,10 @@ import { Patient } from '../../core/models/patient.model';
                     {{ t.clinicName }} · {{ t.type }}
                     <span *ngIf="t.doctorName"> · Dr. {{ t.doctorName }}</span>
                   </div>
+                  <div class="ticket-lab-info" *ngIf="t.type === 'LABORATORIO' && (t.labExamName || t.labSampleType)">
+                    <span *ngIf="t.labExamName"><mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">science</mat-icon> {{ t.labExamName }}</span>
+                    <span *ngIf="t.labSampleType"><mat-icon style="font-size:13px;width:13px;height:13px;vertical-align:middle">colorize</mat-icon> {{ t.labSampleType }}</span>
+                  </div>
                   <div class="ticket-time" *ngIf="t.scheduledTime" style="font-size:0.75rem;color:#1D6C61;margin-top:2px">
                     <mat-icon style="font-size:11px;width:11px;height:11px;vertical-align:middle">schedule</mat-icon>
                     {{ t.scheduledTime }}
@@ -232,32 +241,46 @@ import { Patient } from '../../core/models/patient.model';
                   <mat-form-field appearance="outline">
                     <mat-label>Presión Arterial</mat-label>
                     <mat-icon matPrefix>favorite</mat-icon>
-                    <input matInput formControlName="bloodPressure" placeholder="120/80">
+                    <input matInput formControlName="bloodPressure" placeholder="120/80"
+                           maxlength="7" (keypress)="onlyBP($event)">
+                    <mat-hint>Formato: 120/80</mat-hint>
+                    <mat-error>Formato xxx/xxx (solo números)</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Frec. Cardíaca (bpm)</mat-label>
-                    <input matInput type="number" formControlName="heartRate">
+                    <input matInput inputmode="numeric" formControlName="heartRate"
+                           maxlength="3" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 3 dígitos</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Temperatura (°C)</mat-label>
-                    <input matInput type="number" formControlName="temperature" step="0.1">
+                    <input matInput inputmode="numeric" formControlName="temperature"
+                           maxlength="2" (keypress)="onlyDigits($event)">
+                    <mat-hint>30–45 °C</mat-hint>
+                    <mat-error>Debe estar entre 30 y 45 °C</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Peso (kg)</mat-label>
-                    <input matInput type="number" formControlName="weight" step="0.1">
+                    <input matInput inputmode="numeric" formControlName="weight"
+                           maxlength="3" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 3 dígitos</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Talla (cm)</mat-label>
-                    <input matInput type="number" formControlName="height">
+                    <input matInput inputmode="numeric" formControlName="height"
+                           maxlength="3" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 3 dígitos</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Saturación O₂ (%)</mat-label>
-                    <input matInput type="number" formControlName="oxygenSaturation">
+                    <input matInput inputmode="numeric" formControlName="oxygenSaturation"
+                           maxlength="2" (keypress)="onlyDigits($event)">
+                    <mat-error>Máximo 2 dígitos</mat-error>
                   </mat-form-field>
                 </form>
                 <div class="vitals-actions">
                   <button mat-raised-button color="primary" (click)="sendToDoctor(t)"
-                          [disabled]="sendingVitals">
+                          [disabled]="sendingVitals || vitalsFormMap[t.id]?.invalid">
                     <mat-icon>{{ t.type === 'LABORATORIO' ? 'science' : 'send' }}</mat-icon>
                     {{ sendingVitals ? 'Registrando...' : (t.type === 'LABORATORIO' ? 'Registrar Signos Vitales' : 'Registrar y Enviar a Médico') }}
                   </button>
@@ -363,110 +386,144 @@ import { Patient } from '../../core/models/patient.model';
   styles: [`
     .tab-content { padding: 24px 0; }
     .tab-icon { font-size: 18px; margin-right: 6px; vertical-align: middle; }
-    h3 { font-size: 1.1rem; font-weight: 500; color: #1D6C61; margin-bottom: 16px; }
-    h4.section-subtitle { font-size: 0.95rem; font-weight: 500; color: #555; margin: 16px 0 8px; border-top: 1px solid #e0e0e0; padding-top: 12px; }
-    .hint-text { color: #757575; font-size: 0.85rem; margin-bottom: 16px; }
+    h3 { font-size: 1.05rem; font-weight: 700; color: #243C2C; margin-bottom: 16px; }
+    h4.section-subtitle { font-size: 0.9rem; font-weight: 600; color: #4a6560; margin: 16px 0 8px; border-top: 1px solid #D0D9E3; padding-top: 12px; }
+    .hint-text { color: #6b8c84; font-size: 0.85rem; margin-bottom: 16px; }
     .wide { width: 100%; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 8px; }
     .step-actions { display: flex; gap: 12px; margin-top: 16px; }
 
     .found-box {
       display: flex; align-items: center; gap: 12px;
-      background: #e8f5e9; padding: 16px; border-radius: 8px; color: #2e7d32; margin-top: 16px;
+      background: linear-gradient(135deg,#EBF0DC,#F5F2DC); padding: 16px 20px;
+      border-radius: 12px; color: #243C2C; margin-top: 16px;
+      border: 1px solid #C5CDD8;
     }
-    .found-box mat-icon { font-size: 32px; width: 32px; height: 32px; }
+    .found-box mat-icon { font-size: 32px; width: 32px; height: 32px; color: #243C2C; }
 
     .queue-filters { margin-bottom: 16px; }
     .ticket-row {
-      display: flex; align-items: center; gap: 16px; padding: 12px 16px;
-      background: white; border-radius: 8px; margin-bottom: 8px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex; align-items: center; gap: 16px; padding: 14px 18px;
+      background: white; border-radius: 12px; margin-bottom: 8px;
+      box-shadow: 0 2px 8px rgba(36,60,44,0.07); border: 1px solid #D0D9E3;
+      transition: box-shadow 0.2s;
     }
-    .ticket-number { font-size: 1.4rem; font-weight: 700; color: #1D6C61; min-width: 80px; }
+    .ticket-row:hover { box-shadow: 0 4px 14px rgba(36,60,44,0.12); }
+    .ticket-number { font-size: 1.4rem; font-weight: 800; color: #59789F; min-width: 80px; letter-spacing: -0.5px; }
     .ticket-info { flex: 1; }
-    .ticket-patient { font-weight: 500; }
-    .ticket-meta { font-size: 0.8rem; color: #757575; }
-    .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
+    .ticket-patient { font-weight: 600; color: #243C2C; }
+    .ticket-meta { font-size: 0.8rem; color: #6b8c84; margin-top: 2px; }
+    .ticket-lab-info { font-size: 0.78rem; color: #59789F; margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .status-chip { padding: 4px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
 
     .credentials-box {
       display: flex; align-items: flex-start; gap: 16px;
-      background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: 12px;
       padding: 16px 20px; margin: 12px 0;
     }
     .credentials-box mat-icon { font-size: 28px; width: 28px; height: 28px; color: #f57f17; flex-shrink: 0; margin-top: 4px; }
     .credentials-box strong { color: #e65100; font-size: 0.95rem; }
     .credentials-box p { color: #555; font-size: 0.82rem; margin: 4px 0 10px; }
     .cred-row { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 4px; }
-    .cred-row span { color: #757575; min-width: 140px; }
-    .cred-row code { background: #fff3e0; padding: 2px 8px; border-radius: 4px; font-size: 1rem; font-weight: 700; letter-spacing: 0.5px; color: #e65100; }
+    .cred-row span { color: #6b8c84; min-width: 140px; }
+    .cred-row code { background: #fff3e0; padding: 3px 10px; border-radius: 6px; font-size: 1rem; font-weight: 700; letter-spacing: 0.5px; color: #e65100; border: 1px solid #ffe082; }
 
-    .empty-state { text-align: center; padding: 48px; color: #9e9e9e; }
-    .empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; color: #3EB9A8; opacity: 0.5; margin-bottom: 8px; }
+    .empty-state { text-align: center; padding: 56px 24px; color: #9e9e9e; }
+    .empty-state mat-icon { font-size: 52px; width: 52px; height: 52px; color: #7A9445; opacity: 0.4; margin-bottom: 10px; display: block; margin: 0 auto 10px; }
     .reload-btn { text-align: center; margin-top: 24px; }
-    .status-waiting { background:#e3f2fd;color:#1565c0; }
+    .status-waiting { background:#e3f2fd;color:#59789F; }
     .status-vitals { background:#e0f7fa;color:#00838f; }
     .status-ready { background:#f3e5f5;color:#7b1fa2; }
     .status-being-called { background:#fff3e0;color:#e65100; }
-    .status-in-consultation { background:#e8f5e9;color:#2e7d32; }
+    .status-in-consultation { background:#EBF0DC;color:#243C2C; }
     .status-completed { background:#f5f5f5;color:#616161; }
     .status-absent { background:#ffebee;color:#c62828; }
     .selector-row { display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
     .doctor-status-grid { display:flex;flex-wrap:wrap;gap:10px;margin-top:8px; }
     .doctor-chip { display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:20px;font-size:0.85rem; }
-    .doctor-available { background:#e8f5e9;color:#2e7d32; }
+    .doctor-available { background:#EBF0DC;color:#243C2C; }
     .doctor-busy { background:#ffebee;color:#c62828; }
-    .doctor-name { font-weight:600; }
-    .doctor-status-label { font-size:0.75rem; }
+    .doctor-name { font-weight:700; }
+    .doctor-status-label { font-size:0.72rem; }
     .queue-filter-row { display:flex;align-items:center;gap:12px; }
     .tab-badge { background:#e53935;color:white;border-radius:10px;padding:1px 7px;font-size:0.72rem;font-weight:700;margin-left:6px; }
-    .called-card { background:white;border-radius:10px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,0.10); }
+    .called-card {
+      background:white;border-radius:14px;padding:18px 22px;margin-bottom:12px;
+      box-shadow:0 2px 10px rgba(36,60,44,0.09); border:1px solid #D0D9E3;
+    }
     .called-card-header { display:flex;align-items:center;gap:16px;margin-bottom:8px; }
     .vitals-inline-form { margin-top:12px;margin-bottom:8px; }
     .vitals-actions { display:flex;gap:12px;align-items:center;margin-top:4px; }
-    .voucher-box { background:#e8f5e9;border:1px solid #a5d6a7;border-radius:12px;padding:24px;max-width:520px; }
+    .voucher-box {
+      background:linear-gradient(135deg,#EBF0DC,#F5F2DC);
+      border:1px solid #A9B6C4;border-radius:14px;padding:24px;max-width:520px;
+    }
     .voucher-header { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
-    .voucher-header mat-icon { font-size:40px;width:40px;height:40px;color:#2e7d32; }
-    .voucher-code { font-size:2.5rem;font-weight:800;letter-spacing:6px;color:#1b5e20;text-align:center;background:white;padding:12px;border-radius:8px;margin:12px 0; }
+    .voucher-header mat-icon { font-size:40px;width:40px;height:40px;color:#243C2C; }
+    .voucher-code {
+      font-size:2.5rem;font-weight:800;letter-spacing:6px;color:#243C2C;
+      text-align:center;background:white;padding:14px;border-radius:10px;
+      margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    }
     .voucher-details { display:flex;flex-direction:column;gap:6px;font-size:0.92rem;margin-bottom:12px; }
-    .voucher-instruction { display:flex;align-items:center;gap:8px;color:#1565c0;font-size:0.9rem;background:#e3f2fd;padding:10px 14px;border-radius:8px; }
-    .new-patient-notice { display:flex;align-items:center;gap:12px;background:#fff3e0;padding:14px;border-radius:8px;color:#e65100;margin-top:16px; }
-    .recep-success-box { display:flex;align-items:center;gap:16px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:20px 24px;margin-bottom:16px; }
-    .recep-success-box mat-icon { font-size:40px;width:40px;height:40px;color:#2e7d32;flex-shrink:0; }
-    .recep-success-box strong { color:#1b5e20;font-size:1rem; }
-    .recep-success-box p { color:#555;font-size:0.85rem;margin:4px 0 0; }
+    .voucher-instruction { display:flex;align-items:center;gap:8px;color:#59789F;font-size:0.9rem;background:#e3f2fd;padding:10px 14px;border-radius:10px;border:1px solid #bbdefb; }
+    .new-patient-notice { display:flex;align-items:center;gap:12px;background:#fff3e0;padding:14px 16px;border-radius:10px;color:#e65100;margin-top:16px;border:1px solid #ffe082; }
+    .recep-success-box { display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#EBF0DC,#F5F2DC);border:1px solid #A9B6C4;border-radius:12px;padding:20px 24px;margin-bottom:16px; }
+    .recep-success-box mat-icon { font-size:40px;width:40px;height:40px;color:#243C2C;flex-shrink:0; }
+    .recep-success-box strong { color:#243C2C;font-size:1rem; }
+    .recep-success-box p { color:#4a6560;font-size:0.85rem;margin:4px 0 0; }
     /* Calendar HS */
-    .calendar-nav { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;background:#f0faf8;border-radius:10px;padding:6px 12px; }
-    .month-label-hs { font-size:1rem;font-weight:700;color:#1D6C61; }
-    .nav-btn { background:none;border:none;cursor:pointer;font-size:2rem;line-height:1;color:#1D6C61;padding:0 8px;border-radius:6px;transition:background 0.15s; }
-    .nav-btn:hover { background:#d0f4ef; }
+    .calendar-nav { display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;background:#F5F2DC;border-radius:12px;padding:8px 16px;border:1px solid #C5CDD8; }
+    .month-label-hs { font-size:1rem;font-weight:700;color:#243C2C;letter-spacing:-0.2px; }
+    .nav-btn { background:none;border:none;cursor:pointer;font-size:1.8rem;line-height:1;color:#59789F;padding:2px 10px;border-radius:8px;transition:background 0.15s; }
+    .nav-btn:hover { background:#D8E4C8; }
     .calendar-grid-hs { display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px; }
-    .cal-weekday-hs { text-align:center;font-size:0.72rem;font-weight:700;color:#9e9e9e;padding:6px 0;text-transform:uppercase; }
-    .cal-day { text-align:center;padding:10px 4px;border-radius:8px;font-size:0.9rem;cursor:pointer;transition:background 0.15s;user-select:none; }
+    .cal-weekday-hs { text-align:center;font-size:0.7rem;font-weight:700;color:#8aada7;padding:8px 0;text-transform:uppercase;letter-spacing:0.5px; }
+    .cal-day { text-align:center;padding:10px 4px;border-radius:10px;font-size:0.9rem;cursor:pointer;transition:all 0.15s;user-select:none; }
     .cal-day.empty { cursor:default; }
     .cal-day.past { color:#ccc;cursor:not-allowed; }
-    .cal-day:not(.past):not(.empty):hover { background:#d0f4ef; }
-    .cal-day.today { border:2px solid #3EB9A8;font-weight:700; }
-    .cal-day.selected { background:#1D6C61 !important;color:white;font-weight:700; }
-    .slots-label-hs { display:flex;align-items:center;gap:8px;font-weight:600;color:#1D6C61;margin-bottom:10px;font-size:0.9rem; }
+    .cal-day:not(.past):not(.empty):hover { background:#D8E4C8; }
+    .cal-day.today { border:2px solid #7A9445;font-weight:700;color:#59789F; }
+    .cal-day.selected { background:linear-gradient(135deg,#243C2C,#59789F)!important;color:white;font-weight:700;box-shadow:0 4px 12px rgba(36,60,44,0.3); }
+    .slots-label-hs { display:flex;align-items:center;gap:8px;font-weight:600;color:#243C2C;margin-bottom:12px;font-size:0.9rem; }
     .slots-grid-hs { display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px; }
-    .slot-btn-hs { padding:12px 4px;border-radius:8px;border:2px solid #d0e8e5;background:white;cursor:pointer;font-size:0.9rem;font-weight:600;color:#1D6C61;transition:all 0.15s; }
-    .slot-btn-hs:hover { background:#d0f4ef;border-color:#3EB9A8; }
-    .slot-btn-hs.selected { background:#1D6C61;color:white;border-color:#1D6C61; }
-    .call-next-bar { display:flex;align-items:center;gap:16px;padding:16px;background:#f5fafa;border-radius:10px;margin-bottom:4px; }
-    .sample-panel { background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:16px;margin-top:12px; }
+    .slot-btn-hs { padding:12px 4px;border-radius:10px;border:2px solid #C5CDD8;background:white;cursor:pointer;font-size:0.88rem;font-weight:600;color:#59789F;transition:all 0.15s;box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+    .slot-btn-hs:hover { background:#EDE9C0;border-color:#7A9445;transform:translateY(-1px); }
+    .slot-btn-hs.selected { background:linear-gradient(135deg,#243C2C,#59789F);color:white;border-color:#243C2C;box-shadow:0 4px 12px rgba(36,60,44,0.3); }
+    .call-next-bar { display:flex;align-items:center;gap:16px;padding:16px 20px;background:#F5F2DC;border-radius:12px;margin-bottom:4px;border:1px solid #C5CDD8; }
+    .sample-panel { background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:16px;margin-top:12px; }
     .sample-info { display:flex;align-items:flex-start;gap:12px; }
     .sample-info mat-icon { font-size:28px;width:28px;height:28px;color:#f57f17;flex-shrink:0;margin-top:2px; }
-    .sample-meta { font-size:0.82rem;color:#757575;margin-top:4px; }
-    .sample-receipt { display:flex;align-items:flex-start;gap:14px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:16px;margin-top:12px; }
-    .sample-receipt-icon { font-size:36px;width:36px;height:36px;color:#2e7d32;flex-shrink:0;margin-top:2px; }
+    .sample-meta { font-size:0.82rem;color:#6b8c84;margin-top:4px; }
+    .sample-receipt { display:flex;align-items:flex-start;gap:14px;background:linear-gradient(135deg,#EBF0DC,#F5F2DC);border:1px solid #A9B6C4;border-radius:12px;padding:16px;margin-top:12px; }
+    .sample-receipt-icon { font-size:36px;width:36px;height:36px;color:#243C2C;flex-shrink:0;margin-top:2px; }
     .sample-receipt-body { flex:1;display:flex;flex-direction:column;gap:6px; }
-    .sample-receipt-body strong { color:#1b5e20;font-size:0.95rem; }
-    .sample-receipt-row { display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#333; }
-    .sample-receipt-row mat-icon { font-size:16px;width:16px;height:16px;color:#2e7d32;flex-shrink:0; }
-    .sample-receipt-row code { background:#e0f2f1;padding:2px 8px;border-radius:4px;font-weight:700;color:#00695c;font-size:0.95rem; }
+    .sample-receipt-body strong { color:#243C2C;font-size:0.95rem; }
+    .sample-receipt-row { display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#2d4a47; }
+    .sample-receipt-row mat-icon { font-size:16px;width:16px;height:16px;color:#243C2C;flex-shrink:0; }
+    .sample-receipt-row code { background:#EDE9C0;padding:2px 8px;border-radius:6px;font-weight:700;color:#243C2C;font-size:0.92rem;border:1px solid #C5CDD8; }
+    /* Emergency tab */
+    .emg-empty { display:flex;align-items:center;gap:12px;padding:48px;color:#9e9e9e;justify-content:center; }
+    .emg-empty mat-icon { font-size:40px;width:40px;height:40px;opacity:0.35; }
+    .emg-ticket-card { display:flex;align-items:flex-start;justify-content:space-between;gap:16px;background:#fff8f8;border:1px solid #ef9a9a;border-left:4px solid #c62828;border-radius:14px;padding:18px 22px;margin-bottom:12px;transition:box-shadow 0.2s; }
+    .emg-ticket-card:hover { box-shadow:0 4px 16px rgba(198,40,40,0.15); }
+    .emg-ticket-left { flex:1;min-width:0; }
+    .emg-urgente-badge { background:#c62828;color:white;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.05em;display:inline-block;margin-bottom:6px; }
+    .emg-ticket-num { font-size:1.8rem;font-weight:800;color:#b71c1c;line-height:1;letter-spacing:-1px; }
+    .emg-ticket-name { font-size:1rem;font-weight:600;color:#243C2C;margin:4px 0; }
+    .emg-ticket-notes { font-size:0.85rem;color:#555;background:#fce4ec;border-radius:8px;padding:4px 12px;margin-bottom:4px;display:inline-block; }
+    .emg-ticket-status { font-size:0.82rem;color:#6b8c84;margin-top:4px; }
+    .emg-doctor { font-size:0.82rem;color:#4a6560;display:flex;align-items:center;gap:4px;margin-top:4px; }
+    .emg-ticket-actions { display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0; }
   `]
 })
 export class HealthStaffComponent implements OnInit, OnDestroy {
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+
+  onlyDigits(e: KeyboardEvent): boolean {
+    return /[0-9]/.test(e.key);
+  }
+
   // Recepción walk-in (Tab 1)
   recepDpiForm!: FormGroup;
   recepPatientForm!: FormGroup;
@@ -508,13 +565,13 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.recepDpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     this.recepPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
-      birthDate:       [''],
-      phone:           [''],
+      birthDate:       ['', [birthDateValidator]],
+      phone:           ['', [Validators.pattern(/^[1-9]\d{7}$/)]],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
       insuranceId:     [null],
@@ -668,16 +725,31 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
     });
   }
 
+  onlyBP(e: KeyboardEvent): boolean {
+    const char = e.key;
+    if (!/[\d\/]/.test(char)) return false;
+    const input = e.target as HTMLInputElement;
+    const val = input.value;
+    const slashIdx = val.indexOf('/');
+    if (char === '/') return !val.includes('/') && val.length >= 1 && val.length <= 3;
+    return slashIdx === -1 ? val.length < 3 : (val.length - slashIdx - 1) < 3;
+  }
+
   openVitalsForm(ticket: Ticket): void {
     this.activeVitalsTicketId = ticket.id;
     if (!this.vitalsFormMap[ticket.id]) {
       this.vitalsFormMap[ticket.id] = this.fb.group({
-        bloodPressure: [''],
-        heartRate: [null],
-        temperature: [null],
-        weight: [null],
-        height: [null],
-        oxygenSaturation: [null]
+        bloodPressure: ['', [Validators.pattern(/^\d{1,3}\/\d{1,3}$/)]],
+        heartRate:      [null, [Validators.min(1), Validators.max(999)]],
+        temperature:    ['', [(ctrl: any) => {
+          if (!ctrl.value && ctrl.value !== 0) return null;
+          const v = parseInt(ctrl.value, 10);
+          if (isNaN(v) || v < 30 || v > 45) return { tempRange: true };
+          return null;
+        }]],
+        weight:         [null, [Validators.min(1), Validators.max(999)]],
+        height:         [null, [Validators.min(1), Validators.max(999)]],
+        oxygenSaturation: [null, [Validators.min(1), Validators.max(99)]]
       });
     }
   }
@@ -789,4 +861,5 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
       error: () => {}
     });
   }
+
 }

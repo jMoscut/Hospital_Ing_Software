@@ -47,6 +47,11 @@ export const routes: Routes = [
     loadComponent: () => import('./modules/consultation/consultation.component').then(m => m.ConsultationComponent)
   },
   {
+    path: 'emergency-consultation',
+    canActivate: [authGuard],
+    loadComponent: () => import('./modules/emergency-consultation/emergency-consultation.component').then(m => m.EmergencyConsultationComponent)
+  },
+  {
     path: 'laboratory',
     canActivate: [authGuard],
     loadComponent: () => import('./modules/laboratory/laboratory.component').then(m => m.LaboratoryComponent)

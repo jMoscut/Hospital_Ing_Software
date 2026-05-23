@@ -45,6 +45,7 @@ public class MedicineController {
     @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
     public ResponseEntity<ApiResponse<Medicine>> update(@PathVariable Long id, @RequestBody Medicine data) {
         return medicineRepository.findById(id).map(med -> {
+            med.setCode(data.getCode());
             med.setName(data.getName());
             med.setPresentation(data.getPresentation());
             med.setCategory(data.getCategory());
@@ -69,5 +70,15 @@ public class MedicineController {
     @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
     public ResponseEntity<ApiResponse<List<Medicine>>> getLowStock(@RequestParam(defaultValue = "10") int threshold) {
         return ResponseEntity.ok(ApiResponse.ok(medicineRepository.findByActiveTrueAndStockLessThanEqual(threshold)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PHARMACIST')")
+    public ResponseEntity<ApiResponse<String>> delete(@PathVariable Long id) {
+        return medicineRepository.findById(id).map(med -> {
+            med.setActive(false);
+            medicineRepository.save(med);
+            return ResponseEntity.ok(ApiResponse.ok("Medicamento eliminado"));
+        }).orElse(ResponseEntity.status(404).body(ApiResponse.error("Medicamento no encontrado")));
     }
 }

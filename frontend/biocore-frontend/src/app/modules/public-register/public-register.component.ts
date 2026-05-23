@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -14,6 +14,22 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSelectModule } from '@angular/material/select';
 import { environment } from '../../../environments/environment';
 import { InsuranceService } from '../../shared/services/payment.service';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-public-register',
@@ -89,12 +105,16 @@ import { InsuranceService } from '../../shared/services/payment.service';
                     <mat-form-field appearance="outline">
                       <mat-label>Fecha de Nacimiento</mat-label>
                       <mat-icon matPrefix>cake</mat-icon>
-                      <input matInput type="date" formControlName="birthDate">
+                      <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                      <mat-error>Fecha inválida (año entre 1900 y año actual)</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Teléfono</mat-label>
                       <mat-icon matPrefix>phone</mat-icon>
-                      <input matInput formControlName="phone">
+                      <input matInput formControlName="phone" type="tel" maxlength="8"
+                             (keypress)="onlyDigits($event)">
+                      <mat-hint>8 dígitos, no inicia en 0</mat-hint>
+                      <mat-error>Teléfono inválido (8 dígitos, no inicia en 0)</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Correo Electrónico *</mat-label>
@@ -111,8 +131,9 @@ import { InsuranceService } from '../../shared/services/payment.service';
                     <mat-form-field appearance="outline">
                       <mat-label>DPI (13 dígitos) *</mat-label>
                       <mat-icon matPrefix>badge</mat-icon>
-                      <input matInput formControlName="dpi" maxlength="13" placeholder="0000000000000">
-                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                      <input matInput formControlName="dpi" maxlength="13" placeholder="0000000000000"
+                             (keypress)="onlyDigits($event)">
+                      <mat-error>El DPI debe tener 13 dígitos y no puede iniciar con 0</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Número de Seguro (opcional)</mat-label>
@@ -147,8 +168,8 @@ import { InsuranceService } from '../../shared/services/payment.service';
                       <mat-label>Nombre de Usuario *</mat-label>
                       <mat-icon matPrefix>account_circle</mat-icon>
                       <input matInput formControlName="username" placeholder="ej: juan.garcia">
-                      <mat-hint>Sin espacios, solo letras, números y puntos</mat-hint>
-                      <mat-error>Mínimo 4 caracteres, sin espacios</mat-error>
+                      <mat-hint>Mín. 4 caracteres, solo letras y números</mat-hint>
+                      <mat-error>Mín. 4 caracteres, solo letras y números, sin espacios</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Contraseña *</mat-label>
@@ -214,48 +235,66 @@ import { InsuranceService } from '../../shared/services/payment.service';
     </div>
   `,
   styles: [`
-    .pub-header { background: #193A31 !important; color: white; position: sticky; top: 0; z-index: 100; }
-    .pub-header mat-icon { margin-right: 8px; color: #3EB9A8; }
-    .brand { font-size: 1.2rem; font-weight: 700; }
+    .pub-header {
+      background: linear-gradient(90deg, #243C2C, #243C2C) !important;
+      color: white; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2) !important;
+    }
+    .pub-header mat-icon { margin-right: 8px; color: #7A9445; }
+    .brand { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.2px; }
     .spacer { flex: 1; }
 
     .register-page {
       min-height: calc(100vh - 64px);
-      background: linear-gradient(135deg, #1E201F 0%, #193A31 50%, #1D6C61 100%);
-      display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px;
+      background: linear-gradient(150deg, #243C2C 0%, #243C2C 45%, #3a5c3c 80%, #4a6c4e 100%);
+      display: flex; align-items: flex-start; justify-content: center; padding: 56px 16px;
+      position: relative; overflow: hidden;
     }
-    .register-container { width: 100%; max-width: 720px; }
-    .register-header { text-align: center; color: white; margin-bottom: 32px; }
-    .header-icon { font-size: 64px; width: 64px; height: 64px; color: #3EB9A8; margin-bottom: 12px; }
-    .register-header h1 { font-size: 1.8rem; font-weight: 700; margin: 0 0 8px; }
-    .register-header p { color: rgba(255,255,255,0.75); }
+    .register-page::before {
+      content: ''; position: absolute; top: -150px; right: -150px;
+      width: 500px; height: 500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(89,120,159,0.12) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .register-container { width: 100%; max-width: 720px; position: relative; z-index: 1; }
+    .register-header { text-align: center; color: white; margin-bottom: 36px; }
+    .header-icon {
+      font-size: 64px; width: 64px; height: 64px; color: #7A9445; margin-bottom: 16px;
+      filter: drop-shadow(0 0 20px rgba(89,120,159,0.5));
+    }
+    .register-header h1 {
+      font-size: 1.9rem; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 40%, #A9B6C4 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .register-header p { color: rgba(255,255,255,0.7); font-size: 1rem; }
 
-    h3 { font-size: 1.05rem; font-weight: 600; color: #1D6C61; margin-bottom: 12px; }
-    .hint-text { color: #757575; font-size: 0.85rem; margin-bottom: 16px; }
+    h3 { font-size: 1.02rem; font-weight: 700; color: #243C2C; margin-bottom: 12px; }
+    .hint-text { color: #6b8c84; font-size: 0.85rem; margin-bottom: 16px; }
     .full-width { width: 100%; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
     .step-actions { display: flex; gap: 12px; margin-top: 16px; }
 
-    .confirm-data { background: #f8f9ff; padding: 20px; border-radius: 8px; margin-bottom: 16px; }
-    .confirm-row { display: flex; gap: 16px; padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
+    .confirm-data { background: #FAFAF5; padding: 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #C5CDD8; }
+    .confirm-row { display: flex; gap: 16px; padding: 9px 0; border-bottom: 1px solid #D0D9E3; }
     .confirm-row:last-child { border-bottom: none; }
-    .label { font-weight: 600; min-width: 110px; color: #555; }
+    .label { font-weight: 700; min-width: 110px; color: #4a6560; font-size: 0.88rem; }
 
-    .success-card { text-align: center; padding: 48px 32px; }
-    .success-icon { font-size: 80px; width: 80px; height: 80px; color: #2e7d32; margin-bottom: 16px; }
-    .success-card h2 { font-size: 1.8rem; color: #2e7d32; margin-bottom: 8px; }
+    .success-card { text-align: center; padding: 48px 32px; border-radius: 16px !important; }
+    .success-icon { font-size: 80px; width: 80px; height: 80px; color: #7A9445; margin-bottom: 16px; filter: drop-shadow(0 4px 12px rgba(122,148,69,0.3)); }
+    .success-card h2 { font-size: 1.8rem; color: #1a4a1e; margin-bottom: 8px; font-weight: 800; }
     .patient-code {
-      font-size: 2.5rem; font-weight: 700; color: #1D6C61; letter-spacing: 4px;
-      background: #d0f4ef; padding: 16px 32px; border-radius: 12px;
-      margin: 16px auto; display: inline-block;
+      font-size: 2.5rem; font-weight: 800; color: #59789F; letter-spacing: 4px;
+      background: #D8E4C8; padding: 16px 32px; border-radius: 14px;
+      margin: 16px auto; display: inline-block; border: 1px solid #A9B6C4;
     }
     .credentials-box {
-      background: #f8f9ff; border: 1px solid #d0d4e0; border-radius: 8px;
-      padding: 16px; margin: 16px 0; text-align: left;
+      background: #FAFAF5; border: 1px solid #C5CDD8; border-radius: 12px;
+      padding: 16px 18px; margin: 16px 0; text-align: left;
     }
-    .credentials-box code { background: #e8f5f3; color: #1D6C61; padding: 2px 8px; border-radius: 4px; font-size: 1rem; }
+    .credentials-box code { background: #D8E4C8; color: #59789F; padding: 2px 8px; border-radius: 6px; font-size: 1rem; font-weight: 700; border: 1px solid #A9B6C4; }
     .success-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
-    .error-msg { display: flex; align-items: center; gap: 8px; color: #c62828; margin-top: 16px; }
+    .error-msg { display: flex; align-items: center; gap: 8px; color: #c62828; margin-top: 16px; background: #ffebee; padding: 8px 12px; border-radius: 8px; border: 1px solid #ffcdd2; }
   `]
 })
 export class PublicRegisterComponent implements OnInit {
@@ -269,6 +308,11 @@ export class PublicRegisterComponent implements OnInit {
   errorMsg = '';
   hidePassword = true;
   insurances: any[] = [];
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+
+  onlyDigits(e: KeyboardEvent): boolean {
+    return /[0-9]/.test(e.key);
+  }
 
   constructor(private fb: FormBuilder, private http: HttpClient, private insuranceService: InsuranceService) {}
 
@@ -280,16 +324,16 @@ export class PublicRegisterComponent implements OnInit {
     this.dataForm = this.fb.group({
       firstName:       ['', Validators.required],
       lastName:        ['', Validators.required],
-      birthDate:       [''],
-      phone:           [''],
+      birthDate:       ['', [birthDateValidator]],
+      phone:           ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
-      dpi:             ['', [Validators.required, Validators.pattern(/^\d{13}$/)]],
+      dpi:             ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]],
       insuranceNumber: [''],
       insuranceId:     [null]
     });
     this.credentialsForm = this.fb.group({
-      username: ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^\S+$/)]],
+      username: ['', [Validators.required, Validators.minLength(4), Validators.pattern(/^[a-zA-Z0-9]+$/)]],
       password: ['', [
         Validators.required,
         Validators.minLength(8),

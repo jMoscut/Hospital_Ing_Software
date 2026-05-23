@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { AbstractControl, FormsModule, FormBuilder, FormGroup, ValidationErrors, Validators, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,20 +17,41 @@ import { AuthService } from '../../core/auth/auth.service';
 import { TicketService, AppointmentService, ClinicService } from '../../shared/services/ticket.service';
 import { PrescriptionService, LabService, LabExamService } from '../../shared/services/lab.service';
 import { PatientService } from '../../shared/services/patient.service';
-import { InsuranceService } from '../../shared/services/payment.service';
+import { InsuranceService, EmergencyService, PharmacySaleService, PaymentService } from '../../shared/services/payment.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { Ticket, Clinic } from '../../core/models/ticket.model';
 import { Prescription, LabOrder, LabExam, SAMPLE_TYPE_LABELS } from '../../core/models/lab.model';
 import { Patient } from '../../core/models/patient.model';
+import { environment } from '../../../environments/environment';
 
 type BookingStep = 'calendar' | 'payment' | 'confirmed';
 
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const ALL_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
+const ALL_SLOTS = [
+  '00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00',
+  '08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00',
+  '16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'
+];
 const BOOKING_CLINIC_KEYWORDS = ['consulta','medicina','general','externa'];
 const LAB_CLINIC_KEYWORDS = ['laboratorio','lab'];
 const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00' };
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-mis-citas',
@@ -52,7 +74,7 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
         </button>
       </div>
 
-      <mat-tab-group animationDuration="200ms">
+      <mat-tab-group animationDuration="200ms" [selectedIndex]="selectedTabIndex" (selectedIndexChange)="selectedTabIndex=$event">
 
         <!-- TAB 1: Agendar Cita -->
         <mat-tab>
@@ -68,7 +90,7 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                 <mat-card-header>
                   <mat-icon mat-card-avatar>calendar_month</mat-icon>
                   <mat-card-title>Seleccionar fecha y horario</mat-card-title>
-                  <mat-card-subtitle>Citas disponibles todos los días de 8:00 a 18:00</mat-card-subtitle>
+                  <mat-card-subtitle>Selecciona un día para ver los horarios disponibles</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
 
@@ -184,9 +206,17 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                         <mat-icon>local_hospital</mat-icon>
                         <span>{{ getClinicName(selectedClinicId) }} — {{ typeLabel(selectedType) }}</span>
                       </div>
-                      <div class="summary-row total-row">
+                      <div class="summary-row" *ngIf="discountPct > 0">
                         <mat-icon>receipt</mat-icon>
-                        <span>Total: <strong>Q {{ consultationFee }}</strong></span>
+                        <span>Precio base: <strong>Q {{ consultationFee }}</strong></span>
+                      </div>
+                      <div class="summary-row" *ngIf="discountPct > 0" style="color:#2e7d32">
+                        <mat-icon>discount</mat-icon>
+                        <span>Descuento {{ discountPct }}% ({{ patientProfile?.insuranceName }}): <strong>-Q {{ discountAmountNum.toFixed(2) }}</strong></span>
+                      </div>
+                      <div class="summary-row total-row">
+                        <mat-icon>payments</mat-icon>
+                        <span>Total a pagar: <strong>Q {{ netFeeNum.toFixed(2) }}</strong></span>
                       </div>
                     </div>
 
@@ -230,11 +260,11 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                       ← Volver
                     </button>
                     <button mat-raised-button color="primary"
-                            [disabled]="!cardValid() || paying"
+                            [disabled]="!cardValid() || paying || uploadErrors.length > 0"
                             (click)="pay()">
                       <mat-spinner *ngIf="paying" diameter="20" style="display:inline-block;margin-right:8px"></mat-spinner>
                       <mat-icon *ngIf="!paying">lock</mat-icon>
-                      {{ paying ? 'Procesando pago...' : 'Pagar Q ' + consultationFee }}
+                      {{ paying ? 'Procesando pago...' : 'Pagar Q ' + netFeeNum.toFixed(2) }}
                     </button>
                   </mat-card-actions>
                 </mat-card>
@@ -377,6 +407,70 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
             <div *ngIf="loadingTickets" class="loading-state">
               <mat-spinner diameter="40"></mat-spinner><p>Cargando...</p>
             </div>
+            <!-- Reschedule inline panel -->
+            <mat-card class="reschedule-panel" *ngIf="rescheduleTicket">
+              <mat-card-header>
+                <mat-icon mat-card-avatar>event_repeat</mat-icon>
+                <mat-card-title>Reagendar Turno {{ rescheduleTicket.ticketNumber }}</mat-card-title>
+                <mat-card-subtitle>{{ rescheduleTicket.clinicName }} · {{ rescheduleTicket.type }} · Sin costo adicional</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <!-- Calendar navigation -->
+                <div class="calendar-nav">
+                  <button class="nav-btn" type="button" (click)="rscdPrevMonth()">&#8249;</button>
+                  <span class="month-label">{{ rscdMonthLabel }}</span>
+                  <button class="nav-btn" type="button" (click)="rscdNextMonth()">&#8250;</button>
+                </div>
+                <!-- Calendar grid -->
+                <div class="calendar-grid">
+                  <div class="cal-weekday" *ngFor="let d of weekDays">{{ d }}</div>
+                  <ng-container *ngFor="let day of rscdCalDays">
+                    <div *ngIf="!day" class="cal-day empty"></div>
+                    <div *ngIf="day"
+                         [class]="getRscdDayClass(day)"
+                         (click)="!isPastDay(day) && selectRscdDate(day)">
+                      {{ day.getDate() }}
+                    </div>
+                  </ng-container>
+                </div>
+                <!-- Time slots -->
+                <ng-container *ngIf="rscdDate">
+                  <div class="slots-label">
+                    <mat-icon>access_time</mat-icon>
+                    Horarios — {{ formatDate(rscdDate) }}
+                    <mat-spinner *ngIf="rscdLoadingSlots" diameter="16" style="margin-left:8px"></mat-spinner>
+                  </div>
+                  <div class="slots-grid" *ngIf="!rscdLoadingSlots">
+                    <button *ngFor="let slot of rscdSlots"
+                            type="button"
+                            [class]="'slot-btn' + (rscdSlot === slot ? ' selected' : '')"
+                            (click)="selectRscdSlot(slot)">
+                      {{ slot }}
+                    </button>
+                    <div *ngIf="rscdSlots.length === 0" class="no-slots">
+                      <mat-icon>event_busy</mat-icon>
+                      No hay horarios disponibles para este día
+                    </div>
+                  </div>
+                  <div class="reservation-timer" *ngIf="rscdReservationTimeLeft > 0" [class.timer-low]="rscdReservationLow">
+                    <mat-icon>timer</mat-icon>
+                    <span>Horario <strong>{{ rscdSlot }}</strong> reservado — expira en <strong>{{ rscdReservationMinutes }}:{{ rscdReservationSeconds }}</strong></span>
+                  </div>
+                </ng-container>
+                <div class="error-msg" *ngIf="rscdError" style="margin-top:12px;color:#c62828">{{ rscdError }}</div>
+              </mat-card-content>
+              <mat-card-actions>
+                <button mat-raised-button color="primary"
+                        [disabled]="!rscdDate || !rscdSlot || rescheduling"
+                        (click)="confirmReschedule()">
+                  <mat-spinner *ngIf="rescheduling" diameter="18" style="margin-right:6px"></mat-spinner>
+                  <mat-icon *ngIf="!rescheduling">check_circle</mat-icon>
+                  Confirmar Reagendamiento
+                </button>
+                <button mat-button (click)="closeReschedule()" [disabled]="rescheduling">Cancelar</button>
+              </mat-card-actions>
+            </mat-card>
+
             <div class="ticket-card" *ngFor="let t of tickets">
               <div class="ticket-left">
                 <div class="ticket-num">{{ t.ticketNumber }}</div>
@@ -392,7 +486,15 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                   <div class="ticket-doctor" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
                 </div>
               </div>
-              <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+                <span [class]="getStatusClass(t.status, t.scheduledDate)" class="status-chip">{{ statusLabel(t.status, t.scheduledDate) }}</span>
+                <button *ngIf="t.status === 'ABSENT_PENDING_RESCHEDULE'"
+                        mat-raised-button color="accent"
+                        style="font-size:0.75rem"
+                        (click)="openReschedule(t)">
+                  <mat-icon>event_repeat</mat-icon> Reagendar
+                </button>
+              </div>
             </div>
             <div class="empty-state" *ngIf="!loadingTickets && tickets.length === 0">
               <mat-icon>event_available</mat-icon>
@@ -446,22 +548,32 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
           <div class="tab-content">
             <div *ngIf="loadingPrescriptions" class="loading-state"><mat-spinner diameter="40"></mat-spinner></div>
 
-            <div class="diag-card" *ngFor="let rx of diagnoses">
+            <div [class]="'diag-card' + (rx._source==='emergency' ? ' diag-card-emergency' : '')" *ngFor="let rx of diagnoses">
               <div class="diag-header">
-                <mat-icon>stethoscope</mat-icon>
+                <mat-icon [style.color]="rx._source==='emergency'?'#c62828':'#1D6C61'">{{ rx._source==='emergency' ? 'emergency' : 'stethoscope' }}</mat-icon>
                 <div class="diag-meta">
-                  <span class="diag-date">{{ rx.createdAt | date:'dd/MM/yyyy' }}</span>
+                  <span class="diag-date">{{ rx.createdAt | date:'dd/MM/yyyy' }}
+                    <span *ngIf="rx._source==='emergency'" style="background:#ffebee;color:#c62828;padding:1px 8px;border-radius:8px;font-size:0.72rem;margin-left:6px;font-weight:700">EMERGENCIA</span>
+                  </span>
                   <span class="diag-doctor" *ngIf="rx.doctorName">Dr. {{ rx.doctorName }}</span>
                 </div>
               </div>
-              <div class="diag-notes">{{ rx.notes }}</div>
-              <div class="diag-meds" *ngIf="rx.items && rx.items.length > 0">
-                <div class="diag-meds-label"><mat-icon>medication</mat-icon> Medicamentos recetados</div>
-                <span class="med-chip" *ngFor="let item of rx.items">
-                  {{ item.medicineName }} ×{{ item.quantity }}
-                  <small *ngIf="item.dosage"> — {{ item.dosage }}</small>
-                </span>
-              </div>
+              <ng-container *ngIf="rx._source==='emergency'">
+                <div class="diag-notes" *ngIf="rx._diagnosis"><strong>Diagnóstico:</strong> {{ rx._diagnosis }}</div>
+                <div class="diag-notes" *ngIf="rx._treatment" style="margin-top:6px"><strong>Tratamiento:</strong> {{ rx._treatment }}</div>
+                <div class="diag-notes" *ngIf="rx._medications" style="margin-top:6px"><strong>Medicamentos:</strong> {{ rx._medications }}</div>
+              </ng-container>
+              <ng-container *ngIf="rx._source!=='emergency'">
+                <div class="diag-notes" *ngIf="rx.clinicName" style="color:#757575;font-size:0.85rem;margin-bottom:4px">{{ rx.clinicName }}</div>
+                <div class="diag-notes" *ngIf="rx.notes">{{ rx.notes }}</div>
+                <div class="diag-meds" *ngIf="rx.items && rx.items.length > 0">
+                  <div class="diag-meds-label"><mat-icon>medication</mat-icon> Medicamentos recetados</div>
+                  <span class="med-chip" *ngFor="let item of rx.items">
+                    {{ item.medicineName || item.customMedicineName }} ×{{ item.quantity }}
+                    <small *ngIf="item.dosage"> — {{ item.dosage }}</small>
+                  </span>
+                </div>
+              </ng-container>
             </div>
 
             <div class="empty-state" *ngIf="!loadingPrescriptions && diagnoses.length === 0">
@@ -480,27 +592,133 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
           </ng-template>
           <div class="tab-content">
             <div *ngIf="loadingLab" class="loading-state"><mat-spinner diameter="40"></mat-spinner></div>
-            <div class="lab-card" *ngFor="let o of labOrders">
-              <div class="lab-header">
-                <div>
-                  <strong>{{ o.labExamName || sampleLabel(o.sampleType) }}</strong>
-                  <span class="lab-code" *ngIf="o.labExamCode">{{ o.labExamCode }}</span>
+
+            <!-- Referencias pendientes de agendar -->
+            <ng-container *ngIf="!loadingLab && labReferences.length > 0">
+              <p class="section-label"><mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">assignment</mat-icon> Referencias médicas — pendientes de agendar</p>
+              <div class="lab-card ref-pending-card" *ngFor="let r of labReferences">
+                <div class="lab-header">
+                  <div>
+                    <strong>{{ r.labExamName || sampleLabel(r.sampleType) }}</strong>
+                    <span class="lab-code" *ngIf="r.labExamCode">{{ r.labExamCode }}</span>
+                  </div>
+                  <span class="status-chip status-waiting">Pendiente de cita</span>
                 </div>
-                <span [class]="getLabStatusClass(o.status)" class="status-chip">{{ labStatusLabel(o.status) }}</span>
+                <div class="lab-details">
+                  <div><mat-icon>person</mat-icon> Dr. {{ r.doctorName }}</div>
+                  <div><mat-icon>calendar_today</mat-icon> Emitida: {{ r.orderDate }}</div>
+                  <div><mat-icon>event</mat-icon> Vence: {{ r.expirationDate }}</div>
+                  <div *ngIf="r.labExamPrice"><mat-icon>payments</mat-icon> Q{{ r.labExamPrice }}</div>
+                </div>
+                <div style="margin-top:10px">
+                  <button mat-raised-button color="primary" (click)="bookFromReference(r)">
+                    <mat-icon>event_available</mat-icon> Agendar Cita
+                  </button>
+                </div>
               </div>
-              <div class="lab-details">
-                <div><mat-icon>calendar_today</mat-icon> {{ o.orderDate }}</div>
-                <div><mat-icon>event</mat-icon> Vence: {{ o.expirationDate }}</div>
-                <div *ngIf="o.resultAvailableAt"><mat-icon>notifications</mat-icon> {{ o.resultAvailableAt | date:'dd/MM/yyyy HH:mm' }}</div>
+            </ng-container>
+
+            <!-- Historial de órdenes -->
+            <ng-container *ngIf="!loadingLab">
+              <p class="section-label" *ngIf="labOrders.length > labReferences.length">
+                <mat-icon style="font-size:16px;width:16px;height:16px;vertical-align:middle">history</mat-icon> Historial
+              </p>
+              <div class="lab-card" *ngFor="let o of labOrders" [hidden]="o.status === 'PENDING' && !o.isUsed">
+                <div class="lab-header">
+                  <div>
+                    <strong>{{ o.labExamName || sampleLabel(o.sampleType) }}</strong>
+                    <span class="lab-code" *ngIf="o.labExamCode">{{ o.labExamCode }}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <button *ngIf="o.hasAttachment" mat-icon-button style="color:#c62828" title="Ver PDF resultado" (click)="openLabPdf(o.id)">
+                      <mat-icon>picture_as_pdf</mat-icon>
+                    </button>
+                    <span [class]="getLabStatusClass(o.status)" class="status-chip">{{ labStatusLabel(o.status) }}</span>
+                  </div>
+                </div>
+                <div class="lab-details">
+                  <div><mat-icon>calendar_today</mat-icon> {{ o.orderDate }}</div>
+                  <div><mat-icon>event</mat-icon> Vence: {{ o.expirationDate }}</div>
+                  <div *ngIf="o.resultAvailableAt"><mat-icon>notifications</mat-icon> {{ o.resultAvailableAt | date:'dd/MM/yyyy HH:mm' }}</div>
+                  <div *ngIf="o.resultNotes"><mat-icon>notes</mat-icon> {{ o.resultNotes }}</div>
+                </div>
               </div>
-            </div>
+            </ng-container>
+
             <div class="empty-state" *ngIf="!loadingLab && labOrders.length === 0">
               <mat-icon>biotech</mat-icon><p>Sin órdenes de laboratorio</p>
             </div>
           </div>
         </mat-tab>
 
-        <!-- TAB 6: Mi Perfil -->
+        <!-- TAB 6: Pagos -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">payments</mat-icon>
+            Pagos
+          </ng-template>
+          <div class="tab-content">
+            <ng-container *ngIf="confirmedAppointments().length > 0 || payments.length > 0 || pharmacySales.length > 0; else noPagos">
+
+              <!-- Citas pagadas (online / caja) -->
+              <div *ngIf="confirmedAppointments().length > 0" style="margin-bottom:20px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Citas y Consultas</p>
+                <div class="ticket-card" *ngFor="let a of confirmedAppointments()">
+                  <div class="ticket-left">
+                    <mat-icon style="color:#1565c0;font-size:32px;width:32px;height:32px">event</mat-icon>
+                    <div>
+                      <div class="ticket-clinic">{{ apptTypeLabel(a.type) }} · {{ a.clinicName }}</div>
+                      <div class="ticket-type">Q{{ a.amount }}</div>
+                      <div class="ticket-date">{{ a.scheduledDate | date:'dd/MM/yyyy' }}<span *ngIf="a.voucherCode"> · {{ a.voucherCode }}</span></div>
+                    </div>
+                  </div>
+                  <span class="status-chip status-appt-confirmed">Pagado</span>
+                </div>
+              </div>
+
+              <!-- Pagos caja (emergencias, lab, otros) -->
+              <div *ngIf="payments.length > 0" style="margin-bottom:20px">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Pagos en Caja</p>
+                <div class="ticket-card" *ngFor="let p of payments">
+                  <div class="ticket-left">
+                    <mat-icon style="color:#2e7d32;font-size:32px;width:32px;height:32px">receipt_long</mat-icon>
+                    <div>
+                      <div class="ticket-clinic">{{ p.type }}<span *ngIf="p.invoiceNumber"> · {{ p.invoiceNumber }}</span></div>
+                      <div class="ticket-type">Q{{ p.netAmount }}</div>
+                      <div class="ticket-date">{{ p.createdAt | date:'dd/MM/yyyy' }}</div>
+                    </div>
+                  </div>
+                  <span class="status-chip" [class]="p.status==='PAID'?'status-appt-confirmed':'status-waiting'">{{ p.status === 'PAID' ? 'Pagado' : p.status }}</span>
+                </div>
+              </div>
+
+              <!-- Farmacia -->
+              <div *ngIf="pharmacySales.length > 0">
+                <p style="font-size:0.78rem;font-weight:700;color:#9e9e9e;text-transform:uppercase;margin-bottom:8px">Ventas de Farmacia</p>
+                <div class="ticket-card" *ngFor="let s of pharmacySales" style="border-left-color:#6a1b9a">
+                  <div class="ticket-left">
+                    <mat-icon style="color:#6a1b9a;font-size:32px;width:32px;height:32px">medication</mat-icon>
+                    <div>
+                      <div class="ticket-clinic">{{ s.saleCode || 'Venta farmacia' }}<span *ngIf="s.invoiceNumber"> · Factura {{ s.invoiceNumber }}</span></div>
+                      <div class="ticket-type">Q{{ s.totalAmount }}</div>
+                      <div class="ticket-date">{{ s.paidAt ? (s.paidAt | date:'dd/MM/yyyy') : (s.createdAt | date:'dd/MM/yyyy') }}</div>
+                    </div>
+                  </div>
+                  <span class="status-chip" style="background:#f3e5f5;color:#6a1b9a">{{ s.status }}</span>
+                </div>
+              </div>
+
+            </ng-container>
+            <ng-template #noPagos>
+              <div class="empty-state">
+                <mat-icon>receipt_long</mat-icon>
+                <p>Sin pagos registrados</p>
+              </div>
+            </ng-template>
+          </div>
+        </mat-tab>
+
+        <!-- TAB 7: Mi Perfil -->
         <mat-tab>
           <ng-template mat-tab-label>
             <mat-icon class="tab-icon">account_circle</mat-icon>
@@ -589,12 +807,15 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>DPI *</mat-label>
-                      <input matInput formControlName="dpi">
+                      <input matInput formControlName="dpi" maxlength="13" (keypress)="onlyDigits($event)">
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Fecha de Nacimiento</mat-label>
                       <mat-icon matPrefix>cake</mat-icon>
-                      <input matInput type="date" formControlName="birthDate">
+                      <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                      <mat-error *ngIf="profileForm.get('birthDate')?.errors?.['yearTooEarly']">Año mínimo 1900</mat-error>
+                      <mat-error *ngIf="profileForm.get('birthDate')?.errors?.['futureDate']">La fecha no puede ser futura</mat-error>
+                      <mat-error *ngIf="profileForm.get('birthDate')?.errors?.['invalidDate']">Fecha inválida</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Teléfono</mat-label>
@@ -724,7 +945,7 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
                         <div class="history-doctor" *ngIf="t.doctorName">Dr. {{ t.doctorName }}</div>
                       </div>
                     </div>
-                    <span [class]="getStatusClass(t.status)" class="status-chip">{{ statusLabel(t.status) }}</span>
+                    <span [class]="getStatusClass(t.status, t.scheduledDate)" class="status-chip">{{ statusLabel(t.status, t.scheduledDate) }}</span>
                   </div>
                   <div class="empty-state" *ngIf="tickets.length === 0">
                     <mat-icon>event_busy</mat-icon><p>Sin historial de citas</p>
@@ -739,76 +960,92 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
     </div>
   `,
   styles: [`
-    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
-    .page-header h1 { font-size:1.6rem; font-weight:600; color:#1D6C61; margin:0; }
-    .subtitle { color:#757575; font-size:0.9rem; margin:4px 0 0; }
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid #D0D9E3;
+    }
+    .page-header h1 {
+      font-size:1.65rem; font-weight:700; margin:0; letter-spacing:-0.3px;
+      background:linear-gradient(135deg,#243C2C,#59789F);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .subtitle { color:#6b8c84; font-size:0.88rem; margin:3px 0 0; font-weight:500; }
     .tab-content { padding:24px 0; }
     .tab-icon { font-size:18px; margin-right:6px; vertical-align:middle; }
-    .loading-state { display:flex; flex-direction:column; align-items:center; padding:48px; gap:16px; color:#9e9e9e; }
+    .loading-state { display:flex; flex-direction:column; align-items:center; padding:56px; gap:16px; color:#9e9e9e; }
 
-    /* Booking */
-    .booking-card { max-width:700px; }
-    .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; align-items:center; }
-    .lab-auto-info { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:12px 16px; color:#2e7d32; font-size:0.9rem; }
-    .lab-auto-info mat-icon { color:#2e7d32; }
+    /* ── BOOKING ── */
+    .booking-card { max-width:720px; }
+    .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; align-items:center; }
+    .lab-auto-info {
+      display:flex; align-items:center; gap:8px; border-radius:10px;
+      padding:12px 16px; color:#243C2C; font-size:0.9rem;
+      background:linear-gradient(135deg,#EBF0DC,#F5F2DC);
+      border:1px solid #C5CDD8;
+    }
+    .lab-auto-info mat-icon { color:#7A9445; }
 
-    /* Calendar */
+    /* ── CALENDAR ── */
     .calendar-nav {
       display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:12px; background:#f0faf8; border-radius:10px; padding:6px 12px;
+      margin-bottom:14px; background:#F5F2DC; border-radius:12px; padding:8px 16px;
+      border:1px solid #C5CDD8;
     }
-    .month-label { font-size:1rem; font-weight:700; color:#1D6C61; }
+    .month-label { font-size:1rem; font-weight:700; color:#243C2C; letter-spacing:-0.2px; }
     .nav-btn {
       background:none; border:none; cursor:pointer;
-      font-size:2rem; line-height:1; color:#1D6C61; padding:0 8px;
-      border-radius:6px; transition:background 0.15s;
+      font-size:1.8rem; line-height:1; color:#59789F; padding:2px 10px;
+      border-radius:8px; transition:background 0.15s;
     }
-    .nav-btn:hover { background:#d0f4ef; }
+    .nav-btn:hover { background:#D8E4C8; }
 
     .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:20px; }
-    .cal-weekday { text-align:center; font-size:0.72rem; font-weight:700; color:#9e9e9e; padding:6px 0; text-transform:uppercase; }
+    .cal-weekday { text-align:center; font-size:0.7rem; font-weight:700; color:#8aada7; padding:8px 0; text-transform:uppercase; letter-spacing:0.5px; }
     .cal-day {
-      text-align:center; padding:10px 4px; border-radius:8px;
-      font-size:0.9rem; cursor:pointer; transition:background 0.15s; user-select:none;
+      text-align:center; padding:10px 4px; border-radius:10px;
+      font-size:0.9rem; cursor:pointer; transition:all 0.15s; user-select:none;
     }
     .cal-day.empty { cursor:default; }
     .cal-day.past { color:#ccc; cursor:not-allowed; }
-    .cal-day:not(.past):not(.empty):hover { background:#d0f4ef; }
-    .cal-day.today { border:2px solid #3EB9A8; font-weight:700; }
-    .cal-day.selected { background:#1D6C61 !important; color:white; font-weight:700; }
+    .cal-day:not(.past):not(.empty):hover { background:#D8E4C8; color:#243C2C; }
+    .cal-day.today { border:2px solid #7A9445; font-weight:700; color:#59789F; }
+    .cal-day.selected { background:linear-gradient(135deg,#243C2C,#59789F) !important; color:white; font-weight:700; box-shadow:0 4px 12px rgba(36,60,44,0.3); }
 
-    /* Slots */
-    .slots-label { display:flex; align-items:center; gap:8px; font-weight:600; color:#1D6C61; margin-bottom:12px; font-size:0.9rem; }
+    /* ── SLOTS ── */
+    .slots-label { display:flex; align-items:center; gap:8px; font-weight:600; color:#243C2C; margin-bottom:14px; font-size:0.9rem; }
+    .slots-label mat-icon { color:#59789F; }
     .slots-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
     .slot-btn {
-      padding:12px 4px; border-radius:8px; border:2px solid #d0e8e5;
-      background:white; cursor:pointer; font-size:0.9rem; font-weight:600;
-      color:#1D6C61; transition:all 0.15s;
+      padding:12px 4px; border-radius:10px; border:2px solid #C5CDD8;
+      background:white; cursor:pointer; font-size:0.88rem; font-weight:600;
+      color:#59789F; transition:all 0.15s;
+      box-shadow:0 1px 3px rgba(0,0,0,0.04);
     }
-    .slot-btn:hover { background:#d0f4ef; border-color:#3EB9A8; }
-    .slot-btn.selected { background:#1D6C61; color:white; border-color:#1D6C61; }
-    .no-slots { grid-column:1/-1; display:flex; align-items:center; gap:8px; color:#9e9e9e; font-size:0.9rem; padding:12px; }
+    .slot-btn:hover { background:#EDE9C0; border-color:#7A9445; transform:translateY(-1px); }
+    .slot-btn.selected { background:linear-gradient(135deg,#243C2C,#59789F); color:white; border-color:#243C2C; box-shadow:0 4px 12px rgba(36,60,44,0.3); }
+    .no-slots { grid-column:1/-1; display:flex; align-items:center; gap:8px; color:#9e9e9e; font-size:0.9rem; padding:16px; background:#fafafa; border-radius:10px; border:1px dashed #e0e0e0; }
 
-    /* Payment layout */
+    /* ── PAYMENT LAYOUT ── */
     .payment-layout { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
     .payment-card { flex:1; min-width:300px; max-width:700px; }
     .upload-card { flex:0 0 320px; min-width:280px; }
 
-    /* Upload card */
+    /* ── UPLOAD ZONE ── */
     .upload-zone {
-      border:2px dashed #b2dfdb; border-radius:10px; padding:28px 16px;
+      border:2px dashed #A9B6C4; border-radius:12px; padding:32px 16px;
       text-align:center; cursor:pointer; transition:all 0.2s;
-      background:#f7fdfc; margin-bottom:16px;
+      background:#F5F2DC; margin-bottom:16px;
     }
-    .upload-zone:hover:not(.upload-zone-full) { border-color:#1D6C61; background:#e8f5f3; }
+    .upload-zone:hover:not(.upload-zone-full) { border-color:#243C2C; background:#EDE9C0; }
     .upload-zone-full { cursor:default; opacity:0.6; }
-    .upload-zone-icon { font-size:36px; width:36px; height:36px; color:#1D6C61; margin-bottom:8px; }
-    .upload-zone-text { font-size:0.88rem; font-weight:600; color:#333; margin:0 0 4px; }
+    .upload-zone-icon { font-size:36px; width:36px; height:36px; color:#59789F; margin-bottom:10px; }
+    .upload-zone-text { font-size:0.88rem; font-weight:600; color:#2d4a47; margin:0 0 4px; }
     .upload-zone-hint { font-size:0.75rem; color:#9e9e9e; }
     .doc-list { display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
     .doc-item {
-      display:flex; align-items:center; gap:8px; padding:8px 10px;
-      background:#f0faf8; border-radius:8px; border:1px solid #d0eae6;
+      display:flex; align-items:center; gap:8px; padding:8px 12px;
+      background:#F5F2DC; border-radius:10px; border:1px solid #C5CDD8;
     }
     .doc-icon { color:#c62828; font-size:22px; width:22px; height:22px; flex-shrink:0; }
     .doc-meta { flex:1; min-width:0; }
@@ -818,130 +1055,177 @@ const TYPE_FEES: Record<string, string> = { CONSULTA: '150.00', CONTROL: '100.00
     .upload-error-item { display:flex; align-items:flex-start; gap:6px; font-size:0.8rem; color:#c62828; }
     .upload-error-item mat-icon { font-size:16px; width:16px; height:16px; flex-shrink:0; margin-top:1px; }
 
-    /* Payment */
-    .appt-summary { background:#f0faf8; border:1px solid #b2dfdb; border-radius:10px; padding:16px; margin-bottom:20px; }
+    /* ── PAYMENT SUMMARY ── */
+    .appt-summary { background:#F5F2DC; border:1px solid #C5CDD8; border-radius:12px; padding:16px 20px; margin-bottom:20px; }
     .summary-row { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:0.95rem; }
-    .summary-row mat-icon { color:#1D6C61; flex-shrink:0; }
-    .total-row { border-top:1px solid #b2dfdb; margin-top:4px; padding-top:12px; font-size:1rem; }
-    .card-form h4 { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#555; margin-bottom:12px; }
+    .summary-row mat-icon { color:#59789F; flex-shrink:0; }
+    .total-row { border-top:1px solid #C5CDD8; margin-top:4px; padding-top:12px; font-size:1rem; font-weight:600; }
+    .card-form h4 { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#444; margin-bottom:14px; }
     .full-width { width:100%; }
     .card-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .error-msg { display:flex; align-items:center; gap:8px; color:#c62828; font-size:0.88rem; margin:8px 0; }
+    .error-msg { display:flex; align-items:center; gap:8px; color:#c62828; font-size:0.88rem; margin:8px 0; background:#fff5f5; border-radius:8px; padding:8px 12px; border:1px solid #fdd; }
     .hint-text { color:#757575; font-size:0.82rem; margin-top:4px; }
 
-    /* Confirmed */
-    .confirmed-card { text-align:center; padding:32px; }
-    .confirmed-icon { font-size:72px; width:72px; height:72px; color:#2e7d32; margin-bottom:12px; }
-    .confirmed-card h2 { font-size:1.6rem; color:#2e7d32; margin-bottom:8px; }
-    .confirmed-summary { max-width:420px; margin:20px auto 0; text-align:left; }
-    .info-box { display:flex; align-items:flex-start; gap:10px; background:#e3f2fd; border-radius:8px; padding:12px; margin-top:12px; font-size:0.85rem; color:#1565c0; }
+    /* ── CONFIRMED ── */
+    .confirmed-card { text-align:center; padding:40px 32px; }
+    .confirmed-icon { font-size:72px; width:72px; height:72px; color:#243C2C; margin-bottom:16px; filter:drop-shadow(0 4px 12px rgba(36,60,44,0.3)); }
+    .confirmed-card h2 { font-size:1.7rem; color:#243C2C; font-weight:700; margin-bottom:8px; }
+    .confirmed-summary { max-width:440px; margin:20px auto 0; text-align:left; }
+    .info-box { display:flex; align-items:flex-start; gap:10px; background:#e3f2fd; border-radius:10px; padding:14px 16px; margin-top:14px; font-size:0.85rem; color:#59789F; border:1px solid #bbdefb; }
     .info-box mat-icon { flex-shrink:0; margin-top:2px; }
 
-    /* Tickets */
-    .ticket-card { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #3EB9A8; }
+    /* ── TICKET CARDS ── */
+    .ticket-card {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; background:white; border-radius:14px; margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07), 0 1px 3px rgba(0,0,0,0.04);
+      border:1px solid #D0D9E3; border-left:4px solid #7A9445;
+      transition:box-shadow 0.2s, transform 0.2s;
+    }
+    .ticket-card:hover { box-shadow:0 4px 16px rgba(36,60,44,0.12); transform:translateY(-1px); }
     .ticket-left { display:flex; align-items:center; gap:20px; }
-    .ticket-num { font-size:2rem; font-weight:700; color:#1D6C61; min-width:100px; }
-    .ticket-clinic { font-weight:600; }
-    .ticket-type { font-size:0.82rem; color:#757575; }
-    .ticket-date { font-size:0.78rem; color:#9e9e9e; margin-top:2px; }
-    .ticket-doctor { font-size:0.82rem; color:#1D6C61; }
-    .status-chip { padding:4px 14px; border-radius:12px; font-size:0.8rem; font-weight:500; white-space:nowrap; }
-    .status-waiting { background:#e3f2fd; color:#1565c0; }
+    .ticket-num { font-size:2rem; font-weight:800; color:#59789F; min-width:100px; letter-spacing:-1px; }
+    .ticket-clinic { font-weight:600; color:#243C2C; }
+    .ticket-type { font-size:0.82rem; color:#6b8c84; margin-top:2px; }
+    .ticket-date { font-size:0.78rem; color:#9e9e9e; margin-top:3px; display:flex; align-items:center; gap:2px; }
+    .ticket-doctor { font-size:0.82rem; color:#59789F; font-weight:500; margin-top:2px; }
+    .status-chip { padding:4px 14px; border-radius:12px; font-size:0.78rem; font-weight:600; white-space:nowrap; }
+    .status-waiting { background:#e3f2fd; color:#59789F; }
     .status-being-called { background:#fff3e0; color:#e65100; }
-    .status-in-consultation { background:#e8f5e9; color:#2e7d32; }
+    .status-in-consultation { background:#EBF0DC; color:#243C2C; }
     .status-completed { background:#f5f5f5; color:#616161; }
     .status-absent { background:#ffebee; color:#c62828; }
 
-    /* Recetas */
-    .rx-card { margin-bottom:16px; }
+    /* ── RESCHEDULE ── */
+    .reschedule-panel { margin-bottom:20px; border-left:4px solid #e65100; border-radius:14px; }
+
+    /* ── RECETAS ── */
+    .rx-card { margin-bottom:16px; border-radius:14px !important; }
     .rx-items { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
-    .rx-item { display:flex; align-items:flex-start; gap:10px; padding:8px; background:#f8f9ff; border-radius:6px; }
-    .rx-item mat-icon { color:#1D6C61; flex-shrink:0; }
-    .rx-qty { color:#757575; font-size:0.85rem; }
+    .rx-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:#F5F2DC; border-radius:10px; border:1px solid #C5CDD8; }
+    .rx-item mat-icon { color:#59789F; flex-shrink:0; }
+    .rx-qty { color:#6b8c84; font-size:0.85rem; }
     .rx-dosage { font-size:0.8rem; color:#555; margin-top:2px; }
-    .dispatched-badge { margin-left:auto; background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:8px; font-size:0.75rem; }
+    .dispatched-badge { margin-left:auto; background:#EBF0DC; color:#243C2C; padding:2px 10px; border-radius:10px; font-size:0.75rem; font-weight:600; }
     .rx-status { margin-top:12px; }
 
-    /* Lab */
-    .lab-card { padding:16px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border:1px solid #d4e8e5; }
+    /* ── LAB ── */
+    .lab-card {
+      padding:18px 20px; background:white; border-radius:14px; margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07); border:1px solid #D0D9E3;
+    }
+    .ref-pending-card { border-left:4px solid #59789F; background:#F5F2DC; }
     .lab-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .lab-code { background:#193A31; color:#3EB9A8; padding:2px 8px; border-radius:6px; font-size:0.75rem; margin-left:8px; }
+    .lab-code { background:#243C2C; color:#59789F; padding:2px 8px; border-radius:6px; font-size:0.72rem; margin-left:8px; font-weight:600; }
     .lab-details { display:flex; flex-wrap:wrap; gap:12px; font-size:0.85rem; color:#555; }
     .lab-details div { display:flex; align-items:center; gap:4px; }
-    .lab-details mat-icon { font-size:16px; width:16px; height:16px; color:#1D6C61; }
+    .lab-details mat-icon { font-size:15px; width:15px; height:15px; color:#59789F; }
+    .section-label { font-size:0.72rem; font-weight:700; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; margin:16px 0 10px; display:flex; align-items:center; gap:4px; }
 
-    .empty-state { text-align:center; padding:48px; color:#9e9e9e; }
-    .empty-state mat-icon { font-size:56px; width:56px; height:56px; color:#3EB9A8; opacity:0.4; margin-bottom:8px; }
-    .hint { font-size:0.85rem; margin-top:4px; }
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align:center; padding:56px 24px; color:#9e9e9e; }
+    .empty-state mat-icon { font-size:56px; width:56px; height:56px; color:#7A9445; opacity:0.35; margin-bottom:12px; display:block; margin:0 auto 12px; }
+    .hint { font-size:0.85rem; margin-top:4px; color:#b0bec5; }
 
-    /* Diagnósticos */
-    .diag-card { background:white; border-radius:10px; padding:20px; margin-bottom:14px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #1D6C61; }
-    .diag-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-    .diag-header mat-icon { font-size:28px; width:28px; height:28px; color:#1D6C61; }
+    /* ── DIAGNÓSTICOS ── */
+    .diag-card {
+      background:white; border-radius:14px; padding:20px 24px; margin-bottom:14px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07); border:1px solid #D0D9E3;
+      border-left:4px solid #59789F;
+    }
+    .diag-card-emergency { border-left-color:#c62828; }
+    .diag-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .diag-header mat-icon { font-size:28px; width:28px; height:28px; }
     .diag-meta { display:flex; flex-direction:column; }
-    .diag-date { font-weight:600; font-size:0.9rem; color:#333; }
-    .diag-doctor { font-size:0.82rem; color:#1D6C61; }
-    .diag-notes { font-size:0.95rem; color:#333; line-height:1.6; background:#f8fffe; border-radius:8px; padding:12px 16px; margin-bottom:12px; white-space:pre-wrap; }
-    .diag-meds { border-top:1px solid #e0f0ee; padding-top:10px; }
-    .diag-meds-label { display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#555; margin-bottom:8px; }
-    .diag-meds-label mat-icon { font-size:16px; width:16px; height:16px; }
-    .med-chip { display:inline-block; background:#e8f5e9; color:#2e7d32; padding:3px 10px; border-radius:10px; font-size:0.8rem; margin:2px 4px 2px 0; }
+    .diag-date { font-weight:700; font-size:0.92rem; color:#243C2C; }
+    .diag-doctor { font-size:0.82rem; color:#59789F; margin-top:2px; }
+    .diag-notes { font-size:0.92rem; color:#2d4a47; line-height:1.7; background:#F5F2DC; border-radius:10px; padding:12px 16px; margin-bottom:12px; white-space:pre-wrap; border:1px solid #C5CDD8; }
+    .diag-meds { border-top:1px solid #D0D9E3; padding-top:12px; }
+    .diag-meds-label { display:flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:700; color:#6b8c84; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.4px; }
+    .diag-meds-label mat-icon { font-size:15px; width:15px; height:15px; }
+    .med-chip { display:inline-block; background:#EBF0DC; color:#243C2C; padding:4px 12px; border-radius:10px; font-size:0.8rem; margin:2px 4px 2px 0; font-weight:500; }
 
-    /* Perfil */
-    .profile-card { max-width:700px; }
-    .profile-avatar { width:56px; height:56px; border-radius:50%; background:#1D6C61; color:white; display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:700; margin-right:12px; flex-shrink:0; }
+    /* ── PERFIL ── */
+    .profile-card { max-width:720px; border-radius:16px !important; }
+    .profile-avatar {
+      width:56px; height:56px; border-radius:50%;
+      background:linear-gradient(135deg,#243C2C,#59789F);
+      color:white; display:flex; align-items:center; justify-content:center;
+      font-size:1.4rem; font-weight:700; margin-right:14px; flex-shrink:0;
+      box-shadow:0 4px 12px rgba(36,60,44,0.3);
+    }
     .profile-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:0; margin-top:8px; }
-    .profile-field { display:flex; flex-direction:column; padding:12px 8px; border-bottom:1px solid #f0f0f0; }
-    .pf-label { display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; color:#9e9e9e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
-    .pf-label mat-icon { font-size:14px; width:14px; height:14px; }
-    .pf-value { font-size:0.95rem; color:#333; padding-left:20px; }
-    .discount-badge { background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:8px; font-size:0.75rem; margin-left:8px; }
-    .history-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f5f5f5; gap:12px; }
+    .profile-field { display:flex; flex-direction:column; padding:12px 10px; border-bottom:1px solid #f0f4f3; }
+    .pf-label { display:flex; align-items:center; gap:6px; font-size:0.7rem; font-weight:700; color:#8aada7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+    .pf-label mat-icon { font-size:13px; width:13px; height:13px; }
+    .pf-value { font-size:0.93rem; color:#243C2C; padding-left:20px; }
+    .discount-badge { background:#EBF0DC; color:#243C2C; padding:2px 10px; border-radius:10px; font-size:0.73rem; margin-left:8px; font-weight:600; }
+    .history-row { display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid #f0f4f3; gap:12px; }
     .history-left { display:flex; align-items:center; gap:12px; }
-    .history-num { font-size:1.1rem; font-weight:700; color:#1D6C61; min-width:70px; }
-    .history-clinic { font-weight:500; font-size:0.9rem; }
-    .history-date { font-size:0.78rem; color:#9e9e9e; }
-    .history-doctor { font-size:0.8rem; color:#1D6C61; }
+    .history-num { font-size:1.05rem; font-weight:800; color:#59789F; min-width:70px; letter-spacing:-0.5px; }
+    .history-clinic { font-weight:600; font-size:0.9rem; color:#243C2C; }
+    .history-date { font-size:0.78rem; color:#9e9e9e; margin-top:2px; }
+    .history-doctor { font-size:0.8rem; color:#59789F; margin-top:1px; }
     .profile-edit-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:8px; }
-    .cred-section-title { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600; color:#1D6C61; margin-bottom:12px; }
-    .cred-section-title mat-icon { font-size:20px; width:20px; height:20px; }
+    .cred-section-title { display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:700; color:#243C2C; margin-bottom:12px; }
+    .cred-section-title mat-icon { font-size:20px; width:20px; height:20px; color:#59789F; }
     .cred-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; align-items:start; }
     .cred-form button { align-self:center; margin-top:4px; }
 
-    /* Mis Citas history */
-    .appt-hist-card { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 20px; background:white; border-radius:10px; margin-bottom:12px; box-shadow:0 2px 8px rgba(29,108,97,0.08); border-left:4px solid #1D6C61; gap:12px; }
+    /* ── CITAS HISTORY ── */
+    .appt-hist-card {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      padding:16px 20px; background:white; border-radius:14px; margin-bottom:12px;
+      box-shadow:0 2px 8px rgba(36,60,44,0.07); border:1px solid #D0D9E3;
+      border-left:4px solid #59789F; gap:12px;
+      transition:box-shadow 0.2s;
+    }
+    .appt-hist-card:hover { box-shadow:0 4px 16px rgba(36,60,44,0.12); }
     .appt-hist-left { display:flex; align-items:flex-start; gap:16px; flex:1; min-width:0; }
-    .appt-hist-icon { background:#e8f5f3; border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .appt-hist-icon mat-icon { color:#1D6C61; }
+    .appt-hist-icon { background: transparent; border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .appt-hist-icon mat-icon { color:#59789F; }
     .appt-hist-info { flex:1; min-width:0; }
-    .appt-hist-date { font-weight:700; font-size:0.95rem; color:#333; }
-    .appt-hist-time { color:#1D6C61; margin-left:6px; font-weight:600; }
+    .appt-hist-date { font-weight:700; font-size:0.95rem; color:#243C2C; }
+    .appt-hist-time { color:#59789F; margin-left:6px; font-weight:600; }
     .appt-hist-presencial { margin-left:6px; background:#fff3e0; color:#e65100; padding:1px 8px; border-radius:8px; font-size:0.78rem; font-weight:600; }
-    .appt-hist-clinic { font-size:0.88rem; color:#555; margin-top:2px; }
+    .appt-hist-clinic { font-size:0.88rem; color:#4a6560; margin-top:3px; }
     .appt-hist-meta { font-size:0.8rem; color:#9e9e9e; margin-top:2px; }
     .appt-hist-voucher { display:flex; align-items:center; gap:4px; font-size:0.75rem; color:#9e9e9e; margin-top:4px; font-family:monospace; }
     .appt-hist-voucher mat-icon { font-size:14px; width:14px; height:14px; }
     .appt-hist-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
-    .appt-hist-amount { font-size:0.85rem; color:#555; font-weight:600; }
+    .appt-hist-amount { font-size:0.88rem; color:#59789F; font-weight:700; }
     .status-appt-pending { background:#fff8e1; color:#f57f17; }
-    .status-appt-confirmed { background:#e8f5e9; color:#2e7d32; }
+    .status-appt-confirmed { background:#EBF0DC; color:#243C2C; }
     .status-appt-cancelled { background:#ffebee; color:#c62828; }
+    .status-appt-expired { background:#f5f5f5; color:#9e9e9e; }
 
-    /* Reservation timer */
-    .reservation-timer { display:flex; align-items:center; gap:8px; background:#e8f5e9; border-radius:8px; padding:10px 14px; color:#2e7d32; font-size:0.88rem; margin-top:12px; transition:background 0.3s; }
-    .reservation-timer mat-icon { color:#2e7d32; flex-shrink:0; }
-    .reservation-timer.timer-low { background:#fff3e0; color:#e65100; animation:pulse-timer 1s infinite; }
+    /* ── RESERVATION TIMER ── */
+    .reservation-timer {
+      display:flex; align-items:center; gap:10px; border-radius:10px;
+      padding:10px 16px; font-size:0.88rem; margin-top:14px; transition:all 0.3s;
+      background:#EBF0DC; border:1px solid #C5CDD8; color:#243C2C;
+    }
+    .reservation-timer mat-icon { color:#7A9445; flex-shrink:0; }
+    .reservation-timer.timer-low { background:#fff3e0; border-color:#ffe0b2; color:#e65100; animation:pulse-timer 1s infinite; }
     .reservation-timer.timer-low mat-icon { color:#e65100; }
     @keyframes pulse-timer { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
   `]
 })
 export class MisCitasComponent implements OnInit, OnDestroy {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+
   // Patient data
   tickets: Ticket[] = [];
   appointments: any[] = [];
   prescriptions: Prescription[] = [];
-  diagnoses: Prescription[] = [];
+  diagnoses: any[] = [];
   labOrders: LabOrder[] = [];
+  labReferences: LabOrder[] = [];
+  selectedTabIndex = 0;
+  labSelectedRefId: number | null = null;
+  emergencyReports: any[] = [];
+  pharmacySales: any[] = [];
+  payments: any[] = [];
   patientProfile: Patient | null = null;
   loadingTickets = true;
   loadingAppointments = true;
@@ -976,6 +1260,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   uploadErrors: string[] = [];
   readonly allSlots = ALL_SLOTS;
 
+  get grossFeeNum(): number { return parseFloat(this.consultationFee) || 0; }
+  get discountPct(): number { return (this.patientProfile as any)?.discountPercentage ?? 0; }
+  get discountAmountNum(): number { return Math.round(this.grossFeeNum * this.discountPct) / 100; }
+  get netFeeNum(): number { return this.grossFeeNum - this.discountAmountNum; }
+
   // Slots
   availableSlots: string[] = [];
   loadingSlots = false;
@@ -999,10 +1288,33 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   get reservationSeconds(): string { return (this.reservationTimeLeft % 60).toString().padStart(2, '0'); }
   get reservationLow(): boolean { return this.reservationTimeLeft > 0 && this.reservationTimeLeft <= 120; }
 
+  // Reschedule
+  rescheduleTicket: any | null = null;
+  rscdDate: Date | null = null;
+  rscdSlot: string | null = null;
+  rscdSlots: string[] = [];
+  rscdLoadingSlots = false;
+  rscdYear = 0;
+  rscdMonth = 0;
+  rscdCalDays: (Date | null)[] = [];
+  rescheduling = false;
+  rscdError = '';
+  rscdReservationId: number | null = null;
+  rscdReservationTimeLeft = 0;
+  private rscdReservationTimer: any = null;
+  private rscdSlotPollTimer: any = null;
+
+  get rscdMonthLabel(): string { return `${MONTH_NAMES[this.rscdMonth]} ${this.rscdYear}`; }
+  get rscdReservationMinutes(): number { return Math.floor(this.rscdReservationTimeLeft / 60); }
+  get rscdReservationSeconds(): string { return (this.rscdReservationTimeLeft % 60).toString().padStart(2, '0'); }
+  get rscdReservationLow(): boolean { return this.rscdReservationTimeLeft > 0 && this.rscdReservationTimeLeft <= 120; }
+
   // Profile edit
   profileEditMode = false;
   profileSaving = false;
   profileForm!: FormGroup;
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  todayStr = this.today;
   insurances: any[] = [];
 
   // Credentials
@@ -1013,6 +1325,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
+    private http: HttpClient,
     private ticketService: TicketService,
     private appointmentService: AppointmentService,
     private clinicService: ClinicService,
@@ -1021,6 +1334,9 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     private labExamService: LabExamService,
     private patientService: PatientService,
     private insuranceService: InsuranceService,
+    private paymentService: PaymentService,
+    private emergencyService: EmergencyService,
+    private pharmacySaleService: PharmacySaleService,
     private notification: NotificationService,
     private fb: FormBuilder
   ) {}
@@ -1135,6 +1451,175 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     return cls;
   }
 
+  // --- Reschedule ---
+  openReschedule(ticket: any): void {
+    this.rescheduleTicket = ticket;
+    this.rscdError = '';
+    this.rscdDate = null;
+    this.rscdSlot = null;
+    this.rscdSlots = [];
+    const now = new Date();
+    this.rscdYear = now.getFullYear();
+    this.rscdMonth = now.getMonth();
+    this.rscdBuildCalendar();
+  }
+
+  closeReschedule(): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+    }
+    this.rscdClearReservation();
+    this.rscdStopSlotPoll();
+    this.rescheduleTicket = null;
+    this.rscdDate = null;
+    this.rscdSlot = null;
+  }
+
+  rscdClearReservation(): void {
+    if (this.rscdReservationTimer) { clearInterval(this.rscdReservationTimer); this.rscdReservationTimer = null; }
+    this.rscdReservationTimeLeft = 0;
+    this.rscdReservationId = null;
+  }
+
+  rscdStopSlotPoll(): void {
+    if (this.rscdSlotPollTimer) { clearInterval(this.rscdSlotPollTimer); this.rscdSlotPollTimer = null; }
+  }
+
+  rscdStartSlotPoll(): void {
+    this.rscdStopSlotPoll();
+    this.rscdSlotPollTimer = setInterval(() => {
+      if (this.rscdDate && this.rescheduleTicket?.clinicId) {
+        const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+        this.appointmentService.getAvailableSlots(dateStr, this.rescheduleTicket.clinicId).subscribe({
+          next: res => {
+            if (res.success) {
+              this.rscdSlots = res.data;
+              if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
+                if (this.rscdReservationId) {
+                  this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];
+                } else {
+                  this.rscdSlot = null;
+                }
+              }
+            }
+          },
+          error: () => {}
+        });
+      }
+    }, 5000);
+  }
+
+  selectRscdSlot(slot: string): void {
+    if (this.rscdSlot === slot) return;
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
+    this.rscdSlot = slot;
+    if (!this.rscdDate || !this.rescheduleTicket?.clinicId || !this.patientId) return;
+    const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+    this.appointmentService.reserve({
+      patientId: this.patientId,
+      clinicId: this.rescheduleTicket.clinicId,
+      date: dateStr,
+      time: slot
+    }).subscribe({
+      next: res => {
+        if (res.success) {
+          this.rscdReservationId = res.data.id;
+          const secondsLeft = Math.max(0, Math.floor((new Date(res.data.expiresAt).getTime() - Date.now()) / 1000));
+          this.rscdReservationTimeLeft = secondsLeft;
+          this.rscdReservationTimer = setInterval(() => {
+            this.rscdReservationTimeLeft--;
+            if (this.rscdReservationTimeLeft <= 0) {
+              this.rscdClearReservation();
+              this.rscdSlot = null;
+              this.notification.error('La reserva expiró. Selecciona nuevamente.');
+              if (this.rscdDate && this.rescheduleTicket?.clinicId) this.selectRscdDate(this.rscdDate);
+            }
+          }, 1000);
+        }
+      },
+      error: err => {
+        this.notification.error(err?.error?.message || 'No se pudo reservar el horario');
+        this.rscdSlot = null;
+        if (this.rscdDate) this.selectRscdDate(this.rscdDate);
+      }
+    });
+  }
+
+  rscdBuildCalendar(): void {
+    const firstDay = new Date(this.rscdYear, this.rscdMonth, 1).getDay();
+    const daysInMonth = new Date(this.rscdYear, this.rscdMonth + 1, 0).getDate();
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(this.rscdYear, this.rscdMonth, i));
+    this.rscdCalDays = days;
+  }
+
+  rscdPrevMonth(): void {
+    if (this.rscdMonth === 0) { this.rscdMonth = 11; this.rscdYear--; }
+    else { this.rscdMonth--; }
+    this.rscdBuildCalendar();
+  }
+
+  rscdNextMonth(): void {
+    if (this.rscdMonth === 11) { this.rscdMonth = 0; this.rscdYear++; }
+    else { this.rscdMonth++; }
+    this.rscdBuildCalendar();
+  }
+
+  getRscdDayClass(day: Date): string {
+    let cls = 'cal-day';
+    if (this.isPastDay(day)) { cls += ' past'; return cls; }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (day.getTime() === today.getTime()) cls += ' today';
+    if (this.rscdDate && day.getTime() === this.rscdDate.getTime()) cls += ' selected';
+    return cls;
+  }
+
+  selectRscdDate(day: Date): void {
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+      this.rscdClearReservation();
+    }
+    this.rscdDate = day;
+    this.rscdSlot = null;
+    this.rscdSlots = [];
+    if (!this.rescheduleTicket?.clinicId) return;
+    this.rscdLoadingSlots = true;
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+    this.appointmentService.getAvailableSlots(dateStr, this.rescheduleTicket.clinicId).subscribe({
+      next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
+      error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
+    });
+    this.rscdStartSlotPoll();
+  }
+
+  confirmReschedule(): void {
+    if (!this.rescheduleTicket || !this.rscdDate || !this.rscdSlot) return;
+    this.rescheduling = true;
+    this.rscdError = '';
+    const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
+    this.http.put<any>(`${environment.apiUrl}/tickets/${this.rescheduleTicket.id}/reschedule`,
+      { newDate: dateStr, newTime: this.rscdSlot }).subscribe({
+      next: res => {
+        this.rescheduling = false;
+        if (res.success) {
+          this.notification.success('Cita reagendada correctamente');
+          this.closeReschedule();
+          if (this.patientId) this.loadData(this.patientId);
+        } else {
+          this.rscdError = res.message || 'Error al reagendar';
+        }
+      },
+      error: err => {
+        this.rescheduling = false;
+        this.rscdError = err?.error?.message || 'Error al reagendar';
+      }
+    });
+  }
+
   selectDate(day: Date): void {
     if (this.reservationId) {
       this.appointmentService.cancelReservation(this.reservationId).subscribe({ error: () => {} });
@@ -1232,6 +1717,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   }
 
   startReservationTimer(seconds: number): void {
+    if (this.reservationTimer) {
+      clearInterval(this.reservationTimer);
+      this.reservationTimer = null;
+    }
     this.reservationTimeLeft = seconds;
     this.reservationTimer = setInterval(() => {
       this.reservationTimeLeft--;
@@ -1285,6 +1774,11 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     }
     this.clearReservationTimer();
     this.stopSlotPolling();
+    if (this.rscdReservationId) {
+      this.appointmentService.cancelReservation(this.rscdReservationId).subscribe({ error: () => {} });
+    }
+    this.rscdClearReservation();
+    this.rscdStopSlotPoll();
   }
 
   formatDate(d: Date | null): string {
@@ -1377,7 +1871,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         resolve(null);
       };
       reader.onerror = () => resolve('no se pudo leer el archivo.');
-      reader.readAsArrayBuffer(file.slice(0, 4096));
+      reader.readAsArrayBuffer(file);
     });
   }
 
@@ -1445,6 +1939,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
               error: () => {}
             });
           }
+          if (this.labSelectedRefId) {
+            this.labService.markUsed(this.labSelectedRefId).subscribe({ error: () => {} });
+            this.labSelectedRefId = null;
+          }
           this.paying = false;
           this.clearReservationTimer();
           this.stopSlotPolling();
@@ -1491,6 +1989,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.selectedType = 'CONSULTA';
     this.consultationFee = '150.00';
     this.selectedLabExamId = null;
+    this.labSelectedRefId = null;
     this.availableSlots = [];
     this.card = { name: this.userName, number: '', expiry: '', cvv: '' };
     this.paymentError = '';
@@ -1500,6 +1999,18 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.calYear = now.getFullYear();
     this.calMonth = now.getMonth();
     this.buildCalendar();
+  }
+
+  bookFromReference(ref: LabOrder): void {
+    this.resetBooking();
+    this.selectedType = 'LABORATORIO';
+    this.selectedLabExamId = ref.labExamId ?? null;
+    this.consultationFee = ref.labExamPrice != null ? ref.labExamPrice.toFixed(2) : '0.00';
+    this.labSelectedRefId = ref.id;
+    if (this.labClinics.length > 0) {
+      this.selectedClinicId = this.labClinics[0].id;
+    }
+    this.selectedTabIndex = 0;
   }
 
   getClinicName(id: number | null): string {
@@ -1538,6 +2049,10 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     return m[s] ?? s;
   }
 
+  confirmedAppointments(): any[] {
+    return this.appointments.filter(a => a.status === 'CONFIRMED');
+  }
+
   getApptStatusClass(s: string): string {
     const m: Record<string, string> = { PENDING_PAYMENT: 'status-appt-pending', CONFIRMED: 'status-appt-confirmed', CANCELLED: 'status-appt-cancelled' };
     return m[s] ?? '';
@@ -1553,11 +2068,12 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       error: () => { this.loadingAppointments = false; }
     });
 
-    this.ticketService.getAll().subscribe({
+    this.ticketService.getByPatient(patientId).subscribe({
       next: res => {
         if (res.success) {
-          this.tickets = res.data.filter(t => t.patientId === patientId)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          this.tickets = res.data
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          this.mergeDiagnoses();
         }
         this.loadingTickets = false;
       },
@@ -1568,19 +2084,41 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       next: res => {
         if (res.success) {
           this.prescriptions = res.data;
-          // Diagnoses = prescriptions that have a doctor's notes
-          this.diagnoses = res.data
-            .filter((rx: Prescription) => rx.notes && rx.notes.trim().length > 0)
-            .sort((a: Prescription, b: Prescription) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          this.mergeDiagnoses();
         }
         this.loadingPrescriptions = false;
       },
       error: () => { this.loadingPrescriptions = false; }
     });
 
+    this.emergencyService.getMedicalReportsByPatient(patientId).subscribe({
+      next: res => {
+        if (res.success) {
+          this.emergencyReports = res.data;
+          this.mergeDiagnoses();
+        }
+      },
+      error: () => {}
+    });
+
+    this.pharmacySaleService.getByPatient(patientId).subscribe({
+      next: res => { if (res.success) this.pharmacySales = res.data; },
+      error: () => {}
+    });
+
+    this.paymentService.getByPatient(patientId).subscribe({
+      next: res => { if (res.success) this.payments = res.data; },
+      error: () => {}
+    });
+
     this.labService.getByPatient(patientId).subscribe({
-      next: res => { if (res.success) this.labOrders = res.data; this.loadingLab = false; },
+      next: res => {
+        if (res.success) {
+          this.labOrders = res.data;
+          this.labReferences = res.data.filter((o: LabOrder) => o.status === 'PENDING' && !o.isUsed);
+        }
+        this.loadingLab = false;
+      },
       error: () => { this.loadingLab = false; }
     });
 
@@ -1588,6 +2126,48 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       next: res => { if (res.success) this.patientProfile = res.data; this.loadingProfile = false; },
       error: () => { this.loadingProfile = false; }
     });
+  }
+
+  openLabPdf(orderId: number): void {
+    this.http.get(`${environment.apiUrl}/lab-orders/${orderId}/result-file`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        win?.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      },
+      error: () => this.notification.error('No se pudo abrir el PDF')
+    });
+  }
+
+  mergeDiagnoses(): void {
+    const fromRx = this.prescriptions
+      .map((rx: any) => ({ ...rx, _source: 'rx' }));
+
+    const rxTicketIds = new Set(this.prescriptions.map((rx: any) => rx.ticketId).filter(Boolean));
+    const fromTickets = this.tickets
+      .filter((t: any) => t.status === 'COMPLETED' && !rxTicketIds.has(t.id))
+      .map((t: any) => ({
+        _source: 'ticket',
+        createdAt: t.createdAt,
+        doctorName: t.doctorName,
+        notes: null,
+        items: [],
+        ticketNumber: t.ticketNumber,
+        clinicName: t.clinicName
+      }));
+
+    const fromEm = this.emergencyReports.map((r: any) => ({
+      _source: 'emergency',
+      createdAt: r.createdAt,
+      doctorName: r.doctorName,
+      notes: [r.diagnosis, r.treatment, r.medications].filter(Boolean).join('\n\n'),
+      _diagnosis: r.diagnosis,
+      _treatment: r.treatment,
+      _medications: r.medications,
+      items: []
+    }));
+    this.diagnoses = [...fromRx, ...fromTickets, ...fromEm]
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   // --- Profile edit ---
@@ -1598,7 +2178,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       firstName:        [p.firstName,         Validators.required],
       lastName:         [p.lastName,          Validators.required],
       dpi:              [p.dpi,               Validators.required],
-      birthDate:        [p.birthDate          || ''],
+      birthDate:        [p.birthDate          || '', [birthDateValidator]],
       phone:            [p.phone             || ''],
       email:            [p.email             || ''],
       address:          [p.address           || ''],
@@ -1682,20 +2262,28 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   logout(): void { this.authService.logout(); }
   sampleLabel(s: string): string { return (SAMPLE_TYPE_LABELS as any)[s] ?? s; }
 
-  getStatusClass(s: string): string {
+  getStatusClass(s: string, scheduledDate?: string): string {
+    if (s === 'WAITING' && scheduledDate && scheduledDate < this.todayStr) return 'status-appt-expired';
     const m: Record<string, string> = {
       WAITING: 'status-waiting', BEING_CALLED: 'status-being-called',
       IN_CONSULTATION: 'status-in-consultation', COMPLETED: 'status-completed',
-      ABSENT: 'status-absent', CANCELLED_NO_PAYMENT: 'status-absent'
+      ABSENT: 'status-absent', CANCELLED_NO_PAYMENT: 'status-absent',
+      ABSENT_PENDING_RESCHEDULE: 'status-being-called', RESCHEDULED: 'status-completed',
+      CALLED_TO_VITAL_SIGNS: 'status-being-called', READY_FOR_DOCTOR: 'status-in-consultation',
+      PENDING_PAYMENT: 'status-waiting'
     };
     return m[s] ?? '';
   }
 
-  statusLabel(s: string): string {
+  statusLabel(s: string, scheduledDate?: string): string {
+    if (s === 'WAITING' && scheduledDate && scheduledDate < this.todayStr) return 'Expirada';
     const m: Record<string, string> = {
       WAITING: 'En Espera', BEING_CALLED: 'Siendo Llamado',
       IN_CONSULTATION: 'En Consulta', COMPLETED: 'Atendido',
-      ABSENT: 'Ausente', CANCELLED_NO_PAYMENT: 'Cancelado'
+      ABSENT: 'Expirado', CANCELLED_NO_PAYMENT: 'Cancelado',
+      ABSENT_PENDING_RESCHEDULE: 'Pendiente Reagendar', RESCHEDULED: 'Reagendado',
+      CALLED_TO_VITAL_SIGNS: 'Signos Vitales', READY_FOR_DOCTOR: 'Esperando Doctor',
+      PENDING_PAYMENT: 'Pendiente Pago'
     };
     return m[s] ?? s;
   }

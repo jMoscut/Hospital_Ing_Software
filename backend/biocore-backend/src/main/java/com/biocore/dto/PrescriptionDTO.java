@@ -1,6 +1,5 @@
 package com.biocore.dto;
 
-import com.biocore.entity.Medicine;
 import com.biocore.entity.Prescription;
 import com.biocore.entity.PrescriptionItem;
 import com.biocore.enums.PrescriptionStatus;
@@ -20,8 +19,11 @@ import java.util.stream.Collectors;
 public class PrescriptionDTO {
 
     private Long id;
+    private String code;
     private Long patientId;
     private String patientName;
+    private String patientDpi;
+    private String patientEmail;
     private Long doctorId;
     private String doctorName;
     private Long ticketId;
@@ -33,8 +35,11 @@ public class PrescriptionDTO {
     public static PrescriptionDTO from(Prescription p) {
         return PrescriptionDTO.builder()
                 .id(p.getId())
+                .code(p.getCode())
                 .patientId(p.getPatient().getId())
                 .patientName(p.getPatient().getFirstName() + " " + p.getPatient().getLastName())
+                .patientDpi(p.getPatient().getDpi())
+                .patientEmail(p.getPatient().getEmail())
                 .doctorId(p.getDoctor().getId())
                 .doctorName(p.getDoctor().getFirstName() + " " + p.getDoctor().getLastName())
                 .ticketId(p.getTicket() != null ? p.getTicket().getId() : null)
@@ -58,7 +63,8 @@ public class PrescriptionDTO {
         private String dosage;
         private String instructions;
         private boolean dispatched;
-        private Medicine medicine;
+        private java.math.BigDecimal unitPrice;
+        private Integer medicineStock;
 
         public static ItemDTO from(PrescriptionItem item) {
             boolean hasMed = item.getMedicine() != null;
@@ -71,7 +77,8 @@ public class PrescriptionDTO {
                     .dosage(item.getDosage())
                     .instructions(item.getInstructions())
                     .dispatched(item.isDispatched())
-                    .medicine(item.getMedicine())
+                    .unitPrice(hasMed ? item.getMedicine().getPrice() : null)
+                    .medicineStock(hasMed ? item.getMedicine().getStock() : null)
                     .build();
         }
     }

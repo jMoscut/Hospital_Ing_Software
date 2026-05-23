@@ -25,12 +25,14 @@ export interface LabOrder {
   id: number;
   patientId: number;
   patientName?: string;
+  patientDpi?: string;
+  patientEmail?: string;
   doctorId: number;
   doctorName?: string;
   ticketId?: number;
   labExamId?: number;
-  labExamName?: string;   // populated from labExam.name
-  labExamCode?: string;   // populated from labExam.code
+  labExamName?: string;
+  labExamCode?: string;
   sampleType: SampleType;
   status: LabOrderStatus;
   orderDate: string;
@@ -38,6 +40,19 @@ export interface LabOrder {
   resultAvailableAt?: string;
   scheduledAt?: string;
   notes?: string;
+  // Vitals
+  bloodPressure?: string;
+  heartRate?: number;
+  temperature?: number;
+  weight?: number;
+  height?: number;
+  oxygenSaturation?: number;
+  // Result
+  resultNotes?: string;
+  hasAttachment?: boolean;
+  // Reference
+  isUsed?: boolean;
+  labExamPrice?: number;
 }
 
 export interface Medicine {
@@ -57,17 +72,23 @@ export interface PrescriptionItem {
   id: number;
   medicineId: number;
   medicineName?: string;
+  customMedicineName?: string;
   quantity: number;
   dosage?: string;
   instructions?: string;
   dispatched: boolean;
+  unitPrice?: number;
+  medicineStock?: number;
   medicine?: Medicine;
 }
 
 export interface Prescription {
   id: number;
+  code?: string;
   patientId: number;
   patientName?: string;
+  patientDpi?: string;
+  patientEmail?: string;
   doctorId: number;
   doctorName?: string;
   ticketId?: number;
@@ -75,4 +96,37 @@ export interface Prescription {
   notes?: string;
   createdAt: string;
   items: PrescriptionItem[];
+}
+
+export type PharmacySaleStatus = 'RESERVED' | 'COMPLETED' | 'CANCELLED';
+
+export interface PharmacySaleItem {
+  id: number;
+  medicineId: number;
+  medicineName: string;
+  medicineCode?: string;
+  presentation?: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface PharmacySale {
+  id: number;
+  saleCode: string;
+  patientId?: number;
+  patientName?: string;
+  patientDpi?: string;
+  patientEmail?: string;
+  prescriptionId?: number;
+  prescriptionCode?: string;
+  status: PharmacySaleStatus;
+  totalAmount: number;
+  discountAmount: number;
+  netAmount: number;
+  paymentMethod?: string;
+  invoiceNumber?: string;
+  createdAt: string;
+  paidAt?: string;
+  items: PharmacySaleItem[];
 }

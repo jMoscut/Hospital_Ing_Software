@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -15,6 +15,22 @@ import { PatientService } from '../../../shared/services/patient.service';
 import { InsuranceService } from '../../../shared/services/payment.service';
 import { NotificationService } from '../../../shared/services/notification.service';
 import { Patient } from '../../../core/models/patient.model';
+
+function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
+  const v: string = ctrl.value;
+  if (!v) return null;
+  const parts = v.split('-');
+  if (parts.length !== 3) return { invalidDate: true };
+  const yearStr = parts[0];
+  const year = parseInt(yearStr, 10);
+  if (isNaN(year) || yearStr.length !== 4) return { yearInvalid: true };
+  if (year < 1900) return { yearTooEarly: true };
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return { invalidDate: true };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+  if (v > todayStr) return { futureDate: true };
+  return null;
+}
 
 @Component({
   selector: 'app-patient-register',
@@ -36,19 +52,20 @@ import { Patient } from '../../../core/models/patient.model';
 
       <mat-card>
         <mat-card-content>
-          <mat-stepper [linear]="true" #stepper>
+          <mat-stepper [linear]="true" #stepper autocomplete="off">
 
             <!-- Paso 1: Buscar por DPI -->
             <mat-step [stepControl]="dpiForm" label="Identificación">
               <form [formGroup]="dpiForm">
                 <h3>Identificación por DPI</h3>
-                <p class="hint-text">El DPI debe contener exactamente 13 dígitos numéricos.</p>
+                <p class="hint-text">El DPI debe contener exactamente 13 dígitos numéricos y no puede iniciar con 0.</p>
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>DPI del Paciente</mat-label>
                   <mat-icon matPrefix>badge</mat-icon>
-                  <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13">
+                  <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
+                         (keypress)="onlyDigits($event)">
                   <mat-error *ngIf="dpiForm.get('dpi')?.hasError('pattern')">
-                    El DPI debe tener exactamente 13 dígitos numéricos
+                    El DPI debe tener 13 dígitos y no puede iniciar con 0
                   </mat-error>
                 </mat-form-field>
                 <button mat-raised-button color="primary" type="button" (click)="searchByDpi()" [disabled]="dpiForm.invalid || searching">
@@ -95,15 +112,19 @@ import { Patient } from '../../../core/models/patient.model';
                   <mat-form-field appearance="outline">
                     <mat-label>Fecha de Nacimiento</mat-label>
                     <mat-icon matPrefix>cake</mat-icon>
-                    <input matInput type="date" formControlName="birthDate">
+                    <input matInput type="date" formControlName="birthDate" min="1900-01-01" [max]="today">
+                    <mat-error>Fecha inválida (año entre 1900 y año actual)</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Teléfono</mat-label>
-                    <input matInput formControlName="phone">
+                    <input matInput formControlName="phone" type="tel" maxlength="8"
+                           (keypress)="onlyDigits($event)">
+                    <mat-hint>8 dígitos, no inicia en 0</mat-hint>
+                    <mat-error>Teléfono inválido (8 dígitos, no inicia en 0)</mat-error>
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Correo Electrónico</mat-label>
-                    <input matInput formControlName="email" type="email">
+                    <input matInput formControlName="email" type="email" autocomplete="new-password">
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Dirección</mat-label>
@@ -216,6 +237,11 @@ export class PatientRegisterComponent implements OnInit {
   submitting = false;
   registered = false;
   newCredentials: { username: string; tempPassword: string } | null = null;
+  today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+
+  onlyDigits(e: KeyboardEvent): boolean {
+    return /[0-9]/.test(e.key);
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -227,14 +253,14 @@ export class PatientRegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.dpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     this.patientForm = this.fb.group({
       firstName:        ['', Validators.required],
       lastName:         ['', Validators.required],
-      birthDate:        [''],
-      phone:            [''],
-      email:            ['', Validators.email],
+      birthDate:        ['', [birthDateValidator]],
+      phone:            ['', [Validators.pattern(/^[1-9]\d{7}$/)]],
+      email:            ['', [Validators.email]],
       address:          [''],
       emergencyContact: [''],
       emergencyPhone:   [''],
@@ -294,7 +320,8 @@ export class PatientRegisterComponent implements OnInit {
         }
       });
     } else {
-      const createData = { ...data, createAccount: true };
+      const createData: any = { ...data, createAccount: true };
+      delete createData.password; // evita que autocomplete del navegador envíe contraseña guardada
       this.patientService.create(createData).subscribe({
         next: res => {
           if (res.success) {

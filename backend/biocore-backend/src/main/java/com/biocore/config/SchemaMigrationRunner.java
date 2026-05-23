@@ -27,6 +27,8 @@ public class SchemaMigrationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         log.info("Running schema migration checks...");
 
+        createClinicSchedulesTable();
+
         applyIfMissing(
             "users", "must_change_password",
             "ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE"
@@ -43,6 +45,9 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         // Recreate role check constraint to include PATIENT role
         fixRoleCheckConstraint();
 
+        // Recreate ticket status check constraint to include PENDING_PAYMENT
+        fixTicketStatusCheckConstraint();
+
         log.info("Schema migration checks complete.");
     }
 
@@ -57,6 +62,44 @@ public class SchemaMigrationRunner implements ApplicationRunner {
             log.info("Schema: users_role_check constraint updated to include PATIENT role");
         } catch (Exception e) {
             log.warn("Schema migration warning for users_role_check: {}", e.getMessage());
+        }
+    }
+
+    private void fixTicketStatusCheckConstraint() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check");
+            jdbcTemplate.execute(
+                "ALTER TABLE tickets ADD CONSTRAINT tickets_status_check CHECK (" +
+                "status IN ('PENDING_PAYMENT','WAITING','CALLED_TO_VITAL_SIGNS','READY_FOR_DOCTOR'," +
+                "'BEING_CALLED','IN_CONSULTATION','COMPLETED','ABSENT','ABSENT_PENDING_RESCHEDULE'," +
+                "'RESCHEDULED','CANCELLED_NO_PAYMENT'))"
+            );
+            jdbcTemplate.execute(
+                "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS rescheduled boolean NOT NULL DEFAULT false"
+            );
+            log.info("Schema: tickets_status_check updated + rescheduled column added");
+        } catch (Exception e) {
+            log.warn("Schema migration warning for tickets_status_check: {}", e.getMessage());
+        }
+    }
+
+    private void createClinicSchedulesTable() {
+        try {
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS clinic_schedules (" +
+                "  id BIGSERIAL PRIMARY KEY," +
+                "  clinic_id BIGINT NOT NULL REFERENCES clinics(id)," +
+                "  day_of_week VARCHAR(10)," +
+                "  specific_date DATE," +
+                "  start_time VARCHAR(5) NOT NULL," +
+                "  end_time VARCHAR(5) NOT NULL," +
+                "  active BOOLEAN NOT NULL DEFAULT TRUE," +
+                "  created_at TIMESTAMP DEFAULT NOW()" +
+                ")"
+            );
+            log.info("Schema: clinic_schedules table ensured");
+        } catch (Exception e) {
+            log.warn("Schema migration warning for clinic_schedules: {}", e.getMessage());
         }
     }
 

@@ -20,12 +20,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findByPatientId(Long patientId);
     List<Ticket> findByDoctorId(Long doctorId);
 
-    /** RN-C01: Cola ordenada: URGENT primero, luego por creación.
-     *  Scheduled tickets: solo scheduledDate = today.
-     *  Walk-in (scheduledDate IS NULL): solo createdAt >= todayStart (Guatemala midnight). */
+    /** RN-C01: Cola ordenada: URGENT primero, luego por scheduledTime ASC. */
     @Query("SELECT t FROM Ticket t WHERE t.clinic.id = :clinicId AND t.status IN :statuses " +
            "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
-           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
+           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.scheduledTime ASC")
     List<Ticket> findQueueByClinic(@Param("clinicId") Long clinicId,
                                    @Param("statuses") List<TicketStatus> statuses,
                                    @Param("today") LocalDate today,
@@ -42,16 +40,17 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("SELECT t FROM Ticket t WHERE t.clinic.id = :clinicId AND t.doctor.id = :doctorId " +
            "AND t.status IN :statuses " +
            "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
-           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
+           "ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.scheduledTime ASC")
     List<Ticket> findQueueByClinicAndDoctor(@Param("clinicId") Long clinicId,
                                              @Param("doctorId") Long doctorId,
                                              @Param("statuses") List<TicketStatus> statuses,
                                              @Param("today") LocalDate today,
                                              @Param("todayStart") LocalDateTime todayStart);
 
-    /** Todos los tickets activos de hoy en todas las clínicas — para monitoreo de personal de salud. */
+    /** Todos los tickets activos de hoy en todas las clínicas — para monitoreo de personal de salud.
+     *  Tickets URGENT se incluyen sin restricción de fecha (emergencias pagadas de días anteriores). */
     @Query("SELECT t FROM Ticket t WHERE t.status IN :statuses " +
-           "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
+           "AND (t.priority = 'URGENT' OR t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
            "ORDER BY t.clinic.id ASC, CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
     List<Ticket> findTodayAllActive(@Param("statuses") List<TicketStatus> statuses,
                                      @Param("today") LocalDate today,
@@ -72,4 +71,33 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     @Query("SELECT MAX(t.ticketNumber) FROM Ticket t")
     Optional<String> findMaxTicketNumber();
+
+    /** Emergency payment queue for cashier: EMERGENCIA tickets pending payment */
+    @Query("SELECT t FROM Ticket t WHERE t.type = 'EMERGENCIA' AND t.status = 'PENDING_PAYMENT' ORDER BY t.createdAt ASC")
+    List<Ticket> findPendingEmergencyPayments();
+
+    /** Count today's emergency tickets handled by a doctor — for equitable assignment */
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.doctor.id = :doctorId AND t.type = 'EMERGENCIA' " +
+           "AND t.createdAt >= :todayStart")
+    long countEmergencyTicketsByDoctorToday(@Param("doctorId") Long doctorId,
+                                             @Param("todayStart") LocalDateTime todayStart);
+
+    /** Today's COMPLETED emergency tickets (all, for emergency doctor portal) */
+    @Query("SELECT t FROM Ticket t WHERE t.type = 'EMERGENCIA' " +
+           "AND t.status = 'COMPLETED' AND t.createdAt >= :todayStart ORDER BY t.createdAt ASC")
+    List<Ticket> findTodayCompletedEmergency(@Param("todayStart") LocalDateTime todayStart);
+
+    /** Report: patients per clinic/area in date range */
+    @Query("SELECT t.clinic.name, COUNT(t) FROM Ticket t " +
+           "WHERE t.createdAt >= :from AND t.createdAt < :to " +
+           "GROUP BY t.clinic.name ORDER BY COUNT(t) DESC")
+    List<Object[]> countByClinicBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Report: completed consultations per doctor in date range */
+    @Query("SELECT CONCAT(t.doctor.firstName, ' ', t.doctor.lastName), COUNT(t), t.clinic.name " +
+           "FROM Ticket t WHERE t.createdAt >= :from AND t.createdAt < :to " +
+           "AND t.doctor IS NOT NULL AND t.status = 'COMPLETED' " +
+           "GROUP BY t.doctor.id, t.doctor.firstName, t.doctor.lastName, t.clinic.name " +
+           "ORDER BY COUNT(t) DESC")
+    List<Object[]> countByDoctorBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

@@ -11,16 +11,16 @@ import java.util.Optional;
 
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, Long> {
-    Optional<Patient> findByDpi(String dpi);
+    Optional<Patient> findByDpiAndActiveTrue(String dpi);
     Optional<Patient> findByUserId(Long userId);
     Optional<Patient> findByPatientCode(String patientCode);
-    boolean existsByDpi(String dpi);
+    boolean existsByDpiAndActiveTrue(String dpi);
 
-    @Query("SELECT p FROM Patient p WHERE " +
+    @Query("SELECT p FROM Patient p WHERE p.active = true AND (" +
            "LOWER(p.firstName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
            "LOWER(p.lastName) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
            "p.dpi LIKE CONCAT('%', :q, '%') OR " +
-           "p.patientCode LIKE CONCAT('%', :q, '%')")
+           "p.patientCode LIKE CONCAT('%', :q, '%'))")
     List<Patient> search(@Param("q") String query);
 
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(p.patientCode, 5) AS int)), 0) FROM Patient p")

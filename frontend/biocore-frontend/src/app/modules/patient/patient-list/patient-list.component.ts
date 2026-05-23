@@ -15,6 +15,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { PatientService } from '../../../shared/services/patient.service';
 import { InsuranceService } from '../../../shared/services/payment.service';
 import { NotificationService } from '../../../shared/services/notification.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { Patient } from '../../../core/models/patient.model';
 
 @Component({
@@ -81,8 +82,15 @@ import { Patient } from '../../../core/models/patient.model';
                 <button mat-icon-button color="primary" [routerLink]="['/patients', p.id]" title="Ver detalle">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button color="accent" (click)="openEdit(p); $event.stopPropagation()" title="Editar">
+                <button mat-icon-button color="accent" *ngIf="canEdit"
+                        (click)="openEdit(p); $event.stopPropagation()" title="Editar">
                   <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn"
+                        *ngIf="canDelete"
+                        (click)="confirmDelete(p); $event.stopPropagation()"
+                        title="Eliminar paciente">
+                  <mat-icon>delete</mat-icon>
                 </button>
               </td>
             </ng-container>
@@ -97,6 +105,27 @@ import { Patient } from '../../../core/models/patient.model';
             <p style="color:#9e9e9e">No se encontraron pacientes</p>
           </div>
         </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Delete confirm dialog -->
+    <div class="edit-overlay" *ngIf="deleteDialogOpen">
+      <mat-card class="edit-dialog" style="width:400px;max-height:unset">
+        <mat-card-header>
+          <mat-icon mat-card-avatar style="color:#c62828">warning</mat-icon>
+          <mat-card-title>Eliminar Paciente</mat-card-title>
+          <mat-card-subtitle *ngIf="deletingPatient">{{ deletingPatient.firstName }} {{ deletingPatient.lastName }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content style="padding:16px">
+          <p>¿Está seguro que desea eliminar a este paciente? Esta acción desactivará su cuenta y no podrá acceder al sistema.</p>
+          <p style="color:#9e9e9e;font-size:0.85rem">Código: {{ deletingPatient?.patientCode }} · DPI: {{ deletingPatient?.dpi }}</p>
+        </mat-card-content>
+        <mat-card-actions style="display:flex;gap:8px;padding:16px">
+          <button mat-raised-button color="warn" (click)="deletePatient()" [disabled]="deleting">
+            <mat-icon>delete</mat-icon> {{ deleting ? 'Eliminando...' : 'Eliminar' }}
+          </button>
+          <button mat-button (click)="deleteDialogOpen = false">Cancelar</button>
+        </mat-card-actions>
       </mat-card>
     </div>
 
@@ -120,7 +149,7 @@ import { Patient } from '../../../core/models/patient.model';
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>DPI *</mat-label>
-              <input matInput formControlName="dpi">
+              <input matInput formControlName="dpi" maxlength="13" (keypress)="onlyDigits($event)">
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Fecha de Nacimiento</mat-label>
@@ -170,16 +199,18 @@ import { Patient } from '../../../core/models/patient.model';
     </div>
   `,
   styles: [`
-    .search-field { width: 100%; max-width: 400px; margin-bottom: 16px; }
+    .search-field { width: 100%; max-width: 420px; margin-bottom: 16px; }
     .w-full { width: 100%; }
-    .clickable-row { cursor: pointer; }
-    .clickable-row:hover { background: #f5f5f5; }
+    .clickable-row { cursor: pointer; transition: background 0.15s; }
+    .clickable-row:hover { background: #F5F2DC !important; }
     .edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .edit-dialog { width: 560px; max-height: 90vh; overflow-y: auto; }
-    .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .edit-dialog { width: 580px; max-height: 90vh; overflow-y: auto; border-radius: 16px !important; }
+    .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
   `]
 })
 export class PatientListComponent implements OnInit {
+  onlyDigits(e: KeyboardEvent): boolean { return /[0-9]/.test(e.key); }
+
   patients: Patient[] = [];
   loading = true;
   searchCtrl = new FormControl('');
@@ -191,14 +222,23 @@ export class PatientListComponent implements OnInit {
   saving = false;
   insurances: any[] = [];
 
+  deleteDialogOpen = false;
+  deletingPatient: Patient | null = null;
+  deleting = false;
+  canDelete = false;
+  canEdit = false;
+
   constructor(
     private fb: FormBuilder,
     private patientService: PatientService,
     private insuranceService: InsuranceService,
-    private notification: NotificationService
+    private notification: NotificationService,
+    private auth: AuthService
   ) {}
 
   ngOnInit(): void {
+    this.canDelete = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
+    this.canEdit = this.auth.hasRole('HEALTH_STAFF', 'ADMIN');
     this.loadAll();
     this.insuranceService.getAll().subscribe(res => { if (res.success) this.insurances = res.data; });
     this.searchCtrl.valueChanges.pipe(
@@ -233,10 +273,10 @@ export class PatientListComponent implements OnInit {
     this.editForm = this.fb.group({
       firstName:        [p.firstName,           Validators.required],
       lastName:         [p.lastName,            Validators.required],
-      dpi:              [p.dpi,                 Validators.required],
+      dpi:              [p.dpi,                 [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]],
       birthDate:        [p.birthDate            || ''],
-      phone:            [p.phone               || ''],
-      email:            [p.email               || ''],
+      phone:            [p.phone               || '', [Validators.pattern(/^[1-9]\d{7}$/)]],
+      email:            [p.email               || '', [Validators.email]],
       address:          [p.address             || ''],
       emergencyContact: [p.emergencyContact    || ''],
       emergencyPhone:   [p.emergencyPhone      || ''],
@@ -244,6 +284,30 @@ export class PatientListComponent implements OnInit {
       insuranceNumber:  [p.insuranceNumber     || '']
     });
     this.editDialogOpen = true;
+  }
+
+  confirmDelete(p: Patient): void {
+    this.deletingPatient = p;
+    this.deleteDialogOpen = true;
+  }
+
+  deletePatient(): void {
+    if (!this.deletingPatient) return;
+    this.deleting = true;
+    this.patientService.delete(this.deletingPatient.id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.notification.success('Paciente eliminado exitosamente');
+          this.deleteDialogOpen = false;
+          this.loadAll();
+        }
+        this.deleting = false;
+      },
+      error: err => {
+        this.notification.error(err.error?.message || 'Error al eliminar paciente');
+        this.deleting = false;
+      }
+    });
   }
 
   saveEdit(): void {
