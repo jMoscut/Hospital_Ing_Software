@@ -1,0 +1,40 @@
+# ── Java / Maven ──────────────────────────────────────────────────────
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# ── Spring Boot ───────────────────────────────────────────────────────
+backend/biocore-backend/backend.log
+*.log
+
+# ── Angular / Node ────────────────────────────────────────────────────
+**/node_modules/
+**/.angular/
+frontend/biocore-frontend/dist/
+frontend/biocore-frontend/.browserslistrc
+
+# ── IDEs ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# ── OS ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Secrets / env ─────────────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+
+# ── Uploads (archivos subidos por usuarios) ───────────────────────────
+backend/biocore-backend/uploads/
