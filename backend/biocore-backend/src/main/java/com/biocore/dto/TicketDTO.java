@@ -42,6 +42,7 @@ public class TicketDTO {
     private LocalDateTime completedAt;
     private String labExamName;
     private String labSampleType;
+    private Double discountPercentage;
 
     public static TicketDTO from(Ticket t) {
         return TicketDTO.builder()
@@ -66,6 +67,9 @@ public class TicketDTO {
                 .calledAt(t.getCalledAt())
                 .consultationStartAt(t.getConsultationStartAt())
                 .completedAt(t.getCompletedAt())
+                .discountPercentage(t.getPatient().getInsurance() != null
+                        ? t.getPatient().getInsurance().getDiscountPercentage().doubleValue()
+                        : null)
                 .build();
     }
 
@@ -100,6 +104,9 @@ public class TicketDTO {
                 .completedAt(t.getCompletedAt())
                 .labExamName(examName)
                 .labSampleType(sampleTypeName)
+                .discountPercentage(t.getPatient().getInsurance() != null
+                        ? t.getPatient().getInsurance().getDiscountPercentage().doubleValue()
+                        : null)
                 .build();
     }
 }

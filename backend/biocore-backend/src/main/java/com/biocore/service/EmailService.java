@@ -10,6 +10,7 @@ import com.biocore.entity.Prescription;
 import com.biocore.entity.Ticket;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -29,6 +30,12 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
+    @Value("${app.frontend.url:http://localhost:4200}")
+    private String frontendUrl;
+
     /**
      * CU 01 FA01 / FA02 CU 00: Enviar credenciales temporales al paciente (RN-P003)
      */
@@ -44,19 +51,49 @@ public class EmailService {
                 "  Contraseña temporal: %s\n\n" +
                 "IMPORTANTE: Esta contraseña tiene vigencia de 24 horas. " +
                 "Al iniciar sesión por primera vez, el sistema le pedirá que la cambie.\n\n" +
-                "Puede acceder al portal en: http://localhost:4200/login\n\n" +
+                "Puede acceder al portal en: %s/login\n\n" +
                 "Atentamente,\n" +
                 "Hospital BioCore Medical",
-                firstName, username, tempPassword
+                firstName, username, tempPassword, frontendUrl
             );
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(toEmail);
             message.setSubject(subject);
             message.setText(body);
             mailSender.send(message);
             log.info("Credenciales enviadas a {}", toEmail);
         } catch (Exception e) {
-            log.error("Error al enviar credenciales de bienvenida: {}", e.getMessage());
+            log.error("Error al enviar credenciales de bienvenida a {}: {} — {}", toEmail, e.getClass().getSimpleName(), e.getMessage());
+        }
+    }
+
+    /**
+     * FA02 CU 00: Confirmación de registro exitoso para auto-registro del portal.
+     * NO incluye contraseña — el paciente la eligió él mismo.
+     */
+    public void sendPortalRegistrationConfirmation(String toEmail, String firstName, String username) {
+        if (toEmail == null || toEmail.isBlank()) return;
+        try {
+            String body = String.format(
+                "Estimado(a) %s,\n\n" +
+                "Su registro en el portal de BioCore Medical ha sido completado exitosamente.\n\n" +
+                "Su nombre de usuario es: %s\n\n" +
+                "Puede iniciar sesión en: %s/login\n\n" +
+                "Al llegar al hospital, presente su DPI en recepción para recibir su turno.\n\n" +
+                "Atentamente,\n" +
+                "Hospital BioCore Medical",
+                firstName, username, frontendUrl
+            );
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Registro Exitoso — BioCore Medical Portal");
+            message.setText(body);
+            mailSender.send(message);
+            log.info("Confirmación de registro portal enviada a {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar confirmación de registro portal a {}: {} — {}", toEmail, e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
@@ -98,6 +135,7 @@ public class EmailService {
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(fromEmail);
             helper.setTo(patient.getEmail());
             helper.setSubject("Resultados de Laboratorio - Hospital BioCore Medical");
             helper.setText(body);
@@ -171,6 +209,7 @@ public class EmailService {
             body.append("Atentamente,\nHospital BioCore Medical");
 
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(patient.getEmail());
             message.setSubject("Resumen de Consulta — Hospital BioCore Medical");
             message.setText(body.toString());
@@ -214,6 +253,7 @@ public class EmailService {
             );
 
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(patient.getEmail());
             message.setSubject("Comprobante de Pago — Hospital BioCore Medical");
             message.setText(body);
@@ -249,6 +289,7 @@ public class EmailService {
             body.append("Atentamente,\nHospital BioCore Medical");
 
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(patient.getEmail());
             message.setSubject("Reporte Médico de Emergencia — Hospital BioCore Medical");
             message.setText(body.toString());
@@ -298,6 +339,7 @@ public class EmailService {
             body.append("\nGracias por su preferencia.\n\nAtentamente,\nFarmacia BioCore Medical");
 
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(patient.getEmail());
             message.setSubject("Comprobante Farmacia — Hospital BioCore Medical");
             message.setText(body.toString());
@@ -344,6 +386,7 @@ public class EmailService {
             );
 
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(patient.getEmail());
             message.setSubject("Confirmación de Cita — Hospital BioCore Medical");
             message.setText(body);

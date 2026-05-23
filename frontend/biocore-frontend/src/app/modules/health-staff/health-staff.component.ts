@@ -103,7 +103,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                         <mat-icon matPrefix>badge</mat-icon>
                         <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
                                (keypress)="onlyDigits($event)">
-                        <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                        <mat-error>El DPI debe tener 13 dígitos y no puede iniciar con 0</mat-error>
                       </mat-form-field>
                       <div class="step-actions">
                         <button mat-raised-button color="primary"
@@ -565,7 +565,7 @@ export class HealthStaffComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.recepDpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     this.recepPatientForm = this.fb.group({
       firstName:       ['', Validators.required],

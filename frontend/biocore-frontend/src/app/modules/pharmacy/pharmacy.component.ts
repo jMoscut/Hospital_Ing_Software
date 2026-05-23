@@ -142,6 +142,16 @@ interface CartItem {
                       <span>Total:</span>
                       <strong>Q{{ cartTotal | number:'1.2-2' }}</strong>
                     </div>
+                    <!-- Discount preview -->
+                    <div *ngIf="foundPatient && otcDiscountPct > 0"
+                         style="margin-top:8px;padding:10px 14px;background:#e8f5e9;border-radius:10px;border:1px solid #a5d6a7;font-size:.88rem">
+                      <div style="display:flex;justify-content:space-between;color:#2e7d32">
+                        <span>Descuento {{ otcDiscountPct }}% (seguro):</span><span>-Q{{ otcDiscountAmount | number:'1.2-2' }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #c8e6c9;padding-top:5px;margin-top:5px">
+                        <span>Neto a cobrar:</span><span style="color:#1b5e20">Q{{ otcNetTotal | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="cart-patient" *ngIf="cart.length > 0">
@@ -197,13 +207,13 @@ interface CartItem {
                               [disabled]="processing"
                               (click)="processOtcSale('DEBIT_CARD')">
                         <mat-icon>credit_card</mat-icon>
-                        {{ processing ? 'Procesando...' : 'Débito — Q' + (cartTotal | number:'1.2-2') }}
+                        {{ processing ? 'Procesando...' : 'Débito — Q' + (otcNetTotal | number:'1.2-2') }}
                       </button>
                       <button mat-raised-button color="accent" style="flex:1"
                               [disabled]="processing"
                               (click)="processOtcSale('CREDIT_CARD')">
                         <mat-icon>credit_score</mat-icon>
-                        {{ processing ? 'Procesando...' : 'Crédito — Q' + (cartTotal | number:'1.2-2') }}
+                        {{ processing ? 'Procesando...' : 'Crédito — Q' + (otcNetTotal | number:'1.2-2') }}
                       </button>
                     </div>
 
@@ -215,18 +225,18 @@ interface CartItem {
                         <input matInput type="number" [(ngModel)]="otcCashReceived" min="0" step="0.50">
                       </mat-form-field>
                       <div class="change-row" *ngIf="otcCashReceived > 0">
-                        <span>Total:</span><strong>Q{{ cartTotal | number:'1.2-2' }}</strong>
+                        <span>A cobrar:</span><strong>Q{{ otcNetTotal | number:'1.2-2' }}</strong>
                         <span style="margin-left:12px">Vuelto:</span>
-                        <strong [class.change-ok]="otcCashReceived >= cartTotal"
-                                [class.change-short]="otcCashReceived < cartTotal">
-                          Q{{ (otcCashReceived - cartTotal) | number:'1.2-2' }}
+                        <strong [class.change-ok]="otcCashReceived >= otcNetTotal"
+                                [class.change-short]="otcCashReceived < otcNetTotal">
+                          Q{{ (otcCashReceived - otcNetTotal) | number:'1.2-2' }}
                         </strong>
                       </div>
                       <button mat-raised-button color="primary" class="w-full"
-                              [disabled]="otcCashReceived < cartTotal || processing"
+                              [disabled]="otcCashReceived < otcNetTotal || processing"
                               (click)="processOtcSale('CASH')">
                         <mat-icon>payments</mat-icon>
-                        {{ processing ? 'Procesando...' : 'Confirmar Pago — Q' + (cartTotal | number:'1.2-2') }}
+                        {{ processing ? 'Procesando...' : 'Confirmar Pago — Q' + (otcNetTotal | number:'1.2-2') }}
                       </button>
                     </div>
                   </div>
@@ -353,6 +363,16 @@ interface CartItem {
                       <span>Total estimado:</span>
                       <strong>Q{{ rxTotal | number:'1.2-2' }}</strong>
                     </div>
+                    <!-- Discount preview -->
+                    <div *ngIf="rxPatient && rxDiscountPct > 0"
+                         style="margin-top:8px;padding:10px 14px;background:#e8f5e9;border-radius:10px;border:1px solid #a5d6a7;font-size:.88rem">
+                      <div style="display:flex;justify-content:space-between;color:#2e7d32">
+                        <span>Descuento {{ rxDiscountPct }}% (seguro):</span><span>-Q{{ rxDiscountAmount | number:'1.2-2' }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #c8e6c9;padding-top:5px;margin-top:5px">
+                        <span>Neto a cobrar:</span><span style="color:#1b5e20">Q{{ rxNetTotal | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
                   </mat-card-content>
                 </mat-card>
               </div>
@@ -383,13 +403,13 @@ interface CartItem {
                             [disabled]="rxProcessing"
                             (click)="processRxSale('DEBIT_CARD')">
                       <mat-icon>credit_card</mat-icon>
-                      {{ rxProcessing ? 'Procesando...' : 'Débito — Q' + (rxTotal | number:'1.2-2') }}
+                      {{ rxProcessing ? 'Procesando...' : 'Débito — Q' + (rxNetTotal | number:'1.2-2') }}
                     </button>
                     <button mat-raised-button color="accent" style="flex:1"
                             [disabled]="rxProcessing"
                             (click)="processRxSale('CREDIT_CARD')">
                       <mat-icon>credit_score</mat-icon>
-                      {{ rxProcessing ? 'Procesando...' : 'Crédito — Q' + (rxTotal | number:'1.2-2') }}
+                      {{ rxProcessing ? 'Procesando...' : 'Crédito — Q' + (rxNetTotal | number:'1.2-2') }}
                     </button>
                   </div>
 
@@ -401,18 +421,18 @@ interface CartItem {
                       <input matInput type="number" [(ngModel)]="rxCashReceived" min="0" step="0.50">
                     </mat-form-field>
                     <div class="change-row" *ngIf="rxCashReceived > 0">
-                      <span>Total:</span><strong>Q{{ rxTotal | number:'1.2-2' }}</strong>
+                      <span>A cobrar:</span><strong>Q{{ rxNetTotal | number:'1.2-2' }}</strong>
                       <span style="margin-left:12px">Vuelto:</span>
-                      <strong [class.change-ok]="rxCashReceived >= rxTotal"
-                              [class.change-short]="rxCashReceived < rxTotal">
-                        Q{{ (rxCashReceived - rxTotal) | number:'1.2-2' }}
+                      <strong [class.change-ok]="rxCashReceived >= rxNetTotal"
+                              [class.change-short]="rxCashReceived < rxNetTotal">
+                        Q{{ (rxCashReceived - rxNetTotal) | number:'1.2-2' }}
                       </strong>
                     </div>
                     <button mat-raised-button color="primary"
-                            [disabled]="rxCashReceived < rxTotal || rxProcessing"
+                            [disabled]="rxCashReceived < rxNetTotal || rxProcessing"
                             (click)="processRxSale('CASH')">
                       <mat-icon>payments</mat-icon>
-                      {{ rxProcessing ? 'Procesando...' : 'Confirmar Pago — Q' + (rxTotal | number:'1.2-2') }}
+                      {{ rxProcessing ? 'Procesando...' : 'Confirmar Pago — Q' + (rxNetTotal | number:'1.2-2') }}
                     </button>
                   </div>
                 </mat-card-content>
@@ -715,6 +735,7 @@ export class PharmacyComponent implements OnInit {
   rxPaymentMode: '' | 'pos' | 'cash' = '';
   rxCashReceived = 0;
   rxProcessing = false;
+  rxPatient: any = null;
 
   // ── Tab 3: Inventory ─────────────────────────────────────────────────
   inventorySearch = '';
@@ -793,6 +814,20 @@ export class PharmacyComponent implements OnInit {
     return this.selectedRx.items.some(i => !i.dispatched && i.medicineStock != null && i.medicineStock < i.quantity);
   }
 
+  get otcDiscountPct(): number { return this.foundPatient?.discountPercentage ?? 0; }
+  get otcDiscountAmount(): number {
+    if (!this.otcDiscountPct) return 0;
+    return Math.round(this.cartTotal * this.otcDiscountPct) / 100;
+  }
+  get otcNetTotal(): number { return this.cartTotal - this.otcDiscountAmount; }
+
+  get rxDiscountPct(): number { return this.rxPatient?.discountPercentage ?? 0; }
+  get rxDiscountAmount(): number {
+    if (!this.rxDiscountPct) return 0;
+    return Math.round(this.rxTotal * this.rxDiscountPct) / 100;
+  }
+  get rxNetTotal(): number { return this.rxTotal - this.rxDiscountAmount; }
+
   // ── Tab 1: OTC Methods ───────────────────────────────────────────────
   addToCart(m: Medicine): void {
     const existing = this.cart.find(i => i.medicine.id === m.id);
@@ -828,6 +863,10 @@ export class PharmacyComponent implements OnInit {
 
   searchPatient(): void {
     if (!this.patientDpiSearch) return;
+    if (this.patientDpiSearch.startsWith('0')) {
+      this.notification.error('El DPI no puede iniciar con 0');
+      return;
+    }
     this.patientNotFound = false;
     this.patientService.getByDpi(this.patientDpiSearch).subscribe({
       next: res => {
@@ -888,16 +927,25 @@ export class PharmacyComponent implements OnInit {
   // ── Tab 2: Prescription Methods ──────────────────────────────────────
   searchByDpi(): void {
     if (!this.rxDpiSearch) return;
+    if (this.rxDpiSearch.startsWith('0')) {
+      this.notification.error('El DPI no puede iniciar con 0');
+      return;
+    }
     this.rxLoading = true;
     this.rxSearched = true;
     this.rxResults = [];
     this.selectedRx = null;
+    this.rxPatient = null;
     this.prescriptionService.getByDpi(this.rxDpiSearch.trim()).subscribe({
       next: res => {
         if (res.success) this.rxResults = res.data;
         this.rxLoading = false;
       },
       error: () => { this.rxLoading = false; }
+    });
+    this.patientService.getByDpi(this.rxDpiSearch.trim()).subscribe({
+      next: res => { if (res.success && res.data) this.rxPatient = res.data; },
+      error: () => {}
     });
   }
 

@@ -10,7 +10,7 @@ import java.time.LocalDate;
 public class PatientCreateRequest {
     /** RN-01: 13 dígitos numéricos */
     @NotBlank
-    @Pattern(regexp = "\\d{13}", message = "El DPI debe contener exactamente 13 dígitos numéricos")
+    @Pattern(regexp = "[1-9]\\d{12}", message = "El DPI debe contener exactamente 13 dígitos numéricos y no puede iniciar con 0")
     private String dpi;
 
     @NotBlank private String firstName;

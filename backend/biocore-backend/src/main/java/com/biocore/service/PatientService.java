@@ -10,6 +10,7 @@ import com.biocore.repository.InsuranceRepository;
 import com.biocore.repository.PatientRepository;
 import com.biocore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PatientService {
 
     private final PatientRepository patientRepository;
@@ -59,8 +61,25 @@ public class PatientService {
                 .collect(Collectors.toList());
     }
 
+    /** FA01 CU 01: Staff registers patient — always creates account with temp password */
     @Transactional
     public PatientDTO create(PatientCreateRequest req) {
+        return createInternal(req, true);
+    }
+
+    /** FA02 CU 00: Patient self-registers — uses their own username/password, no temp password */
+    @Transactional
+    public PatientDTO createFromPortal(PatientCreateRequest req) {
+        return createInternal(req, false);
+    }
+
+    /** CU7: EmergencyService — creates minimal patient without portal account */
+    @Transactional
+    public PatientDTO createWithoutAccount(PatientCreateRequest req) {
+        return createInternal(req, false);
+    }
+
+    private PatientDTO createInternal(PatientCreateRequest req, boolean createAccount) {
         // RN-01: validación de DPI
         if (patientRepository.existsByDpiAndActiveTrue(req.getDpi())) {
             throw new RuntimeException("Ya existe un paciente con el DPI: " + req.getDpi());
@@ -94,22 +113,20 @@ public class PatientService {
         // ── Crear cuenta de portal ──────────────────────────────────────────────
         String tempPassword = null;
 
-        boolean shouldCreateAccount = (req.getUsername() != null && !req.getUsername().isBlank())
-                || req.isCreateAccount();
+        // Portal self-registration: patient provided own username+password
+        boolean isPortalSelfReg = !createAccount
+                && req.getUsername() != null && !req.getUsername().isBlank()
+                && req.getPassword() != null && !req.getPassword().isBlank();
 
-        if (shouldCreateAccount) {
-            // Determinar username: si no viene del form, usar el DPI
-            String username = (req.getUsername() != null && !req.getUsername().isBlank())
-                    ? req.getUsername()
-                    : req.getDpi();
+        if (createAccount) {
+            // FA01 CU 01: staff registers → DPI as username, temp password
+            String username = req.getDpi();
 
             if (userRepository.existsByUsername(username)) {
                 throw new RuntimeException("El nombre de usuario '" + username + "' ya está en uso.");
             }
 
-            // Determinar contraseña: si no viene, generar temporal (RN-P003)
-            boolean isTempPassword = (req.getPassword() == null || req.getPassword().isBlank());
-            String rawPassword = isTempPassword ? generateTempPassword() : req.getPassword();
+            String rawPassword = generateTempPassword();
 
             User user = User.builder()
                     .firstName(req.getFirstName())
@@ -118,18 +135,39 @@ public class PatientService {
                     .email(req.getEmail() != null ? req.getEmail() : "")
                     .password(passwordEncoder.encode(rawPassword))
                     .role(Role.PATIENT)
-                    .mustChangePassword(isTempPassword)
+                    .mustChangePassword(true)
                     .build();
 
             User savedUser = userRepository.save(user);
             patient.setUserId(savedUser.getId());
 
-            if (isTempPassword) {
-                tempPassword = rawPassword;
-                // Enviar credenciales por correo si tiene email
-                if (req.getEmail() != null && !req.getEmail().isBlank()) {
-                    emailService.sendWelcomeCredentials(req.getEmail(), req.getFirstName(), username, rawPassword);
-                }
+            tempPassword = rawPassword;
+            if (req.getEmail() != null && !req.getEmail().isBlank()) {
+                emailService.sendWelcomeCredentials(req.getEmail(), req.getFirstName(), username, rawPassword);
+            }
+        } else if (isPortalSelfReg) {
+            // FA02 CU 00: patient self-registers → chosen username, own password, no temp password shown
+            String username = req.getUsername();
+
+            if (userRepository.existsByUsername(username)) {
+                throw new RuntimeException("El nombre de usuario '" + username + "' ya está en uso.");
+            }
+
+            User user = User.builder()
+                    .firstName(req.getFirstName())
+                    .lastName(req.getLastName())
+                    .username(username)
+                    .email(req.getEmail() != null ? req.getEmail() : "")
+                    .password(passwordEncoder.encode(req.getPassword()))
+                    .role(Role.PATIENT)
+                    .mustChangePassword(false)
+                    .build();
+
+            User savedUser = userRepository.save(user);
+            patient.setUserId(savedUser.getId());
+
+            if (req.getEmail() != null && !req.getEmail().isBlank()) {
+                emailService.sendPortalRegistrationConfirmation(req.getEmail(), req.getFirstName(), username);
             }
         }
         // ───────────────────────────────────────────────────────────────────────

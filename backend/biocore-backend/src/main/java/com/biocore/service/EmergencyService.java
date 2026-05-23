@@ -77,9 +77,7 @@ public class EmergencyService {
             req.setLastName(lastName != null && !lastName.isBlank() ? lastName : "No Identificado");
             req.setPhone(phone);
             req.setEmail(email);
-            req.setCreateAccount(false);
-
-            patientService.create(req);
+            patientService.createWithoutAccount(req);
             patient = patientRepository.findByDpiAndActiveTrue(effectiveDpi).orElseThrow();
 
             report = EmergencyReport.builder()

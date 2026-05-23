@@ -128,7 +128,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <mat-icon matPrefix>badge</mat-icon>
                       <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
                              (keypress)="onlyDigits($event)">
-                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                      <mat-error>El DPI debe tener 13 dígitos y no puede iniciar con 0</mat-error>
                     </mat-form-field>
                     <div class="step-actions">
                       <button mat-raised-button color="primary" type="button"
@@ -505,7 +505,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <mat-icon matPrefix>badge</mat-icon>
                       <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
                              (keypress)="onlyDigits($event)">
-                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                      <mat-error>El DPI debe tener 13 dígitos y no puede iniciar con 0</mat-error>
                     </mat-form-field>
                     <div class="step-actions">
                       <button mat-raised-button color="primary" type="button"
@@ -860,6 +860,20 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                            min="0.01" step="0.01" placeholder="0.00" (ngModelChange)="emgComputeChange()">
                   </mat-form-field>
 
+                  <!-- Discount preview -->
+                  <div *ngIf="emgAmount && emgAmount > 0 && emgDiscountPct > 0"
+                       style="margin:12px 0;padding:10px 14px;background:#e8f5e9;border-radius:10px;border:1px solid #a5d6a7;font-size:.9rem">
+                    <div style="display:flex;justify-content:space-between">
+                      <span>Monto bruto:</span><span>Q{{ emgAmount.toFixed(2) }}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;color:#2e7d32">
+                      <span>Descuento {{ emgDiscountPct }}% (seguro):</span><span>-Q{{ emgDiscountAmount.toFixed(2) }}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #c8e6c9;padding-top:6px;margin-top:6px">
+                      <span>Neto a cobrar:</span><span style="color:#1b5e20">Q{{ emgNetAmount?.toFixed(2) }}</span>
+                    </div>
+                  </div>
+
                   <!-- Method -->
                   <h3 style="margin:16px 0 12px">Método de Pago</h3>
                   <div class="pay-method-grid">
@@ -883,7 +897,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                             [disabled]="emgProcessing || !emgAmount || emgAmount <= 0" (click)="emgProcessPayment()">
                       <mat-spinner *ngIf="emgProcessing" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                       <mat-icon *ngIf="!emgProcessing">point_of_sale</mat-icon>
-                      {{ emgProcessing ? 'Procesando...' : 'Cobrar Q' + (emgAmount || 0) + ' con POS' }}
+                      {{ emgProcessing ? 'Procesando...' : 'Cobrar Q' + emgEffective.toFixed(2) + ' con POS' }}
                     </button>
                   </div>
 
@@ -894,20 +908,20 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <input matInput type="number" [(ngModel)]="emgCashReceived" [ngModelOptions]="{standalone:true}"
                              min="0" step="0.01" (ngModelChange)="emgComputeChange()">
                     </mat-form-field>
-                    <div class="change-display" *ngIf="emgCashReceived !== null && emgAmount && emgCashReceived >= emgAmount">
+                    <div class="change-display" *ngIf="emgCashReceived !== null && emgAmount && emgCashReceived >= emgEffective">
                       <mat-icon>change_circle</mat-icon>
                       <span>Vuelto a entregar: <strong>Q{{ emgChange.toFixed(2) }}</strong></span>
                     </div>
-                    <div class="insufficient-notice" *ngIf="emgCashReceived !== null && emgAmount && emgCashReceived < emgAmount">
+                    <div class="insufficient-notice" *ngIf="emgCashReceived !== null && emgAmount && emgCashReceived < emgEffective">
                       <mat-icon>warning</mat-icon>
-                      <span>Efectivo insuficiente. Faltan Q{{ (emgAmount - emgCashReceived).toFixed(2) }}</span>
+                      <span>Efectivo insuficiente. Faltan Q{{ (emgEffective - (emgCashReceived || 0)).toFixed(2) }}</span>
                     </div>
                     <button mat-raised-button color="warn" style="width:100%;margin-top:12px;font-size:1.05rem;padding:14px"
-                            [disabled]="emgProcessing || !emgAmount || emgAmount <= 0 || emgCashReceived === null || emgCashReceived < emgAmount"
+                            [disabled]="emgProcessing || !emgAmount || emgAmount <= 0 || emgCashReceived === null || emgCashReceived < emgEffective"
                             (click)="emgProcessPayment()">
                       <mat-spinner *ngIf="emgProcessing" diameter="22" style="display:inline-block;margin-right:10px"></mat-spinner>
                       <mat-icon *ngIf="!emgProcessing">payments</mat-icon>
-                      {{ emgProcessing ? 'Procesando...' : 'Confirmar Pago en Efectivo' }}
+                      {{ emgProcessing ? 'Procesando...' : 'Confirmar Pago — Q' + emgEffective.toFixed(2) }}
                     </button>
                   </div>
 
@@ -1413,7 +1427,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.citDpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     this.citPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
@@ -1427,7 +1441,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     });
 
     this.labDpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     this.labPatientForm = this.fb.group({
       firstName:       ['', Validators.required],
@@ -1476,7 +1490,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.emgStartPolling();
 
     this.rscdDpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     const now2 = new Date();
     this.rscdCalYear = now2.getFullYear();
@@ -1660,6 +1674,20 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   get labDiscountPct(): number { return this.labExistingPatient?.discountPercentage ?? 0; }
   get labDiscountAmount(): number { return Math.round(this.labFee * this.labDiscountPct) / 100; }
   get labNetFee(): number { return this.labFee - this.labDiscountAmount; }
+
+  get emgDiscountPct(): number { return this.emgSelectedOrder?.discountPercentage ?? 0; }
+  get emgDiscountAmount(): number {
+    if (!this.emgAmount || this.emgAmount <= 0 || !this.emgDiscountPct) return 0;
+    return Math.round(this.emgAmount * this.emgDiscountPct) / 100;
+  }
+  get emgNetAmount(): number | null {
+    if (!this.emgAmount || this.emgAmount <= 0) return null;
+    return this.emgAmount - this.emgDiscountAmount;
+  }
+  get emgEffective(): number {
+    if (this.emgDiscountPct > 0 && this.emgNetAmount !== null) return this.emgNetAmount;
+    return this.emgAmount ?? 0;
+  }
 
   citLoadSlots(silent = false): void {
     if (!this.citSelectedDate || !this.citSelectedClinicId) return;
@@ -2364,13 +2392,13 @@ export class PaymentsComponent implements OnInit, OnDestroy {
 
   emgComputeChange(): void {
     this.emgChange = (this.emgCashReceived !== null && this.emgAmount !== null)
-      ? Math.max(0, this.emgCashReceived - this.emgAmount) : 0;
+      ? Math.max(0, this.emgCashReceived - this.emgEffective) : 0;
   }
 
   emgProcessPayment(): void {
     if (!this.emgSelectedOrder || !this.emgAmount || this.emgAmount <= 0) return;
     this.emgProcessing = true;
-    const method = this.emgPayMode === 'TARJETA' ? 'POS_CARD' : 'CASH';
+    const method = this.emgPayMode === 'TARJETA' ? 'DEBIT_CARD' : 'CASH';
     this.emergencyService.processPayment(this.emgSelectedOrder.id, this.emgAmount, method).subscribe({
       next: res => {
         if (res.success) {

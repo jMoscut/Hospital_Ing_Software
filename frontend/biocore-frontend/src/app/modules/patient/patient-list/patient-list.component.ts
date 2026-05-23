@@ -273,7 +273,7 @@ export class PatientListComponent implements OnInit {
     this.editForm = this.fb.group({
       firstName:        [p.firstName,           Validators.required],
       lastName:         [p.lastName,            Validators.required],
-      dpi:              [p.dpi,                 [Validators.required, Validators.pattern(/^\d{13}$/)]],
+      dpi:              [p.dpi,                 [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]],
       birthDate:        [p.birthDate            || ''],
       phone:            [p.phone               || '', [Validators.pattern(/^[1-9]\d{7}$/)]],
       email:            [p.email               || '', [Validators.email]],

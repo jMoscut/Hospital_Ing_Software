@@ -47,9 +47,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
                                              @Param("today") LocalDate today,
                                              @Param("todayStart") LocalDateTime todayStart);
 
-    /** Todos los tickets activos de hoy en todas las clínicas — para monitoreo de personal de salud. */
+    /** Todos los tickets activos de hoy en todas las clínicas — para monitoreo de personal de salud.
+     *  Tickets URGENT se incluyen sin restricción de fecha (emergencias pagadas de días anteriores). */
     @Query("SELECT t FROM Ticket t WHERE t.status IN :statuses " +
-           "AND (t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
+           "AND (t.priority = 'URGENT' OR t.scheduledDate = :today OR (t.scheduledDate IS NULL AND t.createdAt >= :todayStart)) " +
            "ORDER BY t.clinic.id ASC, CASE t.priority WHEN 'URGENT' THEN 0 ELSE 1 END, t.createdAt ASC")
     List<Ticket> findTodayAllActive(@Param("statuses") List<TicketStatus> statuses,
                                      @Param("today") LocalDate today,

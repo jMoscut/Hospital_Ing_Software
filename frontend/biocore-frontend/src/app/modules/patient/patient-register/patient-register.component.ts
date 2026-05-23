@@ -52,20 +52,20 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
 
       <mat-card>
         <mat-card-content>
-          <mat-stepper [linear]="true" #stepper>
+          <mat-stepper [linear]="true" #stepper autocomplete="off">
 
             <!-- Paso 1: Buscar por DPI -->
             <mat-step [stepControl]="dpiForm" label="Identificación">
               <form [formGroup]="dpiForm">
                 <h3>Identificación por DPI</h3>
-                <p class="hint-text">El DPI debe contener exactamente 13 dígitos numéricos.</p>
+                <p class="hint-text">El DPI debe contener exactamente 13 dígitos numéricos y no puede iniciar con 0.</p>
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>DPI del Paciente</mat-label>
                   <mat-icon matPrefix>badge</mat-icon>
                   <input matInput formControlName="dpi" placeholder="0000000000000" maxlength="13"
                          (keypress)="onlyDigits($event)">
                   <mat-error *ngIf="dpiForm.get('dpi')?.hasError('pattern')">
-                    El DPI debe tener exactamente 13 dígitos numéricos
+                    El DPI debe tener 13 dígitos y no puede iniciar con 0
                   </mat-error>
                 </mat-form-field>
                 <button mat-raised-button color="primary" type="button" (click)="searchByDpi()" [disabled]="dpiForm.invalid || searching">
@@ -124,7 +124,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Correo Electrónico</mat-label>
-                    <input matInput formControlName="email" type="email">
+                    <input matInput formControlName="email" type="email" autocomplete="new-password">
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Dirección</mat-label>
@@ -253,7 +253,7 @@ export class PatientRegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.dpiForm = this.fb.group({
-      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]]
+      dpi: ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]]
     });
     this.patientForm = this.fb.group({
       firstName:        ['', Validators.required],
@@ -320,7 +320,8 @@ export class PatientRegisterComponent implements OnInit {
         }
       });
     } else {
-      const createData = { ...data, createAccount: true };
+      const createData: any = { ...data, createAccount: true };
+      delete createData.password; // evita que autocomplete del navegador envíe contraseña guardada
       this.patientService.create(createData).subscribe({
         next: res => {
           if (res.success) {

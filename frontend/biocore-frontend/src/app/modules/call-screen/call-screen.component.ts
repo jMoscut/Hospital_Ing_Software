@@ -201,8 +201,8 @@ export class CallScreenComponent implements OnInit, OnDestroy {
   private lastCalledIds = new Set<number>();
 
   // Auto-announce emergency state (sessionStorage-backed — survives component refresh within tab)
-  private readonly EMG_REPEAT_MS = 25000;
-  private readonly EMG_MAX_CALLS = 3;
+  private readonly EMG_REPEAT_MS = 60000;
+  private readonly EMG_MAX_CALLS = 15;
   private readonly SS_COUNT = 'emg_announce_count';
   private readonly SS_TIME  = 'emg_last_announced';
   private announceId = 0; // incremented each announce/cancel to abort stale onend loops
@@ -226,6 +226,10 @@ export class CallScreenComponent implements OnInit, OnDestroy {
       next: res => {
         if (!res.success) return;
         const all = res.data as any[];
+
+        // DEBUG — remove after confirming fix
+        console.log('[CALLSCREEN] poll:', all.length, 'tickets |',
+          all.map((t: any) => `${t.ticketNumber}:${t.status}:${t.priority}`).join(' | '));
 
         // Emergency tickets: WAITING + URGENT → auto-announced
         const urgentWaiting = all.filter(t => t.status === 'WAITING' && t.priority === 'URGENT');

@@ -133,7 +133,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                       <mat-icon matPrefix>badge</mat-icon>
                       <input matInput formControlName="dpi" maxlength="13" placeholder="0000000000000"
                              (keypress)="onlyDigits($event)">
-                      <mat-error>El DPI debe tener exactamente 13 dígitos</mat-error>
+                      <mat-error>El DPI debe tener 13 dígitos y no puede iniciar con 0</mat-error>
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Número de Seguro (opcional)</mat-label>
@@ -328,7 +328,7 @@ export class PublicRegisterComponent implements OnInit {
       phone:           ['', [Validators.pattern(/^[1-9]\d{0,7}$/)]],
       email:           ['', [Validators.required, Validators.email]],
       address:         [''],
-      dpi:             ['', [Validators.required, Validators.pattern(/^\d{13}$/)]],
+      dpi:             ['', [Validators.required, Validators.pattern(/^[1-9]\d{12}$/)]],
       insuranceNumber: [''],
       insuranceId:     [null]
     });
