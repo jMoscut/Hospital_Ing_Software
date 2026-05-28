@@ -114,7 +114,10 @@ Hospital_Ing_Software/
 │       │   ├── java/com/biocore/
 │       │   │   ├── BiocoreApplication.java  # Clase principal
 │       │   │   │
-│       │   │   ├── config/                  # Configuración (CORS, JWT, etc.)
+│       │   │   ├── config/                  # Configuración (CORS, Security, DataInitializer)
+│       │   │   │   ├── SecurityConfig.java  # Spring Security + CORS + JWT filter
+│       │   │   │   ├── DataInitializer.java # Seed de datos al arrancar
+│       │   │   │   └── SchemaMigrationRunner.java
 │       │   │   │
 │       │   │   ├── controller/              # Controladores REST
 │       │   │   │   └── *Controller.java
@@ -133,12 +136,12 @@ Hospital_Ing_Software/
 │       │   │   │   └── response/            # DTOs de salida
 │       │   │   │
 │       │   │   ├── security/                # Seguridad
-│       │   │   │   ├── JwtProvider.java     # Proveedor JWT
-│       │   │   │   ├── JwtFilter.java       # Filtro JWT
-│       │   │   │   └── SecurityConfig.java  # Configuración de seguridad
+│       │   │   │   ├── JwtUtil.java         # Generación y validación JWT
+│       │   │   │   ├── JwtFilter.java       # Filtro JWT (OncePerRequestFilter)
+│       │   │   │   ├── UserDetailsServiceImpl.java
+│       │   │   │   └── CustomUserDetails.java
 │       │   │   │
-│       │   │   └── enums/                   # Enumeraciones
-│       │   │       └── UserRole.java
+│       │   │   └── enums/                   # Enumeraciones de dominio
 │       │   │
 │       │   └── resources/
 │       │       └── application.properties   # Propiedades de la aplicación
@@ -148,12 +151,15 @@ Hospital_Ing_Software/
 │       └── uploads/                         # Almacenamiento de archivos
 │
 ├── Docs/
-│   ├── Manual_Tecnico_BioCore_Medical.md           # Documentación técnica
-│   ├── Manual_Tecnico_BioCore_Medical.pdf          # (formato PDF)
-│   ├── Manual_Usuario_BioCore_Medical_v2.2.md      # Manual de usuario
-│   ├── Manual_Usuario_BioCore_Medical_v2.2.pdf     # (formato PDF)
-│   ├── BioCore_Medical_Casos_de_Uso.md             # Casos de uso
-│   └── BioCore_Medical_Casos_de_Uso.pdf            # (formato PDF)
+│   ├── 2. Manual_Tecnico_BioCore_Medical_v2.2.md   # Documentación técnica (este archivo)
+│   ├── 1. Manual_Usuario_BioCore_Medical_v2.2.pdf  # Manual de usuario
+│   ├── 4. Plan de pruebas de software.pdf          # Plan de pruebas
+│   ├── 5. BioCore_Medical_Casos_de_Uso.pdf         # Casos de uso
+│   ├── 3.1 Diagrama de Clases.png
+│   ├── 3.2 Diagrama de Estados.png
+│   ├── 3.3 Diagrama de Procesos.png
+│   ├── 3.4 Diagrama de Despliegue.png
+│   └── 3.5 Diagrama Entidad Relacion.png
 │
 └── README.md                                 # Este archivo
 
@@ -163,16 +169,14 @@ Hospital_Ing_Software/
 
 ## Organización de Módulos Frontend
 
-Cada módulo en `src/app/modules/` sigue la estructura:
+Cada módulo en `src/app/modules/` es un **componente Angular standalone** contenido en un único archivo:
 
 ```
 modulo/
-├── components/        # Componentes del módulo
-├── pages/            # Páginas/vistas principales
-├── services/         # Servicios específicos del módulo
-├── models/           # Tipos/interfaces locales
-└── modulo.routes.ts  # Rutas del módulo
+└── modulo.component.ts   # Componente standalone con lógica, template y estilos
 ```
+
+Los servicios compartidos viven en `src/app/shared/services/` y son inyectados por los componentes.
 
 ---
 
@@ -259,8 +263,8 @@ cd backend/biocore-backend
 # 2. Configurar application.properties
 #    (Ver sección Variables de Entorno)
 
-# 3. Compilar y ejecutar
-mvn spring-boot:run
+# 3. Compilar y ejecutar (perfil local carga application-local.properties)
+mvn spring-boot:run "-Dspring-boot.run.profiles=local"
 
 # O generar JAR y ejecutar
 mvn clean package
@@ -298,12 +302,10 @@ app.cors.allowed-origins=http://localhost:4200,https://<FRONTEND_DOMAIN>
 spring.servlet.multipart.max-file-size=20MB
 app.upload.dir=uploads/
 
-# Email (Gmail SMTP)
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=<GMAIL>
-spring.mail.password=<APP_PASSWORD>
-spring.mail.properties.mail.smtp.starttls.enable=true
+# Email (SendGrid HTTP API)
+sendgrid.api.key=<SENDGRID_API_KEY>
+sendgrid.from.email=biocore.hospital@gmail.com
+sendgrid.from.name=BioCore Medical
 ```
 
 ### Frontend — `environment.ts`
@@ -347,7 +349,7 @@ Todos los endpoints (excepto `/api/auth/**` y `/api/public/**`) requieren `Autho
 El sistema utiliza **23 tablas** en PostgreSQL gestionadas automáticamente por Hibernate (`ddl-auto=update`).
 
 Tablas principales:
-`users` · `patients` · `clinics` · `tickets` · `appointments` · `vital_signs` · `prescriptions` · `prescription_items` · `medicines` · `lab_exams` · `lab_orders` · `lab_results` · `pharmacy_sales` · `payments` · `emergency_records` · `user_roles` · `insurances` · y más...
+`users` · `patients` · `insurances` · `clinics` · `doctor_clinic_assignments` · `doctor_schedules` · `clinic_schedules` · `appointments` · `slot_reservations` · `tickets` · `vital_signs` · `prescriptions` · `prescription_items` · `medicines` · `lab_exams` · `lab_orders` · `lab_results` · `payments` · `pharmacy_sales` · `pharmacy_sale_items` · `documents` · `emergency_reports` · `emergency_medical_reports`
 
 Ver [Manual_Tecnico_BioCore_Medical.md](./Docs/Manual_Tecnico_BioCore_Medical.md) para el diagrama ER completo y descripción de cada tabla.
 
@@ -385,7 +387,8 @@ El directorio `Docs/` incluye:
 
 | Versión | Descripción |
 |---------|-------------|
-| **2.2** | Versión actual — UI Bosque palette, correcciones globales |
+| **2.3** | Versión actual — validaciones de formulario, filtro reagendamiento, recibo con descuento, usuario único |
+| 2.2 | UI Bosque palette, correcciones globales |
 | 2.1.1 | Hotfixes post-2.1 |
 | 2.1 | Mejoras funcionales |
 | 2.0 | Refactorización mayor de módulos |
