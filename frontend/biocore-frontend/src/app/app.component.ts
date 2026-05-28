@@ -189,7 +189,7 @@ export class AppComponent {
     { path: '/dashboard',    label: 'Dashboard',         icon: 'dashboard',        roles: ['HEALTH_STAFF', 'NURSE', 'ADMIN', 'DOCTOR', 'LAB_TECHNICIAN', 'CASHIER'] },
     { path: '/patients',     label: 'Pacientes',          icon: 'people',           roles: [] },
     { path: '/appointments', label: 'Monitoreo de Cola',  icon: 'queue',            roles: ['HEALTH_STAFF', 'NURSE', 'ADMIN', 'DOCTOR', 'LAB_TECHNICIAN', 'CASHIER'] },
-    { path: '/health-staff', label: 'Recepción',         icon: 'health_and_safety',roles: ['HEALTH_STAFF', 'NURSE'] },
+    { path: '/health-staff', label: 'Personal de Salud',         icon: 'health_and_safety',roles: ['HEALTH_STAFF', 'NURSE'] },
     { path: '/consultation',            label: 'Consulta Médica',    icon: 'medical_services', roles: ['DOCTOR'] },
     { path: '/emergency-consultation',  label: 'Emergencias Médicas', icon: 'emergency',         roles: ['DOCTOR'] },
     { path: '/laboratory',   label: 'Laboratorio',       icon: 'science',          roles: ['LAB_TECHNICIAN'] },

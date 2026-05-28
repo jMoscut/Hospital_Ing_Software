@@ -232,8 +232,12 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                         <input matInput [(ngModel)]="card.number" maxlength="19"
                                placeholder="0000 0000 0000 0000"
                                (input)="formatCardNumber()">
-                        <mat-hint>Ingrese los números de su tarjeta</mat-hint>
+                        <mat-hint>16 dígitos requeridos</mat-hint>
                       </mat-form-field>
+                      <div class="field-error-msg" *ngIf="cardNumberError">
+                        <mat-icon style="font-size:16px;width:16px;height:16px">error_outline</mat-icon>
+                        error de validación en el campo de tarjeta
+                      </div>
                       <div class="card-row-2">
                         <mat-form-field appearance="outline">
                           <mat-label>Vencimiento *</mat-label>
@@ -245,6 +249,10 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                           <input matInput [(ngModel)]="card.cvv" maxlength="4"
                                  type="password" placeholder="•••">
                         </mat-form-field>
+                      </div>
+                      <div class="field-error-msg" *ngIf="expiryError">
+                        <mat-icon style="font-size:16px;width:16px;height:16px">error_outline</mat-icon>
+                        fecha de vencimiento inválida
                       </div>
                     </div>
 
@@ -1064,6 +1072,7 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
     .full-width { width:100%; }
     .card-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .error-msg { display:flex; align-items:center; gap:8px; color:#c62828; font-size:0.88rem; margin:8px 0; background:#fff5f5; border-radius:8px; padding:8px 12px; border:1px solid #fdd; }
+    .field-error-msg { display:flex; align-items:center; gap:6px; color:#c62828; font-size:0.82rem; margin:-6px 0 8px 2px; }
     .hint-text { color:#757575; font-size:0.82rem; margin-top:4px; }
 
     /* ── CONFIRMED ── */
@@ -1493,7 +1502,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         this.appointmentService.getAvailableSlots(dateStr, this.rescheduleTicket.clinicId).subscribe({
           next: res => {
             if (res.success) {
-              this.rscdSlots = res.data;
+              this.rscdSlots = this.filterRscdSlots(res.data, this.rscdDate!);
               if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
                 if (this.rscdReservationId) {
                   this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];
@@ -1590,7 +1599,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.rscdLoadingSlots = true;
     const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
     this.appointmentService.getAvailableSlots(dateStr, this.rescheduleTicket.clinicId).subscribe({
-      next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
+      next: res => { this.rscdSlots = res.success ? this.filterRscdSlots(res.data, day) : []; this.rscdLoadingSlots = false; },
       error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
     });
     this.rscdStartSlotPoll();
@@ -1645,6 +1654,16 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     const selectedStr = `${this.selectedDate.getFullYear()}-${String(this.selectedDate.getMonth()+1).padStart(2,'0')}-${String(this.selectedDate.getDate()).padStart(2,'0')}`;
     if (selectedStr !== this.getCATodayStr()) return slots;
     const cutoff = this.getCAMinutesNow() + 30; // hide slots within 30min of now
+    return slots.filter(slot => {
+      const [h, m] = slot.split(':').map(Number);
+      return h * 60 + m > cutoff;
+    });
+  }
+
+  private filterRscdSlots(slots: string[], forDate: Date): string[] {
+    const selStr = `${forDate.getFullYear()}-${String(forDate.getMonth()+1).padStart(2,'0')}-${String(forDate.getDate()).padStart(2,'0')}`;
+    if (selStr !== this.getCATodayStr()) return slots;
+    const cutoff = this.getCAMinutesNow() + 30;
     return slots.filter(slot => {
       const [h, m] = slot.split(':').map(Number);
       return h * 60 + m > cutoff;
@@ -1794,7 +1813,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   // --- Payment ---
   formatCardNumber(): void {
-    const digits = this.card.number.replace(/\D/g, '').slice(0, 19);
+    const digits = this.card.number.replace(/\D/g, '').slice(0, 16);
     this.card.number = digits.replace(/(.{4})/g, '$1 ').trim();
   }
 
@@ -1887,12 +1906,27 @@ export class MisCitasComponent implements OnInit, OnDestroy {
     this.uploadErrors = [];
   }
 
+  get cardNumberError(): boolean {
+    const digits = this.card.number.replace(/\s/g, '');
+    return digits.length > 0 && digits.length !== 16;
+  }
+
+  get expiryError(): boolean {
+    if (!this.card.expiry || this.card.expiry.length < 5) return false;
+    const m = this.card.expiry.match(/^(\d{2})\/(\d{2})$/);
+    if (!m) return true;
+    const mm = parseInt(m[1]), yy = parseInt(m[2]);
+    if (mm < 1 || mm > 12) return true;
+    const now = new Date();
+    const curYY = now.getFullYear() % 100, curMM = now.getMonth() + 1;
+    return yy < curYY || (yy === curYY && mm < curMM);
+  }
+
   cardValid(): boolean {
     const digits = this.card.number.replace(/\s/g, '');
     if (this.card.name.trim().length < 2) return false;
-    if (digits.length < 13 || digits.length > 19) return false;
+    if (digits.length !== 16) return false;
     if (!/^\d{3,4}$/.test(this.card.cvv)) return false;
-    // Validate expiry MM/YY
     const expiryMatch = this.card.expiry.match(/^(\d{2})\/(\d{2})$/);
     if (!expiryMatch) return false;
     const mm = parseInt(expiryMatch[1]);

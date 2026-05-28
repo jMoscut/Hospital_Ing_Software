@@ -68,7 +68,7 @@ public class UserService {
     @Transactional
     public UserDTO create(UserCreateRequest req) {
         if (userRepository.existsByUsername(req.getUsername())) {
-            throw new RuntimeException("El nombre de usuario ya existe: " + req.getUsername());
+            throw new RuntimeException("El nombre de usuario ya está en uso");
         }
         // RN-M05: Unicidad de colegiado
         if (req.getCollegiateNumber() != null && !req.getCollegiateNumber().isBlank()
@@ -184,7 +184,7 @@ public class UserService {
     public List<Map<String, Object>> getAllStaffStatus() {
         List<Role> staffRoles = List.of(Role.DOCTOR, Role.LAB_TECHNICIAN);
         return userRepository.findAll().stream()
-                .filter(u -> staffRoles.contains(u.getRole()))
+                .filter(u -> staffRoles.contains(u.getRole()) && u.isActive())
                 .map(u -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id",        u.getId());

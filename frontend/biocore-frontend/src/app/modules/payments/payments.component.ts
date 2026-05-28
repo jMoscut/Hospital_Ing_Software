@@ -94,7 +94,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <div class="receipt-row"><mat-icon>event</mat-icon><span><strong>Fecha:</strong> {{ citReceipt.scheduledDate }}</span></div>
                     <div class="receipt-row"><mat-icon>access_time</mat-icon><span><strong>Hora:</strong> {{ citReceipt.scheduledTime }}</span></div>
                     <mat-divider style="margin:12px 0"></mat-divider>
-                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>Monto cobrado:</strong> Q{{ citReceipt.amount }}</span></div>
+                    <div class="receipt-row" *ngIf="citReceipt.discountPct > 0"><mat-icon>sell</mat-icon><span>Precio base: Q{{ citReceipt.baseAmount }} · Descuento {{ citReceipt.discountPct }}%: <strong style="color:#2e7d32">-Q{{ citReceipt.discountAmount.toFixed(2) }}</strong></span></div>
+                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>{{ citReceipt.discountPct > 0 ? 'Total con descuento' : 'Monto cobrado' }}:</strong> Q{{ citReceipt.amount.toFixed(2) }}</span></div>
                     <div class="receipt-row" *ngIf="citReceipt.payMode === 'EFECTIVO'"><mat-icon>money</mat-icon><span><strong>Efectivo recibido:</strong> Q{{ citReceipt.cashReceived }}</span></div>
                     <div class="receipt-row receipt-change" *ngIf="citReceipt.change > 0"><mat-icon>change_circle</mat-icon><span><strong>Vuelto:</strong> Q{{ citReceipt.change.toFixed(2) }}</span></div>
                     <div class="receipt-row"><mat-icon>credit_card</mat-icon><span><strong>Método:</strong> {{ citReceipt.payMode === 'TARJETA' ? 'Tarjeta (POS)' : 'Efectivo' }}</span></div>
@@ -471,7 +472,8 @@ function birthDateValidator(ctrl: AbstractControl): ValidationErrors | null {
                     <div class="receipt-row"><mat-icon>event</mat-icon><span><strong>Fecha:</strong> {{ labReceipt.scheduledDate }}</span></div>
                     <div class="receipt-row"><mat-icon>access_time</mat-icon><span><strong>Hora:</strong> {{ labReceipt.scheduledTime }}</span></div>
                     <mat-divider style="margin:12px 0"></mat-divider>
-                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>Monto cobrado:</strong> Q{{ labReceipt.amount }}</span></div>
+                    <div class="receipt-row" *ngIf="labReceipt.discountPct > 0"><mat-icon>sell</mat-icon><span>Precio base: Q{{ labReceipt.baseAmount }} · Descuento {{ labReceipt.discountPct }}%: <strong style="color:#2e7d32">-Q{{ labReceipt.discountAmount.toFixed(2) }}</strong></span></div>
+                    <div class="receipt-row receipt-total"><mat-icon>payments</mat-icon><span><strong>{{ labReceipt.discountPct > 0 ? 'Total con descuento' : 'Monto cobrado' }}:</strong> Q{{ labReceipt.amount.toFixed(2) }}</span></div>
                     <div class="receipt-row" *ngIf="labReceipt.payMode === 'EFECTIVO'"><mat-icon>money</mat-icon><span><strong>Efectivo recibido:</strong> Q{{ labReceipt.cashReceived }}</span></div>
                     <div class="receipt-row receipt-change" *ngIf="labReceipt.change > 0"><mat-icon>change_circle</mat-icon><span><strong>Vuelto:</strong> Q{{ labReceipt.change.toFixed(2) }}</span></div>
                     <div class="receipt-row"><mat-icon>credit_card</mat-icon><span><strong>Método:</strong> {{ labReceipt.payMode === 'TARJETA' ? 'Tarjeta (POS)' : 'Efectivo' }}</span></div>
@@ -1616,6 +1618,16 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     return h * 60 + m;
   }
 
+  private filterRscdSlotsForToday(slots: string[], forDate: Date): string[] {
+    const selStr = `${forDate.getFullYear()}-${String(forDate.getMonth()+1).padStart(2,'0')}-${String(forDate.getDate()).padStart(2,'0')}`;
+    if (selStr !== this.getCATodayStr()) return slots;
+    const cutoff = this.getCAMinutesNow() + 30;
+    return slots.filter(slot => {
+      const [h, m] = slot.split(':').map(Number);
+      return h * 60 + m > cutoff;
+    });
+  }
+
   citIsPastDay(d: Date): boolean {
     const today = this.getCATodayStr();
     const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1838,16 +1850,19 @@ export class PaymentsComponent implements OnInit, OnDestroy {
             }
             if (confRes.success) {
               this.citReceipt = {
-                ticketNumber:  confRes.data.ticketNumber ?? '—',
-                patientName:   bookRes.data.patientName,
-                clinicName:    bookRes.data.clinicName,
-                type:          this.citType,
-                scheduledDate: dateStr,
-                scheduledTime: this.citSelectedSlot,
-                amount:        this.citFee,
-                payMode:       this.citPayMode,
-                cashReceived:  this.citCashReceived,
-                change:        this.citChange
+                ticketNumber:    confRes.data.ticketNumber ?? '—',
+                patientName:     bookRes.data.patientName,
+                clinicName:      bookRes.data.clinicName,
+                type:            this.citType,
+                scheduledDate:   dateStr,
+                scheduledTime:   this.citSelectedSlot,
+                baseAmount:      this.citFee,
+                discountPct:     this.citDiscountPct,
+                discountAmount:  this.citDiscountAmount,
+                amount:          this.citNetFee,
+                payMode:         this.citPayMode,
+                cashReceived:    this.citCashReceived,
+                change:          this.citChange
               };
               this.citStep = 'receipt';
               this.notification.success('Cita confirmada y turno asignado.');
@@ -2279,15 +2294,18 @@ export class PaymentsComponent implements OnInit, OnDestroy {
                 this.labService.markUsed(this.labSelectedReference.id).subscribe({ error: () => {} });
               }
               this.labReceipt = {
-                ticketNumber:  confRes.data.ticketNumber ?? '—',
-                patientName:   bookRes.data.patientName,
-                examName:      this.labSelectedExam!.name,
-                scheduledDate: dateStr,
-                scheduledTime: this.labSelectedSlot,
-                amount:        this.labFee,
-                payMode:       this.labPayMode,
-                cashReceived:  this.labCashReceived,
-                change:        this.labChange
+                ticketNumber:   confRes.data.ticketNumber ?? '—',
+                patientName:    bookRes.data.patientName,
+                examName:       this.labSelectedExam!.name,
+                scheduledDate:  dateStr,
+                scheduledTime:  this.labSelectedSlot,
+                baseAmount:     this.labFee,
+                discountPct:    this.labDiscountPct,
+                discountAmount: this.labDiscountAmount,
+                amount:         this.labNetFee,
+                payMode:        this.labPayMode,
+                cashReceived:   this.labCashReceived,
+                change:         this.labChange
               };
               this.labStep = 'receipt';
               this.notification.success('Cita de laboratorio confirmada y turno asignado.');
@@ -2545,7 +2563,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
     this.rscdLoadingSlots = true;
     const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
     this.appointmentService.getAvailableSlots(dateStr, this.rscdSelectedTicket.clinicId).subscribe({
-      next: res => { this.rscdSlots = res.success ? res.data : []; this.rscdLoadingSlots = false; },
+      next: res => { this.rscdSlots = res.success ? this.filterRscdSlotsForToday(res.data, day) : []; this.rscdLoadingSlots = false; },
       error: () => { this.rscdSlots = []; this.rscdLoadingSlots = false; }
     });
     this.rscdStartSlotPoll();
@@ -2604,7 +2622,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         this.appointmentService.getAvailableSlots(dateStr, this.rscdSelectedTicket.clinicId).subscribe({
           next: res => {
             if (res.success) {
-              this.rscdSlots = res.data;
+              this.rscdSlots = this.filterRscdSlotsForToday(res.data, this.rscdDate!);
               if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
                 if (this.rscdReservationId) {
                   this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];

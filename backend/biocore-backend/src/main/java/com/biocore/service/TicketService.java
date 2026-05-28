@@ -433,6 +433,15 @@ public class TicketService {
 
         String ticketNumber = generateTicketNumber();
 
+        // For lab tickets: preserve [LAB-XXX] code so toDTO() can resolve examName
+        String reschedNotes = "Reagendado desde " + original.getTicketNumber();
+        if ("LABORATORIO".equals(original.getType()) && original.getNotes() != null) {
+            Matcher labMatcher = LAB_CODE_PATTERN.matcher(original.getNotes());
+            if (labMatcher.find()) {
+                reschedNotes = labMatcher.group(0) + " " + reschedNotes;
+            }
+        }
+
         Ticket newTicket = Ticket.builder()
                 .patient(original.getPatient())
                 .clinic(original.getClinic())
@@ -441,7 +450,7 @@ public class TicketService {
                 .priority(original.getPriority())
                 .appointment(savedAppt)
                 .type(original.getType())
-                .notes("Reagendado desde " + original.getTicketNumber())
+                .notes(reschedNotes)
                 .scheduledDate(newDate)
                 .scheduledTime(newTime)
                 .ticketNumber(ticketNumber)

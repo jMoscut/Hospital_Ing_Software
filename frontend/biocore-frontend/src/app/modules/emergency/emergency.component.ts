@@ -491,17 +491,17 @@ export class EmergencyComponent implements OnInit, OnDestroy {
       motive: ['', Validators.required]
     });
     this.vitalsForm = this.fb.group({
-      bloodPressure: ['', [Validators.pattern(/^\d{1,3}\/\d{1,3}$/)]],
-      heartRate:     [null, [Validators.min(1), Validators.max(999)]],
-      temperature:   ['', [(ctrl: any) => {
+      bloodPressure: ['', [Validators.required, Validators.pattern(/^\d{1,3}\/\d{1,3}$/)]],
+      heartRate:     [null, [Validators.required, Validators.min(1), Validators.max(999)]],
+      temperature:   ['', [Validators.required, (ctrl: any) => {
         if (!ctrl.value && ctrl.value !== 0) return null;
         const v = parseInt(ctrl.value, 10);
         if (isNaN(v) || v < 30 || v > 45) return { tempRange: true };
         return null;
       }]],
-      weight:        [null, [Validators.min(1), Validators.max(999)]],
-      height:        [null, [Validators.min(1), Validators.max(999)]],
-      oxygenSaturation: [null, [Validators.min(1), Validators.max(99)]]
+      weight:        [null, [Validators.required, Validators.min(1), Validators.max(999)]],
+      height:        [null, [Validators.required, Validators.min(1), Validators.max(999)]],
+      oxygenSaturation: [null, [Validators.required, Validators.min(1), Validators.max(99)]]
     });
     this.loadReports();
     this.loadQueue();
