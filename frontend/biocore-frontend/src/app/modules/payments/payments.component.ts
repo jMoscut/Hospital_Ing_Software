@@ -1311,6 +1311,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
 
   // Reservation
   citReservationId: number | null = null;
+  citPendingReserve = false;
   citReservationTimeLeft = 0;
   private citReservationTimer: any = null;
   get citReservationMinutes(): number { return Math.floor(this.citReservationTimeLeft / 60); }
@@ -1361,6 +1362,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   get labClinicName(): string { return this.labClinics.find(c => c.id === this.labSelectedClinicId)?.name ?? '—'; }
 
   labReservationId: number | null = null;
+  labPendingReserve = false;
   labReservationTimeLeft = 0;
   private labReservationTimer: any = null;
   get labReservationMinutes(): number { return Math.floor(this.labReservationTimeLeft / 60); }
@@ -1404,6 +1406,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
   rscdConfirming = false;
   rscdConfirmError = '';
   rscdReservationId: number | null = null;
+  rscdPendingReserve = false;
   rscdReservationTimeLeft = 0;
   private rscdReservationTimer: any = null;
   private rscdSlotPollTimer: any = null;
@@ -1662,6 +1665,8 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       this.citClearReservationTimer();
     }
     this.citSelectedSlot = slot;
+    this.citPendingReserve = true;
+    this.citStartSlotPolling();
     this.citReserveSlot(slot);
   }
 
@@ -1722,7 +1727,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
             this.citAvailableSlots = allSlots;
           }
           if (this.citSelectedSlot && !this.citAvailableSlots.includes(this.citSelectedSlot)) {
-            if (this.citReservationId) {
+            if (this.citReservationId || this.citPendingReserve) {
               this.citAvailableSlots = [this.citSelectedSlot, ...this.citAvailableSlots];
             } else {
               this.citSelectedSlot = null;
@@ -1769,6 +1774,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       time: slot
     }).subscribe({
       next: res => {
+        this.citPendingReserve = false;
         if (res.success) {
           this.citReservationId = res.data.id;
           const expiresAt = new Date(res.data.expiresAt);
@@ -1777,6 +1783,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         }
       },
       error: err => {
+        this.citPendingReserve = false;
         this.notification.error(err.error?.message || 'No se pudo reservar el horario');
         this.citSelectedSlot = null;
         this.citLoadSlots();
@@ -2132,6 +2139,8 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       this.labClearReservationTimer();
     }
     this.labSelectedSlot = slot;
+    this.labPendingReserve = true;
+    this.labStartSlotPolling();
     this.labReserveSlot(slot);
   }
 
@@ -2170,7 +2179,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
             this.labAvailableSlots = allSlots;
           }
           if (this.labSelectedSlot && !this.labAvailableSlots.includes(this.labSelectedSlot)) {
-            if (this.labReservationId) {
+            if (this.labReservationId || this.labPendingReserve) {
               this.labAvailableSlots = [this.labSelectedSlot, ...this.labAvailableSlots];
             } else {
               this.labSelectedSlot = null;
@@ -2217,6 +2226,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       time: slot
     }).subscribe({
       next: res => {
+        this.labPendingReserve = false;
         if (res.success) {
           this.labReservationId = res.data.id;
           const expiresAt = new Date(res.data.expiresAt);
@@ -2225,6 +2235,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         }
       },
       error: err => {
+        this.labPendingReserve = false;
         this.notification.error(err.error?.message || 'No se pudo reservar el horario');
         this.labSelectedSlot = null;
         this.labLoadSlots();
@@ -2576,6 +2587,8 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       this.rscdClearReservation();
     }
     this.rscdSlot = slot;
+    this.rscdPendingReserve = true;
+    this.rscdStartSlotPoll();
     if (!this.rscdDate || !this.rscdSelectedTicket?.clinicId) return;
     const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
     this.appointmentService.reserve({
@@ -2585,6 +2598,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
       time: slot
     }).subscribe({
       next: res => {
+        this.rscdPendingReserve = false;
         if (res.success) {
           this.rscdReservationId = res.data.id;
           const secondsLeft = Math.max(0, Math.floor((new Date(res.data.expiresAt).getTime() - Date.now()) / 1000));
@@ -2601,6 +2615,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
         }
       },
       error: err => {
+        this.rscdPendingReserve = false;
         this.notification.error(err?.error?.message || 'No se pudo reservar el horario');
         this.rscdSlot = null;
         if (this.rscdDate) this.rscdSelectDate(this.rscdDate);
@@ -2624,7 +2639,7 @@ export class PaymentsComponent implements OnInit, OnDestroy {
             if (res.success) {
               this.rscdSlots = this.filterRscdSlotsForToday(res.data, this.rscdDate!);
               if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
-                if (this.rscdReservationId) {
+                if (this.rscdReservationId || this.rscdPendingReserve) {
                   this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];
                 } else {
                   this.rscdSlot = null;

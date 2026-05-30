@@ -1289,6 +1289,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
 
   // Slot reservation
   reservationId: number | null = null;
+  pendingReserve = false;
   reservationTimeLeft = 0;
   private reservationTimer: any = null;
   private slotPollTimer: any = null;
@@ -1312,6 +1313,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
   rscdReservationTimeLeft = 0;
   private rscdReservationTimer: any = null;
   private rscdSlotPollTimer: any = null;
+  rscdPendingReserve = false;
 
   get rscdMonthLabel(): string { return `${MONTH_NAMES[this.rscdMonth]} ${this.rscdYear}`; }
   get rscdReservationMinutes(): number { return Math.floor(this.rscdReservationTimeLeft / 60); }
@@ -1504,7 +1506,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
             if (res.success) {
               this.rscdSlots = this.filterRscdSlots(res.data, this.rscdDate!);
               if (this.rscdSlot && !this.rscdSlots.includes(this.rscdSlot)) {
-                if (this.rscdReservationId) {
+                if (this.rscdReservationId || this.rscdPendingReserve) {
                   this.rscdSlots = [this.rscdSlot, ...this.rscdSlots];
                 } else {
                   this.rscdSlot = null;
@@ -1525,6 +1527,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       this.rscdClearReservation();
     }
     this.rscdSlot = slot;
+    this.rscdPendingReserve = true;
+    this.rscdStartSlotPoll();
     if (!this.rscdDate || !this.rescheduleTicket?.clinicId || !this.patientId) return;
     const dateStr = `${this.rscdDate.getFullYear()}-${String(this.rscdDate.getMonth()+1).padStart(2,'0')}-${String(this.rscdDate.getDate()).padStart(2,'0')}`;
     this.appointmentService.reserve({
@@ -1534,6 +1538,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       time: slot
     }).subscribe({
       next: res => {
+        this.rscdPendingReserve = false;
         if (res.success) {
           this.rscdReservationId = res.data.id;
           const secondsLeft = Math.max(0, Math.floor((new Date(res.data.expiresAt).getTime() - Date.now()) / 1000));
@@ -1550,6 +1555,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         }
       },
       error: err => {
+        this.rscdPendingReserve = false;
         this.notification.error(err?.error?.message || 'No se pudo reservar el horario');
         this.rscdSlot = null;
         if (this.rscdDate) this.selectRscdDate(this.rscdDate);
@@ -1682,8 +1688,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         if (res.success) {
           this.availableSlots = this.filterSlotsForToday(res.data);
           if (this.selectedSlot && !this.availableSlots.includes(this.selectedSlot)) {
-            if (this.reservationId) {
-              // Slot is reserved by this user — backend excludes it from available list; add it back
+            if (this.reservationId || this.pendingReserve) {
+              // Slot held by this user (reservation confirmed or request in-flight) — add it back
               this.availableSlots = [this.selectedSlot, ...this.availableSlots];
             } else {
               this.selectedSlot = null;
@@ -1706,6 +1712,8 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       this.clearReservationTimer();
     }
     this.selectedSlot = slot;
+    this.pendingReserve = true;
+    this.startSlotPolling();
     this.reserveSlot(slot);
   }
 
@@ -1720,6 +1728,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
       time: slot
     }).subscribe({
       next: res => {
+        this.pendingReserve = false;
         if (res.success) {
           this.reservationId = res.data.id;
           const expiresAt = new Date(res.data.expiresAt);
@@ -1728,6 +1737,7 @@ export class MisCitasComponent implements OnInit, OnDestroy {
         }
       },
       error: err => {
+        this.pendingReserve = false;
         this.notification.error(err.error?.message || 'No se pudo reservar el horario');
         this.selectedSlot = null;
         this.loadSlots();
