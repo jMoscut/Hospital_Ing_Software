@@ -46,20 +46,20 @@ export class ReportService {
     return this.http.get<ApiResponse<any>>(`${this.url}/patient/${patientCode}`);
   }
 
-  getPatientsPerArea(period: string): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.url}/patients-by-area?period=${period}`);
+  getPatientsPerArea(from: string, to: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/patients-by-area?from=${from}&to=${to}`);
   }
 
-  getPharmacySales(period: string): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.url}/pharmacy-sales?period=${period}`);
+  getPharmacySales(from: string, to: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/pharmacy-sales?from=${from}&to=${to}`);
   }
 
-  getDoctorProductivity(period: string): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.url}/doctor-productivity?period=${period}`);
+  getDoctorProductivity(from: string, to: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/doctor-productivity?from=${from}&to=${to}`);
   }
 
-  getLabExams(period: string): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.url}/lab-exams?period=${period}`);
+  getLabExams(from: string, to: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.url}/lab-exams?from=${from}&to=${to}`);
   }
 }
 

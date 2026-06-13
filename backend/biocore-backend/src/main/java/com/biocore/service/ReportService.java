@@ -51,9 +51,10 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getPatientsPerArea(String period) {
-        LocalDateTime[] range = getRange(period);
-        List<Object[]> rows = ticketRepository.countByClinicBetween(range[0], range[1]);
+    public Map<String, Object> getPatientsPerArea(LocalDate from, LocalDate to) {
+        LocalDateTime fromDt = from.atStartOfDay();
+        LocalDateTime toDt   = to.plusDays(1).atStartOfDay();
+        List<Object[]> rows = ticketRepository.countByClinicBetween(fromDt, toDt);
 
         List<Map<String, Object>> data = rows.stream().map(r -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -65,22 +66,21 @@ public class ReportService {
         long total = data.stream().mapToLong(m -> ((Number) m.get("count")).longValue()).sum();
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("period", period);
-        result.put("from", range[0].toString());
-        result.put("to", range[1].toString());
+        result.put("from", from.toString());
+        result.put("to", to.toString());
         result.put("total", total);
         result.put("rows", data);
         return result;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getPharmacySales(String period) {
-        LocalDateTime[] range = getRange(period);
-        List<PharmacySale> sales = pharmacySaleRepository.findCompletedBetween(range[0], range[1]);
+    public Map<String, Object> getPharmacySales(LocalDate from, LocalDate to) {
+        LocalDateTime fromDt = from.atStartOfDay();
+        LocalDateTime toDt   = to.plusDays(1).atStartOfDay();
+        List<PharmacySale> sales = pharmacySaleRepository.findCompletedBetween(fromDt, toDt);
 
         DateTimeFormatter dayFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // Aggregate by day
         Map<String, long[]> byDay = new LinkedHashMap<>();
         for (PharmacySale s : sales) {
             if (s.getPaidAt() == null) continue;
@@ -103,9 +103,8 @@ public class ReportService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("period", period);
-        result.put("from", range[0].toString());
-        result.put("to", range[1].toString());
+        result.put("from", from.toString());
+        result.put("to", to.toString());
         result.put("totalSales", sales.size());
         result.put("grandTotal", grandTotal);
         result.put("rows", rows);
@@ -113,9 +112,10 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getDoctorProductivity(String period) {
-        LocalDateTime[] range = getRange(period);
-        List<Object[]> rows = ticketRepository.countByDoctorBetween(range[0], range[1]);
+    public Map<String, Object> getDoctorProductivity(LocalDate from, LocalDate to) {
+        LocalDateTime fromDt = from.atStartOfDay();
+        LocalDateTime toDt   = to.plusDays(1).atStartOfDay();
+        List<Object[]> rows = ticketRepository.countByDoctorBetween(fromDt, toDt);
 
         List<Map<String, Object>> data = rows.stream().map(r -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -126,18 +126,14 @@ public class ReportService {
         }).collect(Collectors.toList());
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("period", period);
-        result.put("from", range[0].toString());
-        result.put("to", range[1].toString());
+        result.put("from", from.toString());
+        result.put("to", to.toString());
         result.put("rows", data);
         return result;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getLabExams(String period) {
-        LocalDateTime[] range = getRange(period);
-        LocalDate from = range[0].toLocalDate();
-        LocalDate to = range[1].toLocalDate();
+    public Map<String, Object> getLabExams(LocalDate from, LocalDate to) {
         List<Object[]> rows = labOrderRepository.countByExamBetween(from, to);
 
         List<Map<String, Object>> data = rows.stream().map(r -> {
@@ -150,22 +146,10 @@ public class ReportService {
         long total = data.stream().mapToLong(m -> ((Number) m.get("count")).longValue()).sum();
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("period", period);
         result.put("from", from.toString());
         result.put("to", to.toString());
         result.put("total", total);
         result.put("rows", data);
         return result;
-    }
-
-    private LocalDateTime[] getRange(String period) {
-        LocalDateTime to = LocalDateTime.now();
-        LocalDateTime from = switch (period) {
-            case "week"  -> LocalDate.now().minusDays(6).atStartOfDay();
-            case "month" -> LocalDate.now().withDayOfMonth(1).atStartOfDay();
-            case "year"  -> LocalDate.now().withDayOfYear(1).atStartOfDay();
-            default      -> LocalDate.now().atStartOfDay();
-        };
-        return new LocalDateTime[]{from, to};
     }
 }

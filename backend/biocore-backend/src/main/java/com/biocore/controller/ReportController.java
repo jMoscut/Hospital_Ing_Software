@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,29 +91,37 @@ public class ReportController {
     @GetMapping("/patients-by-area")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPatientsPerArea(
-            @RequestParam(defaultValue = "day") String period) {
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getPatientsPerArea(period)));
+            @RequestParam String from,
+            @RequestParam String to) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                reportService.getPatientsPerArea(LocalDate.parse(from), LocalDate.parse(to))));
     }
 
     @GetMapping("/pharmacy-sales")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPharmacySales(
-            @RequestParam(defaultValue = "day") String period) {
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getPharmacySales(period)));
+            @RequestParam String from,
+            @RequestParam String to) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                reportService.getPharmacySales(LocalDate.parse(from), LocalDate.parse(to))));
     }
 
     @GetMapping("/doctor-productivity")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDoctorProductivity(
-            @RequestParam(defaultValue = "day") String period) {
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getDoctorProductivity(period)));
+            @RequestParam String from,
+            @RequestParam String to) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                reportService.getDoctorProductivity(LocalDate.parse(from), LocalDate.parse(to))));
     }
 
     @GetMapping("/lab-exams")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getLabExams(
-            @RequestParam(defaultValue = "day") String period) {
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getLabExams(period)));
+            @RequestParam String from,
+            @RequestParam String to) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                reportService.getLabExams(LocalDate.parse(from), LocalDate.parse(to))));
     }
 
     // ────────────────────────────────────────────────────────────────────────

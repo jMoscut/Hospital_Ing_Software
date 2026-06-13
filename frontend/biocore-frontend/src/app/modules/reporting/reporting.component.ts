@@ -43,16 +43,15 @@ import { NotificationService } from '../../shared/services/notification.service'
               </mat-card-header>
               <mat-card-content>
                 <div class="report-controls">
-                  <mat-form-field appearance="outline" style="width:180px">
-                    <mat-label>Período</mat-label>
-                    <mat-select [(ngModel)]="areaPeriod">
-                      <mat-option value="day">Hoy</mat-option>
-                      <mat-option value="week">Esta Semana</mat-option>
-                      <mat-option value="month">Este Mes</mat-option>
-                      <mat-option value="year">Este Año</mat-option>
-                    </mat-select>
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Desde</mat-label>
+                    <input matInput type="date" [(ngModel)]="areaFrom" [max]="areaTo">
                   </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="loadAreaReport()" [disabled]="areaLoading">
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Hasta</mat-label>
+                    <input matInput type="date" [(ngModel)]="areaTo" [min]="areaFrom" [max]="today">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="loadAreaReport()" [disabled]="areaLoading || !areaFrom || !areaTo">
                     <mat-icon>bar_chart</mat-icon> Generar
                   </button>
                   <button mat-stroked-button (click)="printReport('area')" *ngIf="areaData" [disabled]="areaLoading">
@@ -100,16 +99,15 @@ import { NotificationService } from '../../shared/services/notification.service'
               </mat-card-header>
               <mat-card-content>
                 <div class="report-controls">
-                  <mat-form-field appearance="outline" style="width:180px">
-                    <mat-label>Período</mat-label>
-                    <mat-select [(ngModel)]="salePeriod">
-                      <mat-option value="day">Hoy</mat-option>
-                      <mat-option value="week">Esta Semana</mat-option>
-                      <mat-option value="month">Este Mes</mat-option>
-                      <mat-option value="year">Este Año</mat-option>
-                    </mat-select>
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Desde</mat-label>
+                    <input matInput type="date" [(ngModel)]="saleFrom" [max]="saleTo">
                   </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="loadSaleReport()" [disabled]="saleLoading">
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Hasta</mat-label>
+                    <input matInput type="date" [(ngModel)]="saleTo" [min]="saleFrom" [max]="today">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="loadSaleReport()" [disabled]="saleLoading || !saleFrom || !saleTo">
                     <mat-icon>bar_chart</mat-icon> Generar
                   </button>
                   <button mat-stroked-button (click)="printReport('sale')" *ngIf="saleData" [disabled]="saleLoading">
@@ -158,16 +156,15 @@ import { NotificationService } from '../../shared/services/notification.service'
               </mat-card-header>
               <mat-card-content>
                 <div class="report-controls">
-                  <mat-form-field appearance="outline" style="width:180px">
-                    <mat-label>Período</mat-label>
-                    <mat-select [(ngModel)]="docPeriod">
-                      <mat-option value="day">Hoy</mat-option>
-                      <mat-option value="week">Esta Semana</mat-option>
-                      <mat-option value="month">Este Mes</mat-option>
-                      <mat-option value="year">Este Año</mat-option>
-                    </mat-select>
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Desde</mat-label>
+                    <input matInput type="date" [(ngModel)]="docFrom" [max]="docTo">
                   </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="loadDocReport()" [disabled]="docLoading">
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Hasta</mat-label>
+                    <input matInput type="date" [(ngModel)]="docTo" [min]="docFrom" [max]="today">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="loadDocReport()" [disabled]="docLoading || !docFrom || !docTo">
                     <mat-icon>bar_chart</mat-icon> Generar
                   </button>
                   <button mat-stroked-button (click)="printReport('doc')" *ngIf="docData" [disabled]="docLoading">
@@ -214,16 +211,15 @@ import { NotificationService } from '../../shared/services/notification.service'
               </mat-card-header>
               <mat-card-content>
                 <div class="report-controls">
-                  <mat-form-field appearance="outline" style="width:180px">
-                    <mat-label>Período</mat-label>
-                    <mat-select [(ngModel)]="labPeriod">
-                      <mat-option value="day">Hoy</mat-option>
-                      <mat-option value="week">Esta Semana</mat-option>
-                      <mat-option value="month">Este Mes</mat-option>
-                      <mat-option value="year">Este Año</mat-option>
-                    </mat-select>
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Desde</mat-label>
+                    <input matInput type="date" [(ngModel)]="labFrom" [max]="labTo">
                   </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="loadLabReport()" [disabled]="labLoading">
+                  <mat-form-field appearance="outline" style="width:160px">
+                    <mat-label>Hasta</mat-label>
+                    <input matInput type="date" [(ngModel)]="labTo" [min]="labFrom" [max]="today">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="loadLabReport()" [disabled]="labLoading || !labFrom || !labTo">
                     <mat-icon>bar_chart</mat-icon> Generar
                   </button>
                   <button mat-stroked-button (click)="printReport('lab')" *ngIf="labData" [disabled]="labLoading">
@@ -300,6 +296,8 @@ import { NotificationService } from '../../shared/services/notification.service'
 export class ReportingComponent implements OnInit, OnDestroy {
   private sub!: Subscription;
 
+  today = new Date().toISOString().slice(0, 10);
+
   // Expedient
   expSearch = '';
   expLoading = false;
@@ -308,25 +306,29 @@ export class ReportingComponent implements OnInit, OnDestroy {
   ticketColumns = ['ticket', 'clinic', 'status', 'date'];
 
   // Patients per area
-  areaPeriod = 'day';
+  areaFrom = this.today;
+  areaTo   = this.today;
   areaLoading = false;
   areaData: any = null;
   areaColumns = ['area', 'count', 'pct'];
 
   // Pharmacy sales
-  salePeriod = 'day';
+  saleFrom = this.today;
+  saleTo   = this.today;
   saleLoading = false;
   saleData: any = null;
   saleColumns = ['date', 'count', 'total'];
 
   // Doctor productivity
-  docPeriod = 'day';
+  docFrom = this.today;
+  docTo   = this.today;
   docLoading = false;
   docData: any = null;
   docColumns = ['doctor', 'clinic', 'consultations'];
 
   // Lab exams
-  labPeriod = 'day';
+  labFrom = this.today;
+  labTo   = this.today;
   labLoading = false;
   labData: any = null;
   labColumns = ['rank', 'exam', 'count', 'pct'];
@@ -378,32 +380,36 @@ export class ReportingComponent implements OnInit, OnDestroy {
   }
 
   loadAreaReport(): void {
+    if (!this.areaFrom || !this.areaTo) return;
     this.areaLoading = true;
-    this.reportService.getPatientsPerArea(this.areaPeriod).subscribe({
+    this.reportService.getPatientsPerArea(this.areaFrom, this.areaTo).subscribe({
       next: res => { if (res.success) this.areaData = res.data; this.areaLoading = false; },
       error: () => { this.notification.error('Error al cargar reporte'); this.areaLoading = false; }
     });
   }
 
   loadSaleReport(): void {
+    if (!this.saleFrom || !this.saleTo) return;
     this.saleLoading = true;
-    this.reportService.getPharmacySales(this.salePeriod).subscribe({
+    this.reportService.getPharmacySales(this.saleFrom, this.saleTo).subscribe({
       next: res => { if (res.success) this.saleData = res.data; this.saleLoading = false; },
       error: () => { this.notification.error('Error al cargar reporte'); this.saleLoading = false; }
     });
   }
 
   loadDocReport(): void {
+    if (!this.docFrom || !this.docTo) return;
     this.docLoading = true;
-    this.reportService.getDoctorProductivity(this.docPeriod).subscribe({
+    this.reportService.getDoctorProductivity(this.docFrom, this.docTo).subscribe({
       next: res => { if (res.success) this.docData = res.data; this.docLoading = false; },
       error: () => { this.notification.error('Error al cargar reporte'); this.docLoading = false; }
     });
   }
 
   loadLabReport(): void {
+    if (!this.labFrom || !this.labTo) return;
     this.labLoading = true;
-    this.reportService.getLabExams(this.labPeriod).subscribe({
+    this.reportService.getLabExams(this.labFrom, this.labTo).subscribe({
       next: res => { if (res.success) this.labData = res.data; this.labLoading = false; },
       error: () => { this.notification.error('Error al cargar reporte'); this.labLoading = false; }
     });
